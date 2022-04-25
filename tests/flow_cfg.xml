@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<flow>
+    <import file="flow_some_reusable_flow1.xml" as="flows"/>
+    <import file="fsm_init_automata.xml" as="flows"/>
+
+    <spec name="test_flow">
+        <annotation>
+            Some test describing a flow module
+        </annotation>
+
+        <inputs>
+            <i alias="one" annotation="One" type="f"/>
+            <i alias="two" annotation="Two" type="f"/>
+            <i alias="three" annotation="Three" type="f"/>
+        </inputs>
+
+        <outputs>
+            <o alias="o1" />
+            <o alias="o2" />
+            <o alias="o3" />
+        </outputs>
+
+        <params>
+            <alias alias="p1" annotation="na" mandatory="No" default="1.0"/>
+            <alias alias="p2" annotation="na" type="f" />
+            <alias alias="p3" annotation="na" type="f" />
+        </params>
+    </spec>
+
+    <functions>
+        <f name="func1" by_spec="core.logical.and">
+            <param alias="fp1">123123.0</param>
+            <in alias="in1">one</in>
+            <in alias="in2">two</in>
+        </f>
+
+        <f name="macro1" by_spec="flow.some_reusable_flow1">
+            <param alias="fp1">123123.0</param>
+            <in alias="in1">one</in>
+            <in alias="in2">two</in>
+        </f>
+
+        <f name="fsm1" by_spec="fsm.init_automata">
+            <param alias="fp1">123123.0</param>
+            <in alias="in1">one</in>
+            <in alias="in2">two</in>
+        </f>
+
+        <f name="fsm2" by_spec="fsm.init_automata">
+            <param alias="fp1">123123.0</param>
+            <in alias="in1">one</in>
+            <in alias="in2">two</in>
+        </f>
+
+        <f name="pid1" by_spec="core.controller.pid">
+            <param alias="Kp">1.0</param>
+            <param alias="Ki">1.0</param>
+            <param alias="Kd">1.0</param>
+            <param alias="Kd">1.0</param>
+            <param alias="min">-1.0</param>
+            <param alias="max">+1.0</param>
+            <param alias="integral_min">-1.0</param>
+            <param alias="integral_max">+1.0</param>
+            <in alias="input">fsm1/setup</in>
+            <in alias="feedback">macro1/sensors_reading</in>
+            <in alias="enable">fsm1/reg_enable</in>
+        </f>
+    </functions>
+
+    <link_outputs>
+        <link alias="o1">pid1/out</link>
+        <link alias="o2">pid1/en</link>
+        <link alias="o3">macro1/ref_value</link>
+    </link_outputs>
+
+</flow>

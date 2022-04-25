@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<flow>
+    <spec name="generator">
+        <annotation>
+        </annotation>
+
+        <inputs>
+        </inputs>
+
+        <outputs>
+            <o alias="o1" annotation="Output 1"/>
+            <o alias="o2" annotation="Output 2"/>
+            <o alias="o3" annotation="Output 3"/>
+        </outputs>
+
+        <params>
+        </params>
+    </spec>
+
+    <functions>
+        <f name="gen1" by_spec="core.source.sin">
+            <param alias="period">4</param>
+            <param alias="phase">0.0</param>
+        </f>
+        <f name="gen2" by_spec="core.source.sin">
+            <param alias="period">2</param>
+            <param alias="phase">1.57</param>
+        </f>
+        <f name="gen3" by_spec="core.source.sin">
+            <param alias="period">1</param>
+            <param alias="phase">0.0</param>
+        </f>
+    </functions>
+
+    <link_outputs>
+        <link alias="o1">gen1/out</link>
+        <link alias="o2">gen2/out</link>
+        <link alias="o3">gen3/out</link>
+    </link_outputs>
+
+</flow>

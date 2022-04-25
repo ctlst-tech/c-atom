@@ -1,0 +1,49 @@
+
+<ibr>
+    <spec name="test_ibr">
+        <annotation>
+        </annotation>
+
+        <inputs>
+<!--            <i alias="msg_in" annotation="Input 1"/>-->
+        </inputs>
+
+        <outputs>
+<!--            <o alias="msg_out" annotation="Output 1"/>-->
+            <o alias="engine" annotation="Engine vector"/>
+        </outputs>
+
+        <params>
+        </params>
+    </spec>
+    <!--
+    define protocols
+    messages of the protocol
+    define optional rules for converting messages fields in ESWB topics
+
+    reuse message definition for either input or output and vise versa
+
+
+    -->
+    <protocol name="test">
+        <msg name="msg_sample">
+            <field_scalar name="x" type="double"/>
+            <field_scalar name="y" type="double"/>
+            <field_scalar name="z" type="double"/>
+        </msg>
+
+        <msg name="engine">
+            <fs name="rpm" type="double"/>
+            <fs name="cht" type="double"/>
+            <fs name="egt" type="double"/>
+            <fs name="oil_press" type="double"/>
+        </msg>
+    </protocol>
+
+
+
+<!--    <process name="test_udp2eswb" protocol="test" msg="msg_sample" src="udp://*:1111" dst="eswb://msg_out" />-->
+<!--    <process name="test_eswb2udp" protocol="test" msg="msg_sample" src="eswb://msg_in" dst="udp://127.0.0.1:1112" />-->
+    <process name="fg_test" protocol="test" msg="engine" src="udp://*:6011" dst="func://engine" />
+
+</ibr>

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<swsys>
+    <bus name="test" max_topics="256" eq_channel="2">
+        <dir name="mode" eq_channel="1"/>
+        <dir name="gen" eq_channel="1"/>
+        <dir name="cont" eq_channel="1"/>
+        <event_queue size="20" buffer_size="2000"/>
+    </bus>
+
+    <service type="eqrb_tcp" name="debug">
+        <param alias="port">0</param>
+    </service>
+
+    <task type="flow" name="gen" config="mvp/mvp_flow_gen.xml" priority="5" clk_method="timer" clk_period="200">
+        <connect>
+            <out alias="o1">itb:/test/gen/o1</out>
+            <out alias="o2">itb:/test/gen/o2</out>
+            <out alias="o3">itb:/test/gen/o3</out>
+        </connect>
+    </task>
+
+    <task type="fsm" name="mode" config="mvp/mvp_fsm_mode.xml" priority="5" clk_method="inp_upd" clk_input_path="itb:/test/gen/o1">
+        <connect>
+            <in alias="i1">itb:/test/gen/o1</in>
+            <in alias="i2">itb:/test/gen/o2</in>
+            <in alias="i3">itb:/test/gen/o3</in>
+
+            <out alias="o1">itb:/test/mode/o1</out>
+            <out alias="o2">itb:/test/mode/o2</out>
+            <out alias="o3">itb:/test/mode/o3</out>
+            <out alias="strobe">itb:/test/mode/strobe</out>
+        </connect>
+    </task>
+
+    <task type="ibr" name="udp_stream" config="mvp/mvp_ibr_udploop.xml" priority="5" clk_method="freerun">
+        <connect>
+            <out alias="engine">itb:/test/engine</out>
+        </connect>
+    </task>
+
+    <task type="flow" name="cont" config="mvp/mvp_flow_cont.xml" priority="5" clk_method="inp_upd" clk_input_path="itb:/test/gen/o1">
+        <connect>
+            <in alias="mode1">itb:/test/mode/o1</in>
+            <in alias="mode2">itb:/test/mode/o2</in>
+            <in alias="mode3">itb:/test/mode/o3</in>
+            <in alias="strobe">itb:/test/mode/strobe</in>
+            <in alias="signal">itb:/test/gen/o1</in>
+
+            <out alias="out">itb:/test/cont/out</out>
+            <out alias="event">itb:/test/cont/event</out>
+        </connect>
+    </task>
+
+
+</swsys>

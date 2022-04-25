@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<fsminst>
+
+    <spec name="test_fsm">
+        <annotation>
+            Some test describing a flow module
+        </annotation>
+        <inputs>
+            <i alias="i1" title="Input 1"/>
+            <i alias="i2" title="Input 2"/>
+            <i alias="i3" title="Input 3"/>
+        </inputs>
+
+        <outputs>
+            <o alias="o1" title="Output 1"/>
+            <o alias="o2" title="Output 2"/>
+            <o alias="o3" title="Output 3"/>
+            <o alias="strobe" title="Output 4"/>
+        </outputs>
+
+        <params>
+            <p alias="param" title="Param 1" mandatory="No" default="1.0"/>
+        </params>
+    </spec>
+
+    <fsm name="fsm1">
+        <state name="a">
+            <on_enter>
+                o1 = 0;
+                o2 = 0;
+                o3 = 0;
+            </on_enter>
+            <on_exit>
+            </on_exit>
+        </state>
+
+        <state name="b">
+            <on_enter>
+                o1 = 1;
+                o2 = 1;
+                o3 = 1;
+            </on_enter>
+        </state>
+
+        <transition name="" from="_begin_" to="a">
+            <cond>true</cond>
+        </transition>
+
+        <transition name="" from="a" to="b">
+            <cond>i2 &gt; i3</cond>
+        </transition>
+
+        <transition name="" from="b" to="a">
+            <cond>i1 &lt; param</cond>
+            <action>strobe = 1;</action>
+        </transition>
+    </fsm>
+
+</fsminst>

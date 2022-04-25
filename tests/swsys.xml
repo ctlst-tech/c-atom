@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<swsys>
+    <bus name="nav" max_topics="256"/> <!-- supposed to be always ipb -->
+    <bus name="cont" max_topics="256"/>
+
+    <task type="flow" name="imu_sens" config="imu_sens.xml" priority="5">
+        <connect>
+            <in alias="in1">bus/path/topic</in>
+            <in alias="in2">bus/path/topic</in>
+            <in alias="in3">bus/path/topic</in>
+            <out alias="out1">bus2/path2/topic2</out>
+            <out alias="out2">bus2/path2/topic2</out>
+            <out alias="out3">bus2/path2/topic2</out>
+            <out alias="out4">bus2/path2/topic2</out>
+        </connect>
+    </task>
+
+    <!-- drafts
+    <partition name="example" priority="20">
+        <process type="flow" name="process1" config="process1.xml" priority="5">
+            <bus name="local" max_topics="256"/>
+            <bridge alias="local/out/*" to="ipb:/nav"/>
+            <thread type="flow" name="imu_sens" config="imu_sens.xml" priority="5">
+                <connect>
+                    <in alias="in1">bus/path/topic</in>
+                    <out alias="out1">bus2/path2/topic2</out>
+                </connect>
+            </thread>
+        </process>
+    </partition>
+
+
+    <partition name="navigation" priority="20">
+        <task type="flow" name="imu_sens" config="imu_sens.xml" priority="5">
+            <connect>
+                <in alias="in1">bus/path/topic</in>
+                <out alias="out1">bus2/path2/topic2</out>
+            </connect>
+        </task>
+
+        <task type="flow" name="attitude" config="attitude.xml" priority="1">
+            <connect_input alias="*" to="nav"/>
+            <connect_output alias="*" to="nav"/>
+        </task>
+    </partition>
+
+    <partition name="control" priority="10">
+        <task type="guidance" name="guidance" config="guidance.xml">
+            <connect_input alias="*" to="nav"/>
+            <connect_output alias="*" to="control/guidance"/>
+        </task>
+
+        <task type="flow" name="engine_control" config="engine.xml">
+            <connect_input alias="*" to="control"/>
+            <connect_output alias="*" to="control/engine"/>
+        </task>
+
+        <task type="flow" name="flight_control" config="flight.xml">
+            <connect_input alias="*" to="control"/>
+            <connect_output alias="*" to="control"/>
+        </task>
+
+        <task type="fsm" name="flight_prep" config="flight_prep.xml">
+            <connect_input alias="*" to="control"/>
+            <connect_output alias="*" to="control"/>
+        </task>
+
+        <task type="hwbridge" name="actuators" config="actuators.xml">
+            <connect_input alias="*" to="control"/>
+        </task>
+
+
+    </partition>
+    -->
+
+</swsys>

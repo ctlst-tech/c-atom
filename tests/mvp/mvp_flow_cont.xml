@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<flow>
+
+    <spec name="cont">
+        <annotation>
+        </annotation>
+
+        <inputs>
+            <i alias="mode1" annotation="Mode switch 1"/>
+            <i alias="mode2" annotation="Mode switch 2"/>
+            <i alias="mode3" annotation="Mode switch 3"/>
+            <i alias="strobe" annotation="Strobe in"/>
+            <i alias="signal" annotation="Signal to alter"/>
+        </inputs>
+
+        <outputs>
+            <o alias="out" annotation="Output"/>
+            <o alias="event" annotation="Event flag"/>
+        </outputs>
+
+        <params>
+        </params>
+    </spec>
+
+    <functions>
+        <f name="const_val" by_spec="core.source.constant">
+            <param alias="value">10.0</param>
+        </f>
+
+        <f name="mux_const" by_spec="core.controller.mux">
+            <in alias="input0">signal</in>
+            <in alias="input1">const_val/output</in>
+            <in alias="select">mode1</in>
+        </f>
+        
+        <f name="gain1" by_spec="core.math.gain">
+            <in alias="input">signal</in>
+            <param alias="gain">15.0</param>
+        </f>
+
+        <f name="mux_gain" by_spec="core.controller.mux">
+            <in alias="input0">gain1/output</in>
+            <in alias="input1">signal</in>
+            <in alias="select">mode2</in>
+        </f>
+
+        <f name="mux_final" by_spec="core.controller.mux">
+            <in alias="input0">mux_gain/output</in>
+            <in alias="input1">mux_const/output</in>
+            <in alias="select">mode3</in>
+        </f>
+
+        <f name="event_out" by_spec="core.controller.mux">
+            <in alias="input0">signal</in>
+            <in alias="input1">const_val/output</in>
+            <in alias="select">mode1</in>
+        </f>
+
+    </functions>
+
+    <link_outputs>
+        <link alias="out">mux_final/output</link>
+        <link alias="event">event_out/output</link>
+    </link_outputs>
+
+</flow>
