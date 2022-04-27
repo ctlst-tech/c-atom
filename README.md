@@ -9,7 +9,7 @@ model-based enabled design; service code generation.
 
 # Demos
 
-1. [Autopiloting of the flight simulator's model of Cessna 172.](https://github.com/ctlst-tech/c-atom)
+1. [Autopiloting of the flight simulator's model of Cessna 172.](https://github.com/ctlst-tech/c172atom)
 2. Popular open source hardware adaptation and quad-rotor drone example (coming soon).
 
 # How it works
