@@ -265,7 +265,7 @@ class GeneratedFunction:
                                                          return_type='void',
                                                          arguments=[GArgument(type=self.type_params, varname='old_p', ptr=True),
                                                                     GArgument(type=self.type_params, varname='new_p', ptr=True),
-                                                                    GArgument(type=self.type_params_flags, varname='flags')
+                                                                    GArgument(type=self.type_params_flags, varname='flags', ptr=True)
                                                                     ])
 
         exec_func_args = []
@@ -695,7 +695,7 @@ class GeneratedFunction:
 
         if f_spec.has_compute_parameters():
             fprint(f'    // Compute parameters', )
-            local_arguments = ['params', '&p', 'flags']
+            local_arguments = ['params', '&p', '&flags']
             fprint(f'    {f_spec.get_prefix()}_compute_params({", ".join(local_arguments)});', )
             fprint()
 
