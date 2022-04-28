@@ -71,8 +71,6 @@ target_include_directories(c-atom-static PUBLIC
         ibr
         )
 
-
-
 target_link_libraries(c-atom-static PRIVATE
         eswb-if
         fsminst-static
