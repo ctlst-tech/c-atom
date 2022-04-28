@@ -252,7 +252,9 @@ static fspec_rv_t swsys_call_set_param(void *dhandle, const func_param_t *params
     return err_cnt > 0 ? fspec_rv_initerr : fspec_rv_ok;
 }
 
-static void set_pthread_name(swsys_task_type_t tt, const char *tn) {
+void eswb_set_thread_name(const char *n);
+
+static void catom_set_pthread_name(swsys_task_type_t tt, const char *tn) {
     char tname[16];
 
     switch (tt) {
@@ -263,11 +265,11 @@ static void set_pthread_name(swsys_task_type_t tt, const char *tn) {
     }
 
     strncat(tname, tn, sizeof(tname) - 4 - 1);
-    pthread_setname_np(tname);
+    eswb_set_thread_name(tname);
 }
 
 void ibr_set_pthread_name(const char *tn) {
-    set_pthread_name(tsk_ibr, tn);
+    catom_set_pthread_name(tsk_ibr, tn);
 }
 
 static void* task(void *taskhndl) {
@@ -276,7 +278,7 @@ static void* task(void *taskhndl) {
     swsys_task_handle_t * th = (swsys_task_handle_t *) taskhndl;
     uint32_t delay = th->task->clk_period_ms * 1000;
 
-    set_pthread_name(th->task->type, th->task->name);
+    catom_set_pthread_name(th->task->type, th->task->name);
 
     while(loop) {
         switch (th->task->clk_method) {
