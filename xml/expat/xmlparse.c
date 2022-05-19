@@ -869,19 +869,13 @@ gather_time_entropy(void) {
   GetSystemTimeAsFileTime(&ft); /* never fails */
   return ft.dwHighDateTime ^ ft.dwLowDateTime;
 #  else
-  struct timeval tv;
-  int gettimeofday_res;
+  struct timespec tv;
+  int gettimeofday_res = 10;
 
-  gettimeofday_res = gettimeofday(&tv, NULL);
-
-#    if defined(NDEBUG)
-  (void)gettimeofday_res;
-#    else
-  assert(gettimeofday_res == 0);
-#    endif /* defined(NDEBUG) */
+  clock_gettime(CLOCK_REALTIME, &tv);
 
   /* Microseconds time is <20 bits entropy */
-  return tv.tv_usec;
+  return tv.tv_nsec;
 #  endif
 }
 
