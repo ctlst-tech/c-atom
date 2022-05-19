@@ -49,7 +49,6 @@ set(CATOM_SRC
         xml/xml.c
         xml/xml.h
         function/common_parser_xml.c
-        catom.c
         flow/flow_parser_xml.c
         flow/flow.h
         )
