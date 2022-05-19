@@ -20,6 +20,7 @@
 
 void *ibr_alloc(size_t s);
 
+#ifndef CATOM_NO_SOCKET
 
 ibr_rv_t drv_udp_connect(const char *addr_str, int *md) {
 
@@ -114,6 +115,7 @@ ibr_rv_t drv_udp_recv(int sktd, void *d, int *btr) {
     return ibr_ok;
 }
 
+
 const irb_media_driver_t drv_udp_media_driver = {
     .proclaim = NULL,
     .connect = drv_udp_connect,
@@ -122,6 +124,7 @@ const irb_media_driver_t drv_udp_media_driver = {
     .recv = drv_udp_recv,
 };
 
+#endif
 
 topic_data_type_t ibr_eswb_field_type(field_type_t *ft) {
 
@@ -395,7 +398,9 @@ const irb_media_driver_t *ibr_get_driver (irb_media_driver_type_t mdt) {
     switch (mdt) {
         case mdt_function:              return &drv_eswb_media_driver;
         case mdt_function_bridge:       return &drv_eswb_bridge_media_driver;
+#       ifndef CATOM_NO_SOCKET
         case mdt_udp:                   return &drv_udp_media_driver;
+#       endif
         default:                        return NULL;
     }
 }

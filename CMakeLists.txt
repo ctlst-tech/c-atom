@@ -56,6 +56,10 @@ set(CATOM_SRC
 
 add_library(c-atom-static STATIC ${CATOM_SRC})
 
+if(CATOM_NO_SOCKET)
+    target_compile_definitions(c-atom-static PUBLIC CATOM_NO_SOCKET=1)
+endif()
+
 target_include_directories(c-atom-static PUBLIC
         f_specs
         fsminst/fsmlib
