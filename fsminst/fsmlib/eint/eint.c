@@ -74,7 +74,7 @@ const char *eint_print_result(result_reg_t *r) {
             sprintf(rv, "%.5f", r->val.f);
             break;
         case nr_int:
-            sprintf(rv, "%d", r->val.i);
+            sprintf(rv, "%ld", r->val.i);
             break;
         case nr_string:
             sprintf(rv, "%s", r->val.s);
@@ -292,11 +292,11 @@ int tests() {
 
     er.val.i = 111; er.type = nr_int;
     CHECK_AND_STAT(do_test("c = 111.111;", &context, &er));
-    printf("Assignment of c; c == %d\n", csym->i.var.val.i);
+    printf("Assignment of c; c == %ld\n", csym->i.var.val.i);
 
     er.val.i = INT_FUNC_TEST_VAL; er.type = nr_int;
     CHECK_AND_STAT(do_test("c = test_int_func();", &context, &er));
-    printf("Assignment of c by func; c == %d\n", csym->i.var.val.i);
+    printf("Assignment of c by func; c == %ld\n", csym->i.var.val.i);
 
     printf("Tests performed: %d, failures: %d\n", tests, failures);
 

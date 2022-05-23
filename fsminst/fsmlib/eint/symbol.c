@@ -181,15 +181,18 @@ int symbol_update_value(symbol_t *s, const char *value) {
                 break;
 
             case nr_int:
-                rv = sscanf(value, "%d", &s->i.var.val.i);
+                rv = sscanf(value, "%ld", &s->i.var.val.i);
                 break;
 
             case nr_bool:
                 s->i.var.val.b = check_bool(value);
+                rv = 1;
                 break;
 
             case nr_string:
                 strncpy(s->i.var.val.s, value, SYMBOL_MAX_STRING_LNG);
+                rv = 1;
+                break;
 
             default:
                 rv = 0;

@@ -320,7 +320,7 @@ static xml_rv_t xml_parse(xml_parser_t *xml_parser, const char *s, int len, int 
 
 
     if (XML_Parse(xml_parser->expat_parser, s, len, isFinal ) == XML_STATUS_ERROR) {
-        fprintf(stderr, "XML parsing error %s at line %d\n",
+        fprintf(stderr, "XML parsing error %s at line %lu\n",
                    XML_ErrorString(XML_GetErrorCode (xml_parser->expat_parser)),
                    (uint32_t) XML_GetCurrentLineNumber(xml_parser->expat_parser));
         return xml_e_dom_parsing;
