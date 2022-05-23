@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.6)
 project(c-atom)
 
-include_directories(./function)
 
 ##### before configuration call
 ##### ./c-atom/tools/fspecgen.py --code --cmake --registry_c ./f_specs_reg.c --f_specs_dirs f_specs/ f_specs2/
@@ -22,6 +21,7 @@ set(FSMINST_SRC
 add_library(fsminst-static STATIC ${FSMINST_SRC})
 
 target_include_directories(fsminst-static PUBLIC
+        function
         eswb/src/lib/include/public
         xml
         fsminst/fsmlib
@@ -33,6 +33,8 @@ set(CATOM_SRC
         flow/flow.c
         function/function.c
         function/error.c
+        function/conv.c
+        function/conv.h
         swsys/swsys.c
         swsys/swsys_services.c
         swsys/swsys.h
@@ -60,17 +62,14 @@ if(CATOM_NO_SOCKET)
 endif()
 
 target_include_directories(c-atom-static PUBLIC
+        eswb/src/lib/include/public
         f_specs
+        function
         fsminst/fsmlib
         fsminst/fsmlib/clk
-        )
-
-target_include_directories(c-atom-static PUBLIC
-        eswb/src/lib/include/public
         xml
         flow
         fsminst
-        fsminst/fsmlib
         ibr
         )
 
