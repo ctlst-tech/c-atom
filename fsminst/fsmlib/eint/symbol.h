@@ -67,11 +67,7 @@ symbol_t *symbol_add_var(symbol_context_t *cntx, const char *name, result_type_t
 symbol_t *symbol_add_func(symbol_context_t *cntx, const char *name, symbol_func_handler_t h, symbol_state_handler_t *sh, int expected_args_num,
                           result_type_t ret_type);
 
-void symbol_update_float(symbol_t *s, double v);
-void symbol_update_int(symbol_t *s, int v);
-void symbol_update_bool(symbol_t *s, int v);
 void symbol_update(symbol_t *s, void *value);
-
-int symbol_update_value(symbol_t *s, const char *value);
+int symbol_update_w_str(symbol_t *s, const char *value);
 
 #endif //HW_BRIDGE_SYMBOL_H

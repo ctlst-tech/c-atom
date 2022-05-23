@@ -6,7 +6,6 @@
 
 #include "symbol.h"
 
-
 void *my_alloc(ssize_t s);
 
 static symbol_t * alloc_sybmol () {
@@ -165,19 +164,21 @@ static boolval_t check_bool(const char *v) {
     }
 }
 
+#include "../../function/conv.h"
+
 /**
- * !WARNING use only constant strings if assigning string value
+ *
  * @param s
  * @param value
  * @return
  */
-int symbol_update_value(symbol_t *s, const char *value) {
+int symbol_update_w_str(symbol_t *s, const char *value) {
     int rv = 0;
 
     if (s->type == symt_var) {
         switch (s->i.var.type) {
             case nr_float:
-                rv = sscanf(value, "%lf", &s->i.var.val.f);
+                rv = conv_str_double(value, &s->i.var.val.f) == conv_rv_ok ? 1 : 0;
                 break;
 
             case nr_int:
