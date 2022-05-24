@@ -215,6 +215,7 @@ class Parameter:
         self.constraints = constraints if constraints is not None else []
         self.mandatory = False if default is not None else mandatory
         self.default = default
+        self.computable = False
 
 
 class ComputedParameter(Parameter):
@@ -234,6 +235,7 @@ class ComputedParameter(Parameter):
             default=None,
             unit=unit
         )
+        self.computable = True
 
 
 class Input:

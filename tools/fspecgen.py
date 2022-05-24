@@ -1262,10 +1262,11 @@ class FuncProcessor:
             fprint(f'        <params>')
 
             for prm in fs.parameters:
-                fprint(f'            <param id="{prm.name}" title="{prm.title}" type="{prm.value_type.name}">')
-                if prm.description:
-                    fprint(f'                {prm.description}')
-                fprint(f'            </param>')
+                if not prm.computable:
+                    fprint(f'            <param id="{prm.name}" title="{prm.title}" type="{prm.value_type.name}">')
+                    if prm.description:
+                        fprint(f'                {prm.description}')
+                    fprint(f'            </param>')
             fprint(f'        </params>')
             fprint(f'    </bblock>')
 
