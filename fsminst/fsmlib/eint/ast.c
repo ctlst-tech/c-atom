@@ -18,7 +18,7 @@ emalloc (size_t size)
     void * pointer = calloc (1, size);
 
     if (!pointer)
-        fprintf (stderr, "Error: malloc(%lu) failed!\n", size);
+        fprintf (stderr, "Error: malloc(%zu) failed!\n", size);
 
     return pointer;
 }
@@ -205,7 +205,7 @@ const char * ast_node_full_caption(struct ast_node *n) {
             break;
 
         case ast_number_int:
-            sprintf(rv, "%d", n->number_int.value);
+            sprintf(rv, "%ld", n->number_int.value);
             break;
 
         case ast_number_float:

@@ -586,6 +586,7 @@ class GeneratedFunction:
         ifs = self.callable_set_params.arguments[-1].name
 
         fprint(f'#include "{f_spec.get_name()}.h"')
+        fprint(f'#include "conv.h"')
         fprint()
 
         fprint('#include <string.h>')
@@ -604,6 +605,7 @@ class GeneratedFunction:
         fprint(f'    memset(&flags, 0, sizeof(flags));')
         fprint()
         fprint(f'    int violation_count = 0;', )
+        fprint(f'    conv_rv_t crv = conv_rv_ok;', )
         fprint()
 
         fprint(f'    // Parse parameters', )
@@ -615,14 +617,13 @@ class GeneratedFunction:
             fprint(f'if (strcmp({pps}[i].alias, "{parameter.name}") == 0) {{', )
 
             if parameter.value_type.name == 'core.type.f64':
-                fprint(f'            if (sscanf({pps}[i].value, "%lf", &p.{parameter.name}) < 1) {{')
-                fprint(f'                error("Parameter \'%s\' format error (%s)", {pps}[i].alias, {pps}[i].value);')
-                fprint(f'                violation_count++;')
-                fprint(f'            }}')
+                # fprint(f'            if ((crv) == conv_rv_ok) {{')
+                fprint(f'            if ((crv = conv_str_double({pps}[i].value, &p.{parameter.name})) == conv_rv_ok) {{')
             else:
                 fprint(f'            // TODO: Parse into p.{parameter.name}')
 
-            fprint(f'            flags.changed_{parameter.name} = 1;', )
+            fprint(f'                flags.changed_{parameter.name} = 1;', )
+            fprint(f'            }}')
             # params.Kp = atof(param_str[i].value);
             fprint('        }', end='', )
             pass
@@ -630,6 +631,11 @@ class GeneratedFunction:
         fprint(f'            error("failed unsupported parameter \'%s\'", {pps}[i].alias);', )
         fprint(f'            violation_count ++;', )
         fprint('        }', )
+        fprint()
+        fprint(f'        if (crv != conv_rv_ok) {{')
+        fprint(f'            error("Parameter \'%s\' format error (%s)", {pps}[i].alias, {pps}[i].value);')
+        fprint(f'            violation_count++;')
+        fprint(f'        }}')
         fprint('    }', )
         fprint()
 
@@ -1076,14 +1082,15 @@ class GeneratedFunction:
         fprint()
         fprint(f'target_include_directories({self.cmakelists_lib_name} PRIVATE {self.generated_code_dir})')
         fprint(f'target_include_directories({self.cmakelists_lib_name} PRIVATE ../../../include)')
+        eswb_path = 'c-atom/eswb/src/lib/include/public'
         fprint(f'target_include_directories({self.cmakelists_lib_name} '
-               f'PRIVATE ../../../../eswb/src/lib/include/public)')
+               f'PRIVATE {os.path.relpath(eswb_path, start=self.spec.directory)})')
         fprint(f'target_include_directories({self.cmakelists_lib_name} PUBLIC ')
         for t in self.spec.get_dependency_types():
             fprint(f'    {os.path.relpath(t.directory, start=self.spec.directory)}')
         fprint(')')
 
-        fprint(f'target_link_libraries({self.cmakelists_lib_name} PUBLIC eswb-if)')
+        # fprint(f'target_link_libraries({self.cmakelists_lib_name} PUBLIC eswb-if)')
 
     def generate_code(self, as_static_lib = False):
 
@@ -1448,6 +1455,10 @@ if __name__ == "__main__":
 
     if (args.cmake):
         fprint = new_file_write_call('./fspecs.cmake')
+        fprint('include_directories(c-atom/function)')
+
+        fprint()
+
         for p in pkgs:
             fprint(f'add_subdirectory({os.path.relpath(p.root_path, start=os.curdir)})')
 

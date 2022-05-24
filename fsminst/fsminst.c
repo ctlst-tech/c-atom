@@ -66,7 +66,7 @@ static fspec_rv_t symbols_add_spec(symbol_context_t *symb_context,
         }
 
         if (conn_spec[i]->default_value != NULL) {
-            int rv = symbol_update_value(s, conn_spec[i]->default_value);
+            int rv = symbol_update_w_str(s, conn_spec[i]->default_value);
             if (rv) {
                 // TODO report msg
                 einval_cnt++;
@@ -227,7 +227,7 @@ fspec_rv_t fsm_set_params(void *dhandle, const func_param_t *params, int initial
             dbg_msg("Symbol \"%s\"| is not found", params[i].alias);
             err_num_no_symb++;
         } else {
-            if (symbol_update_value(s, params[i].value) ) {
+            if (symbol_update_w_str(s, params[i].value) ) {
                 dbg_msg("Symbol \"%s\" update by invalid format \"%s\"", params[i].alias, params[i].value);
                 err_num_inv_format++;
             }

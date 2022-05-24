@@ -263,7 +263,7 @@ void fsm_print(fsm_t *f) {
 }
 
 fsm_rv_t fsm_actualize_state_var(fsm_t *f) {
-    int rv = symbol_update_value(f->state_symbol, f->current_state->c.name);
+    int rv = symbol_update_w_str(f->state_symbol, f->current_state->c.name);
     return rv ? fsm_rv_invarg : fsm_rv_ok;
 }
 

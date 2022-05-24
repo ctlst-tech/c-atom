@@ -104,21 +104,7 @@ fsm_rv_t fsm_isc_add_var (fsm_t *fsm, const char *name, const char *type, const 
     int v;
     double d;
 
-    switch (t) {
-        case nr_int:
-            v = strtol(value, NULL, 0);
-            symbol_update_int(s, v);
-            break;
-
-        case nr_float:
-            d = atof(value);
-            symbol_update_float(s, d);
-            break;
-
-        default:
-            fprintf(stderr, "no implementation for updating %s\n", eint_print_type_result(t));
-            break;
-    }
+    symbol_update_w_str(s, value);
 
     return fsm_rv_ok;
 }
