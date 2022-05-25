@@ -247,7 +247,7 @@ int tests() {
     CHECK_AND_STAT(do_test("true", &context, &er));
 
 #define symbol_update_double symbol_update_float
-#define DECLARE_TEST_VAR(n__,v__,vte__,vtn__) vtn__ n__=v__; symbol_t *n__##sym = symbol_add_var(&context, #n__, vte__); symbol_update_##vtn__(n__##sym, v__);
+#define DECLARE_TEST_VAR(n__,v__,vte__,vtn__) vtn__ n__=v__; symbol_t *n__##sym = symbol_add_var(&context, #n__, vte__); symbol_update_w_str(n__##sym, #v__)
 
     DECLARE_TEST_VAR(a, 0.123, nr_float, double);
     DECLARE_TEST_VAR(b, 0.321, nr_float, double);
