@@ -104,13 +104,13 @@ fspec_rv_t flow_init(void *iface, const function_spec_t *spec, const char *inv_n
     // TODO count topics num
 
     const char *bus_name = inv_name;
-    eswb_rv_t rv = eswb_create(bus_name, eswb_local_non_synced, 256);
+    eswb_rv_t rv = eswb_create(bus_name, eswb_non_synced, 256);
     if (rv != eswb_e_ok) {
         dbg_msg("eswb_create error: %s", eswb_strerror(rv));
         return fspec_rv_initerr;
     }
     char path[ESWB_TOPIC_NAME_MAX_LEN + 1];
-    rv = eswb_path_compose(eswb_local_non_synced, bus_name, NULL, path);
+    rv = eswb_path_compose(eswb_non_synced, bus_name, NULL, path);
     if (rv != eswb_e_ok) {
         dbg_msg("eswb_path_compose error: %s", eswb_strerror(rv));
         return fspec_rv_invarg;
