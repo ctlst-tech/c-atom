@@ -182,7 +182,7 @@ int symbol_update_w_str(symbol_t *s, const char *value) {
                 break;
 
             case nr_int:
-                rv = sscanf(value, "%ld", &s->i.var.val.i);
+                rv = sscanf(value, "%d", &s->i.var.val.i);
                 break;
 
             case nr_bool:
