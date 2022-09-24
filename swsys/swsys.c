@@ -100,7 +100,7 @@ static swsys_rv_t swsys_init(swsys_t *sys) {
             err_num++;
         }
 
-        erv = eswb_topic_connect(path, &bus_td);
+        erv = eswb_connect(path, &bus_td);
         if (erv != eswb_e_ok) {
             dbg_msg("ESWB bus creation error: %s", eswb_strerror(erv));
             err_num++;
@@ -189,9 +189,9 @@ static fspec_rv_t swsys_call_init_inputs (void *dhandle, const func_conn_spec_t 
         mounting_td = mounting_td; // TODO handle overall connectivity
 
         if (swsys->tasks[i].clk_method == swsys_clk_inp_upd) {
-            eswb_rv_t erv = eswb_subscribe(swsys->tasks[i].clk_input_path,
-                                           &ssdh->clk_input_tds[i]
-                                           );
+            eswb_rv_t erv = eswb_connect(swsys->tasks[i].clk_input_path,
+                                         &ssdh->clk_input_tds[i]
+            );
             if (erv != eswb_e_ok) {
                 dbg_msg("Clocking input subscription error: %s", eswb_strerror(erv));
                 err_cnt++;

@@ -115,9 +115,9 @@ fspec_rv_t flow_init(void *iface, const function_spec_t *spec, const char *inv_n
         dbg_msg("eswb_path_compose error: %s", eswb_strerror(rv));
         return fspec_rv_invarg;
     }
-    rv = eswb_topic_connect(path, &flow_dh->root_td);
+    rv = eswb_connect(path, &flow_dh->root_td);
     if (rv != eswb_e_ok) {
-        dbg_msg("eswb_topic_connect error: %s", eswb_strerror(rv));
+        dbg_msg("eswb_connect error: %s", eswb_strerror(rv));
         return fspec_rv_no_topic;
     }
 

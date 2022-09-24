@@ -347,7 +347,7 @@ fspec_rv_t fsm_init_inputs(void *dhandle, const func_conn_spec_t *conn_spec, esw
     for (int i = 0; dfsm->inputs[i].conn_spec != NULL; i++) {
         const char *path = fspec_find_path2connect(conn_spec, dfsm->inputs[i].conn_spec->name);
         if (path != NULL) {
-            eswb_rv_t rv = eswb_subscribe(path, &dfsm->inputs[i].td);
+            eswb_rv_t rv = eswb_connect(path, &dfsm->inputs[i].td);
             if (rv != eswb_e_ok) {
                 dbg_msg("Input \"%s\" subscribe failed: %s", dfsm->inputs[i].conn_spec->name, eswb_strerror(rv));
                 err_subscr_cnt++;

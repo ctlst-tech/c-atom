@@ -239,7 +239,7 @@ ibr_rv_t drv_eswb_proclaim(const char *path, msg_t *src_msg, msg_t *dst_msg, int
 
 ibr_rv_t drv_eswb_connect(const char *path, int *td) {
     eswb_rv_t rv;
-    rv = eswb_topic_connect(path, td);
+    rv = eswb_connect(path, td);
     return rv == eswb_e_ok ? ibr_ok : ibr_nomedia;
 }
 
