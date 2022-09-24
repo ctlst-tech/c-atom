@@ -78,13 +78,22 @@ typedef struct {
 
 typedef struct {
     const char *name;
+    func_param_t *params;
+} swsys_service_resource_t;
+
+typedef struct {
+    const char *name;
     const char *type;
 
     swsys_priority_t priority;
     func_param_t *params;
+
+    swsys_service_resource_t *resources; // an additional info for service for listing other objects
 } swsys_service_t;
 
 typedef struct {
+    const char *name;
+
     swsys_task_t tasks[SWSYS_MAX_TASKS];
     int tasks_num;
 

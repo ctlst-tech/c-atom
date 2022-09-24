@@ -8,11 +8,28 @@
         <event_queue size="20" buffer_size="2000"/>
     </bus>
 
-    <service type="eqrb_tcp" name="debug">
-        <param alias="port">0</param>
+<!--    <service type="eqrb_tcp" name="debug">-->
+<!--        <param alias="port">0</param>-->
+<!--    </service>-->
+
+    <!-- socat -d -d pty,link=/tmp/vserial1,raw,echo=0 pty,link=/tmp/vserial2,raw,echo=0 -->
+
+
+    <service type="sdtl" name="debug_sdtl">
+        <param alias="baudrate">115200</param>
+        <param alias="ser_path">/tmp/vserial1</param>
+        <param alias="bus">cont</param>
+
+        <channel name="bus_sync" id="1" type="rel" />
+        <channel name="bus_sync_sk" id="2" type="unrel" />
     </service>
 
-    <task type="flow" name="gen" config="mvp/mvp_flow_gen.xml" priority="5" clk_method="timer" clk_period="200">
+<!--    <service type="eqrb_sdtl" name="debug_sdtl">-->
+<!--        <param alias="channel">cont</param>-->
+<!--        <param alias="bus">cont</param>-->
+<!--    </service>-->
+
+    <task type="flow" name="gen" config="mvp_flow_gen.xml" priority="5" clk_method="timer" clk_period="200">
         <connect>
             <out alias="o1">itb:/test/gen/o1</out>
             <out alias="o2">itb:/test/gen/o2</out>
@@ -20,7 +37,7 @@
         </connect>
     </task>
 
-    <task type="fsm" name="mode" config="mvp/mvp_fsm_mode.xml" priority="5" clk_method="inp_upd" clk_input_path="itb:/test/gen/o1">
+    <task type="fsm" name="mode" config="mvp_fsm_mode.xml" priority="5" clk_method="inp_upd" clk_input_path="itb:/test/gen/o1">
         <connect>
             <in alias="i1">itb:/test/gen/o1</in>
             <in alias="i2">itb:/test/gen/o2</in>
@@ -33,13 +50,13 @@
         </connect>
     </task>
 
-    <task type="ibr" name="udp_stream" config="mvp/mvp_ibr_udploop.xml" priority="5" clk_method="freerun">
+    <task type="ibr" name="udp_stream" config="mvp_ibr_udploop.xml" priority="5" clk_method="freerun">
         <connect>
             <out alias="engine">itb:/test/engine</out>
         </connect>
     </task>
 
-    <task type="flow" name="cont" config="mvp/mvp_flow_cont.xml" priority="5" clk_method="inp_upd" clk_input_path="itb:/test/gen/o1">
+    <task type="flow" name="cont" config="mvp_flow_cont.xml" priority="5" clk_method="inp_upd" clk_input_path="itb:/test/gen/o1">
         <connect>
             <in alias="mode1">itb:/test/mode/o1</in>
             <in alias="mode2">itb:/test/mode/o2</in>

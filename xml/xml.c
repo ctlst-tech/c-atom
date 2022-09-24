@@ -450,6 +450,16 @@ int xml_node_count_siblings(xml_node_t *first_sibling, const char *name2cnt) {
     return rv;
 }
 
+int xml_node_count_attrs(xml_node_t *node) {
+    int rv = 0;
+
+    for (xml_attr_t *n = node->attrs_list; n != NULL; n = n->next_attr) {
+        rv++;
+    }
+
+    return rv;
+}
+
 int xml_node_child_is_unique(xml_node_t *n, char *name) {
     xml_node_t *ch = xml_node_find_child(n, name);
     xml_node_t *nch = xml_node_find_following_sibling(ch, name);

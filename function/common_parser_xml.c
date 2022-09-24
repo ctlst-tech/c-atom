@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 #include "function.h"
+#include "function_xml.h"
 #include "xml.h"
 
 
@@ -239,5 +240,41 @@ xml_rv_t func_load_outputs(xml_node_t *conn_node, func_conn_spec_t **spec) {
 }
 
 xml_rv_t func_load_params(xml_node_t *conn_node, func_param_t **spec) {
-    return func_load_connections(conn_node, "param", spec);
+    return func_load_connections(conn_node, FUNC_XML_TAG_PARAM, spec);
+}
+
+xml_rv_t func_load_attrs_as_params(xml_node_t *node, func_param_t **spec) {
+    int err_num = 0;
+
+    int spec_num = xml_node_count_attrs(node);
+
+    func_conn_spec_t *s = func_alloc((spec_num + 1) * sizeof(func_conn_spec_t));
+
+    if (s == NULL) {
+        return xml_e_nomem;
+    }
+
+    int i = 0;
+
+    for (xml_attr_t *n = node->attrs_list; n != NULL; n = n->next_attr) {
+
+        if ((n->value == NULL) || n->value[0] == 0) {
+            xml_err("Value must be specified for \"%s\"", n->name != NULL ? n->name : "N\\A");
+            err_num++;
+        }
+
+        // TODO check macro
+        s[i].alias = n->name;
+        s[i].value = n->value;
+        i++;
+    }
+
+    s[i].alias = NULL;
+    s[i].value = NULL;
+
+    *spec = s;
+
+    // TODO check duplicates
+
+    return (err_num > 0) ? xml_e_dom_process : xml_e_ok;
 }

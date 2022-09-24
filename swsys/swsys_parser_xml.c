@@ -169,6 +169,12 @@ static xml_rv_t load_task(xml_node_t *task_node, const char *top_cfg_dir, swsys_
     return err_num > 0 ? xml_e_dom_process : xml_e_ok;
 }
 
+static xml_rv_t load_service_resource(xml_node_t *resource_node, swsys_service_resource_t *resource) {
+    resource->name = resource_node->name;
+    xml_rv_t rv = func_load_attrs_as_params(resource_node, &resource->params);
+    return rv;
+}
+
 static xml_rv_t load_service(xml_node_t *service_node, swsys_service_t *service) {
 
     int err_num = 0;
@@ -182,6 +188,27 @@ static xml_rv_t load_service(xml_node_t *service_node, swsys_service_t *service)
     xml_rv_t rv = func_load_params(service_node, &service->params);
     if (rv != xml_e_ok) {
         err_num++;
+    }
+
+    int resources_num = 0;
+
+    for (xml_node_t *n = service_node->first_child; n != NULL; n = n->next_sibling) {
+        if (!xml_node_name_eq(n, FUNC_XML_TAG_PARAM)) {
+            resources_num++;
+        }
+    }
+
+    service->resources = swsys_alloc(sizeof(*service->resources) * (resources_num + 1));
+    int i = 0;
+
+    for (xml_node_t *n = service_node->first_child; n != NULL; n = n->next_sibling) {
+        if (!xml_node_name_eq(n, FUNC_XML_TAG_PARAM)) {
+            rv = load_service_resource(n, &service->resources[i]);
+            if (rv != xml_e_ok) {
+                err_num++;
+            }
+            i++;
+        }
     }
 
     return err_num > 0 ? xml_e_dom_process : xml_e_ok;

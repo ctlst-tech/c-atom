@@ -54,6 +54,8 @@ xml_node_t *xml_node_find_child(xml_node_t *parent, char *name);
 xml_node_t *xml_node_find_following_sibling(xml_node_t *sibling, char *name);
 
 int xml_node_count_siblings(xml_node_t *first_sibling, const char *name2cnt);
+int xml_node_count_attrs(xml_node_t *node);
+
 int xml_node_child_is_unique(xml_node_t *n, char *name);
 
 const char *xml_attr_value(xml_node_t *n, const char *name);
