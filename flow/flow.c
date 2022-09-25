@@ -103,7 +103,11 @@ fspec_rv_t flow_init(void *iface, const function_spec_t *spec, const char *inv_n
 
     // TODO count topics num
 
-    const char *bus_name = inv_name;
+    char bus_name[ESWB_BUS_NAME_MAX_LEN + 1];
+    #define FLOW_PREFIX "_flow_"
+    strcpy(bus_name, FLOW_PREFIX);
+    strncat(bus_name, inv_name, ESWB_BUS_NAME_MAX_LEN - strlen(FLOW_PREFIX));
+
     eswb_rv_t rv = eswb_create(bus_name, eswb_non_synced, 256);
     if (rv != eswb_e_ok) {
         dbg_msg("eswb_create error: %s", eswb_strerror(rv));
