@@ -18,16 +18,16 @@
     <service type="sdtl" name="debug_sdtl">
         <param alias="baudrate">115200</param>
         <param alias="ser_path">/tmp/vserial1</param>
-        <param alias="bus">cont</param>
 
         <channel name="bus_sync" id="1" type="rel" />
         <channel name="bus_sync_sk" id="2" type="unrel" />
     </service>
 
-<!--    <service type="eqrb_sdtl" name="debug_sdtl">-->
-<!--        <param alias="channel">cont</param>-->
-<!--        <param alias="bus">cont</param>-->
-<!--    </service>-->
+    <service type="eqrb_sdtl" name="debug_sdtl">
+        <param alias="service">debug_sdtl</param>
+        <param alias="channel">bus_sync</param>
+        <param alias="bus">test</param>
+    </service>
 
     <task type="flow" name="gen" config="mvp_flow_gen.xml" priority="5" clk_method="timer" clk_period="200">
         <connect>

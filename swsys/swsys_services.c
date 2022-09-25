@@ -122,19 +122,41 @@ static swsys_rv_t sdtl_init_and_start(const swsys_service_t *s) {
 }
 
 swsys_rv_t swsys_service_start(const swsys_service_t *s) {
-    if (strcmp(s->type, "eqrb_tcp") == 0) {
-        uint16_t port;
-        const char *p = fspec_find_param(s->params, "port");
-        if (p != NULL) {
-            port = strtoul(p, NULL, 0);
-        } else {
-            port = 0;
-        }
-        eqrb_rv_t rv = eqrb_tcp_server_start(port);
-        return rv == eqrb_rv_ok ? swsys_e_ok : swsys_e_service_fail;
-    } else if (strcmp(s->type, "sdtl") == 0) {
+
+    if (strcmp(s->type, "sdtl") == 0) {
         return sdtl_init_and_start(s);
+    } else if (strcmp(s->type, "eqrb_sdtl") == 0) {
+        const char *service_name = fspec_find_param(s->params, "service");
+        const char *sdtl_ch_name = fspec_find_param(s->params, "channel");
+        //const char *ch_mask_s = fspec_find_param(s->params, "ch_mask");
+        //uint32_t ch_mask;
+        const char *bus2replicate = fspec_find_param(s->params, "bus");
+
+        if (service_name == NULL || sdtl_ch_name == NULL || bus2replicate == NULL) {
+            return swsys_e_invargs;
+        }
+
+        const char *err_msg;
+        eqrb_rv_t rv = eqrb_sdtl_server_start(service_name, sdtl_ch_name, 0xFFFFFFFF, bus2replicate, &err_msg);
+        if (rv != eqrb_rv_ok) {
+            dbg_msg("eqrb_sdtl_server_start for \"%s\" failed: %s", service_name, err_msg);
+        }
+
+        return rv == eqrb_rv_ok ? swsys_e_ok : swsys_e_service_fail;
     } else {
         return swsys_e_no_such_service;
     }
 }
+
+
+//    if (strcmp(s->type, "eqrb_tcp") == 0) {
+//        uint16_t port;
+//        const char *p = fspec_find_param(s->params, "port");
+//        if (p != NULL) {
+//            port = strtoul(p, NULL, 0);
+//        } else {
+//            port = 0;
+//        }
+//        eqrb_rv_t rv = eqrb_tcp_server_start(port);
+//        return rv == eqrb_rv_ok ? swsys_e_ok : swsys_e_service_fail;
+//    {
