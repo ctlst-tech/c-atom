@@ -25,7 +25,8 @@
 
     <service type="eqrb_sdtl" name="debug_sdtl">
         <param alias="service">debug_sdtl</param>
-        <param alias="channel">bus_sync</param>
+        <param alias="channel_1">bus_sync</param>
+        <param alias="channel_2">bus_sync_sk</param>
         <param alias="bus">test</param>
     </service>
 

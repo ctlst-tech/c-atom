@@ -48,7 +48,7 @@ static swsys_rv_t sdtl_service_load_channels(const swsys_service_t *s, sdtl_serv
         if (strcmp(ch_type_s, "rel") == 0) {
             cfg.type = SDTL_CHANNEL_RELIABLE;
         } else if (strcmp(ch_type_s, "unrel") == 0) {
-            cfg.type = SDTL_CHANNEL_NONRELIABLE;
+            cfg.type = SDTL_CHANNEL_UNRELIABLE;
         } else {
             return swsys_e_invargs;
         }
@@ -127,17 +127,18 @@ swsys_rv_t swsys_service_start(const swsys_service_t *s) {
         return sdtl_init_and_start(s);
     } else if (strcmp(s->type, "eqrb_sdtl") == 0) {
         const char *service_name = fspec_find_param(s->params, "service");
-        const char *sdtl_ch_name = fspec_find_param(s->params, "channel");
+        const char *sdtl_ch1_name = fspec_find_param(s->params, "channel_1");
+        const char *sdtl_ch2_name = fspec_find_param(s->params, "channel_2");
         //const char *ch_mask_s = fspec_find_param(s->params, "ch_mask");
         //uint32_t ch_mask;
         const char *bus2replicate = fspec_find_param(s->params, "bus");
 
-        if (service_name == NULL || sdtl_ch_name == NULL || bus2replicate == NULL) {
+        if (service_name == NULL || sdtl_ch1_name == NULL || bus2replicate == NULL) {
             return swsys_e_invargs;
         }
 
         const char *err_msg;
-        eqrb_rv_t rv = eqrb_sdtl_server_start(service_name, sdtl_ch_name, 0xFFFFFFFF, bus2replicate, &err_msg);
+        eqrb_rv_t rv = eqrb_sdtl_server_start(service_name, sdtl_ch1_name, sdtl_ch2_name, 0xFFFFFFFF, bus2replicate, &err_msg);
         if (rv != eqrb_rv_ok) {
             dbg_msg("eqrb_sdtl_server_start for \"%s\" failed: %s", service_name, err_msg);
         }
