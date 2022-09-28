@@ -1,18 +1,17 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 
 <swsys>
-    <bus name="test" max_topics="256" eq_channel="2">
-        <dir name="mode" eq_channel="1"/>
-        <dir name="gen" eq_channel="1"/>
-        <dir name="cont" eq_channel="1"/>
+    <bus name="test" max_topics="256">
+        <dir name="mode" eq_channel="16"/>
+        <dir name="gen" eq_channel="17"/>
+        <dir name="cont" eq_channel="18"/>
         <event_queue size="20" buffer_size="2000"/>
     </bus>
 
-<!--    <service type="eqrb_tcp" name="debug">-->
-<!--        <param alias="port">0</param>-->
-<!--    </service>-->
-
     <!-- socat -d -d pty,link=/tmp/vserial1,raw,echo=0 pty,link=/tmp/vserial2,raw,echo=0 -->
+    <!-- and then:
+            stty raw < /tmp/vserial1
+            stty raw < /tmp/vserial2 -->
 
 
     <service type="sdtl" name="debug_sdtl">
@@ -30,7 +29,7 @@
         <param alias="bus">test</param>
     </service>
 
-    <task type="flow" name="gen" config="mvp_flow_gen.xml" priority="5" clk_method="timer" clk_period="200">
+    <task type="flow" name="gen" config="mvp_flow_gen.xml" priority="5" clk_method="timer" clk_period="5000">
         <connect>
             <out alias="o1">itb:/test/gen/o1</out>
             <out alias="o2">itb:/test/gen/o2</out>
@@ -48,12 +47,6 @@
             <out alias="o2">itb:/test/mode/o2</out>
             <out alias="o3">itb:/test/mode/o3</out>
             <out alias="strobe">itb:/test/mode/strobe</out>
-        </connect>
-    </task>
-
-    <task type="ibr" name="udp_stream" config="mvp_ibr_udploop.xml" priority="5" clk_method="freerun">
-        <connect>
-            <out alias="engine">itb:/test/engine</out>
         </connect>
     </task>
 
