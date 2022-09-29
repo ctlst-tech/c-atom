@@ -37,7 +37,7 @@ There are following dependencies and necessary tooling:
 ```shell
 git clone https://github.com/catchorg/Catch2.git
 cd Catch2
-git checkout v2.13.9
+git checkout v3.0.1
 cmake -Bbuild -H. -DBUILD_TESTING=OFF
 sudo cmake --build build/ --target install
 ```
