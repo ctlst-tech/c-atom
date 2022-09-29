@@ -278,6 +278,12 @@ static void* task(void *taskhndl) {
     swsys_task_handle_t * th = (swsys_task_handle_t *) taskhndl;
     uint32_t delay = th->task->clk_period_ms * 1000;
 
+    struct sched_param shp;
+    int policy;
+    pthread_getschedparam(pthread_self(), &policy, &shp);
+    shp.sched_priority += th->task->priority;
+    pthread_setschedparam(pthread_self(), policy, &shp);
+
     catom_set_pthread_name(th->task->type, th->task->name);
 
     while(loop) {
