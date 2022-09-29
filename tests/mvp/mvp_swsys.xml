@@ -14,7 +14,7 @@
             stty raw < /tmp/vserial2 -->
 
 
-    <service type="sdtl" name="debug_sdtl">
+    <service type="sdtl" name="sdtl_main">
         <param alias="baudrate">115200</param>
         <param alias="ser_path">/tmp/vserial1</param>
 
@@ -22,8 +22,8 @@
         <channel name="bus_sync_sk" id="2" type="unrel" />
     </service>
 
-    <service type="eqrb_sdtl" name="debug_sdtl">
-        <param alias="service">debug_sdtl</param>
+    <service type="eqrb_sdtl" name="eqrb_test">
+        <param alias="service">sdtl_main</param>
         <param alias="channel_1">bus_sync</param>
         <param alias="channel_2">bus_sync_sk</param>
         <param alias="bus">test</param>
