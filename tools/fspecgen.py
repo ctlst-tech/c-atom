@@ -428,7 +428,7 @@ class GeneratedFunction:
             fprint(f'    /**')
             fprint(f'     * @brief {variable.title.en}')
             fprint(f'     */')
-            fprint(f'    {self.variable_type_str(value_type)} {variable.name};')
+            fprint(f'    {self.variable_type_str(value_type)} {variable.name};') # FIXME force_f64=False
             fprint()
         fprint(f'}} {func.get_prefix()}_state_t;')
         fprint()
