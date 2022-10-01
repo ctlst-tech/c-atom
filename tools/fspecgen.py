@@ -358,6 +358,18 @@ class GeneratedFunction:
                                                       arguments=[data_handle, params_pairs, initial_call_flag])
 
 
+    @staticmethod
+    def variable_type_str(value_type, *, force_f64=True):
+        if force_f64:
+            if isinstance(value_type, ctlst.Structure):
+                return value_type.get_c_type_name()
+            else:
+                # FIXME when we have types checks
+                #value_type.get_c_type_name()
+                return '/* TODO the only scalar type we have for now */\n    core_type_f64_t'
+        else:
+            return value_type.get_c_type_name()
+
     def decl_params(self, func, fprint):
         fprint(f'/**')
         fprint(f' * @brief Parameters of `{func.name}` function')
@@ -369,7 +381,7 @@ class GeneratedFunction:
                 fprint(f'    /**')
                 fprint(f'     * @brief {parameter.title.en}')
                 fprint(f'     */')
-                fprint(f'    {value_type.get_c_type_name()} {parameter.name};')
+                fprint(f'    {self.variable_type_str(value_type)} {parameter.name};')
                 fprint()
         fprint(f'}} {func.get_prefix()}_params_t;')
         fprint()
@@ -382,7 +394,7 @@ class GeneratedFunction:
         for inp in func.inputs:
             value_type = inp.value_type
             fprint(f'    /** @brief {inp.title.en}*/')
-            fprint(f'    {value_type.get_c_type_name()} {inp.name};')
+            fprint(f'    {self.variable_type_str(value_type)} {inp.name};')
         fprint()
         for inp in func.inputs:
             if not inp.mandatory:
@@ -401,7 +413,7 @@ class GeneratedFunction:
             fprint(f'    /**')
             fprint(f'     * @brief {output.title.en}')
             fprint(f'     */')
-            fprint(f'    {value_type.get_c_type_name()} {output.name};')
+            fprint(f'    {self.variable_type_str(value_type)} {output.name};')
             fprint()
         fprint(f'}} {func.get_prefix()}_outputs_t;')
         fprint()
@@ -416,7 +428,7 @@ class GeneratedFunction:
             fprint(f'    /**')
             fprint(f'     * @brief {variable.title.en}')
             fprint(f'     */')
-            fprint(f'    {value_type.get_c_type_name()} {variable.name};')
+            fprint(f'    {self.variable_type_str(value_type)} {variable.name};')
             fprint()
         fprint(f'}} {func.get_prefix()}_state_t;')
         fprint()
@@ -541,6 +553,8 @@ class GeneratedFunction:
             fprint('/* Include declaration of dependency types */')
             for include in includes:
                 fprint(f'#include "{include}"')
+
+            fprint(f'#include "core_type_f64.h" // FIXME in generator eventually')  # FIXME when we will have type checking
             fprint()
 
         if f_spec.has_parameters():
@@ -840,6 +854,25 @@ class GeneratedFunction:
         fprint(f'    .extension_handler = NULL')
         fprint(f'}};')
 
+    @staticmethod
+    def scalar_topic_typename(typename: str):
+        if typename == 'core.type.f64':
+            return 'tt_double'
+        # elif typename == 'core.type.f32':
+        #     return 'tt_float'
+        # elif typename == 'core.type.u32':
+        #     return 'tt_uint32'
+        # elif typename == 'core.type.i32':
+        #     return 'tt_int32'
+        # elif typename == 'core.type.u16':
+        #     return 'tt_uint16'
+        # elif typename == 'core.type.i16':
+        #     return 'tt_uint16'
+        elif typename == 'core.type.bool':
+            return 'tt_double'  # FIXME when we will have type check
+        else:
+            raise Exception(f'No type conversion from C-ATOM type \'{typename}\' to ESWB type')
+
     def decl_interface_src(self, interface_source_filename):
         # Generate interface source file
         f_func = self.spec
@@ -931,26 +964,48 @@ class GeneratedFunction:
             impl_inputs_init()
             impl_inputs_update()
 
-
         def impl_outputs_init():
+            def declare_structure_elems(root_node_name: str, struct_type_name: str, outputs: List[ctlst.Output], *, dry_run: bool):
+                tree_elem_num = 0
+                for output in outputs:
+                    structure_type = isinstance(output.value_type, ctlst.Structure)
+                    tree_sub_root = output.name + '_s_root' if structure_type else ''
+                    tree_sub_root_assignment = f'topic_proclaiming_tree_t* {tree_sub_root} = ' if structure_type else ''
+                    typename = 'tt_struct' if structure_type else self.scalar_topic_typename(output.value_type.name)
+                    tree_elem_num += 1
+                    if not dry_run:
+                        fprint(f'    {tree_sub_root_assignment}usr_topic_add_struct_child(cntx, {root_node_name}, '
+                               f'{struct_type_name}, '
+                               f'{output.name}, '   # for offset calc
+                               f'"{output.name}", ' # name 
+                               f'{typename});')     # eswb type
+
+                    if structure_type:
+                        tree_elem_num += declare_structure_elems(tree_sub_root,
+                                                                 output.value_type.get_c_type_name(),
+                                                                 output.value_type.members, dry_run=dry_run)  # FIXME not inheritance based prop
+                        if not dry_run:
+                            fprint()
+
+                return tree_elem_num
+
+            tree_elems = declare_structure_elems('', '', f_func.outputs, dry_run=True)
+
             fprint(f'{self.callable_interface_outputs_init.declaration()}')
             fprint(f'{{')
-            fprint(f'    TOPIC_TREE_CONTEXT_LOCAL_DEFINE(cntx, {len(f_func.outputs) + 1});')
+            fprint(f'    TOPIC_TREE_CONTEXT_LOCAL_DEFINE(cntx, {tree_elems + 1});')
             fprint(f'    {self.type_outputs.get_name()} out;')
             fprint(f'    eswb_rv_t rv;')
             # fprint(f'    topic_proclaiming_tree_t *topic;')
             fprint()
-            fprint(f'    topic_proclaiming_tree_t *rt = usr_topic_set_struct(cntx, out, '
-                   f'{self.callable_interface_outputs_init.arguments[-1].get_symbol()});')
+            root_node_varname = 'rt'
+            fprint(f'    topic_proclaiming_tree_t *{root_node_varname} = usr_topic_set_struct(cntx, out, '
+                   f'{self.callable_interface_outputs_init.arguments[-1].get_symbol()});')  # last argument
             fprint()
 
-            for output in f_func.outputs:
-                fprint(f'    usr_topic_add_struct_child(cntx, rt, {self.type_outputs.get_name()}, {output.name}, "{output.name}", tt_double);')
-                # fprint(f'    if (topic == NULL) {{')
-                # fprint(f'        return 1;')
-                # fprint(f'    }}')
-                fprint()
-            fprint(f'    rv = eswb_proclaim_tree(mounting_td, rt, cntx->t_num, &interface->eswb_descriptors.out_all);')
+            declare_structure_elems(root_node_varname, self.type_outputs.get_name(), f_func.outputs, dry_run=False)
+
+            fprint(f'    rv = eswb_proclaim_tree(mounting_td, {root_node_varname}, cntx->t_num, &interface->eswb_descriptors.out_all);')
             fprint(f'    if (rv != eswb_e_ok) {{')
             fprint(f'        return fspec_rv_publish_err;')
             fprint(f'    }}')
@@ -1059,6 +1114,7 @@ class GeneratedFunction:
         ## flow_update
         gen_wrapper(self.callable_call_exec, self.callable_interface_exec, do_ret=False)
 
+        fprint(close_file=True)
 
     def generate_cmkelists(self, cmakelists_path, custom):
         fprint = new_file_write_call(cmakelists_path)
@@ -1088,6 +1144,11 @@ class GeneratedFunction:
         fprint(f'target_include_directories({self.cmakelists_lib_name} PUBLIC ')
         for t in self.spec.get_dependency_types():
             fprint(f'    {os.path.relpath(t.directory, start=self.spec.directory)}')
+
+        # FIXME (delete) when we will have different types check
+        dirty_fix_dir = os.path.relpath(self.spec.get_dependency_types()[-1].directory + '/../f64', start=self.spec.directory)
+        fprint(f'    {dirty_fix_dir}')
+
         fprint(')')
 
         # fprint(f'target_link_libraries({self.cmakelists_lib_name} PUBLIC eswb-if)')

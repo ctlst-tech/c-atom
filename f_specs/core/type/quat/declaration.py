@@ -2,7 +2,7 @@ from ctlst import *
 
 
 Structure(
-    name='core.type.quaternion',
+    name='core.type.quat',
     title=LocalizedString(
         en='Quaternion'
     ),

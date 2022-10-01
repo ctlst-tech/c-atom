@@ -5,5 +5,5 @@ void core_logical_xor_exec(
     core_logical_xor_outputs_t *o
 )
 {
-    o->output = (i->input0) ^ (i->input1);
+//    o->output = (i->input0) ^ (i->input1);
 }

@@ -31,6 +31,48 @@
             <param alias="period">1</param>
             <param alias="phase">0.0</param>
         </f>
+
+        <f name="omega_x" by_spec="core.math.gain">
+            <in alias="input">gen3/out</in>
+            <param alias="gain">0.1</param>
+        </f>
+
+        <f name="zero" by_spec="core.source.constant">
+            <param alias="value">0.0</param>
+        </f>
+
+        <f name="roll0" by_spec="core.source.constant">
+            <param alias="value">0.0</param>
+        </f>
+        <f name="pitch0" by_spec="core.source.constant">
+            <param alias="value">0.7853981634</param>
+        </f>
+        <f name="yaw0" by_spec="core.source.constant">
+            <param alias="value">0.0</param>
+        </f>
+
+        <f name="initial_euler" by_spec="core.quat.from_euler">
+            <in alias="roll">roll0/output</in>
+            <in alias="pitch">pitch0/output</in>
+            <in alias="yaw">yaw0/output</in>
+        </f>
+
+        <f name="integrate_att" by_spec="core.quat.prop">
+            <in alias="wx">omega_x/output</in>
+            <in alias="wy">zero/output</in>
+            <in alias="wz">zero/output</in>
+            <in alias="q0">initial_euler/q</in>
+            <in alias="qN">norm_att_quat/q</in>
+        </f>
+
+        <f name="norm_att_quat" by_spec="core.quat.norm">
+            <in alias="q">integrate_att/q</in>
+        </f>
+
+        <f name="to_euler" by_spec="core.quat.to_euler">
+            <in alias="q">integrate_att/q</in>
+        </f>
+
     </functions>
 
     <link_outputs>

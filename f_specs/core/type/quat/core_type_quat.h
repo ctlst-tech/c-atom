@@ -1,5 +1,5 @@
-#ifndef CTLST_CORE_TYPE_QUATERNION_H
-#define CTLST_CORE_TYPE_QUATERNION_H
+#ifndef CTLST_CORE_TYPE_QUAT_H
+#define CTLST_CORE_TYPE_QUAT_H
 
 /* Include declaration of dependency types */
 #include "core_type_f64.h"
@@ -8,7 +8,7 @@
  * @brief Quaternion
  * Quaternion that can represent a rotation about an axis in 3-D space.
  */
-typedef struct core_type_quaternion_
+typedef struct core_type_quat_
 {
     /**
      * @brief The quaternion's W-component
@@ -30,6 +30,6 @@ typedef struct core_type_quaternion_
      */
     core_type_f64_t z;
 
-} core_type_quaternion_t;
+} core_type_quat_t;
 
-#endif // CTLST_CORE_TYPE_QUATERNION_H
+#endif // CTLST_CORE_TYPE_QUAT_H
