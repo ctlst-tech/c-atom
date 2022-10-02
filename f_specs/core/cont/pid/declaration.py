@@ -95,6 +95,13 @@ Function(
             value_type='core.type.bool',
             mandatory=False
         ),
+        Input(
+            name='preset',
+            title='Preset source',
+            description='Used to preset integral part at the moment of the PID enabling',
+            value_type='core.type.f64',
+            mandatory=False
+        ),
     ],
     outputs=[
         Output(
@@ -103,15 +110,15 @@ Function(
             value_type='core.type.f64'
         ),
         Output(
-            name='enable',
+            name='enabled',
             title='Enable',
             value_type='core.type.bool',
         )
     ],
     state=[
         Variable(
-            name='integral_part',
-            title='Integral part',
+            name='integral',
+            title='Accumulated Integral term',
             value_type='core.type.f64'
         ),
         Variable(
@@ -123,6 +130,11 @@ Function(
             name='time_from_last_iteration',
             title='Time from last iteration',
             value_type='core.type.f64'
+        ),
+        Variable(
+            name='activated',
+            title='PID was activated before by enable signal',
+            value_type='core.type.bool'
         )
     ],
     parameter_constraints=[

@@ -237,6 +237,9 @@ class GCallableFunction:
 
 
 class GeneratedFunction:
+    @staticmethod
+    def optional_input_bitfield_name(in_name: str):
+        return f'optional_in_{in_name}_connected'
 
     def func_name_prefix(self):
         return self.spec.get_prefix()
@@ -398,7 +401,7 @@ class GeneratedFunction:
         fprint()
         for inp in func.inputs:
             if not inp.mandatory:
-                fprint(f'    uint32_t opt_in_actvtd_{inp.name}:1;')
+                fprint(f'    uint32_t {self.optional_input_bitfield_name(inp.name)}:1;')
 
         fprint(f'}} {func.get_prefix()}_inputs_t;')
         fprint()
@@ -913,7 +916,7 @@ class GeneratedFunction:
                 fprint(f'    // Connecting {mand} input \"{inp.name}\"')
                 fprint(f'    if ({topic_path(inp)} != NULL) {{')
                 if not inp.mandatory:
-                    fprint(f'        interface->i.opt_in_actvtd_{inp.name} = 1;')
+                    fprint(f'        interface->i.{self.optional_input_bitfield_name(inp.name)} = 1;')
                 fprint(f'        rv = eswb_connect_nested(mounting_td, {topic_path(inp)}, &interface->eswb_descriptors.in_{inp.name});')
                 fprint(f'        if(rv != eswb_e_ok) {{')
                 fprint(f'            error("failed connect input \\"{inp.name}\\" to topic \\"%s\\": %s", {topic_path(inp)}, eswb_strerror(rv));')
@@ -951,10 +954,22 @@ class GeneratedFunction:
                 # is_first = (input == f_func.inputs[0])
                 # getter = 'eswb_read' if (not is_first) else "eswb_get_update"
                 getter = 'eswb_read'
-                fprint(f'    rv = {getter}(interface->eswb_descriptors.in_{input.name}, &interface->i.{input.name});')
-                fprint(f'    if(rv != eswb_e_ok) {{')
-                fprint(f'        return 1;')
-                fprint(f'    }}')
+
+                additional_bracket = False
+                if not input.mandatory:
+                    fprint(f'    if (interface->i.{self.optional_input_bitfield_name(input.name)}) {{')
+                    indent = '    '
+                    additional_bracket = True
+                else:
+                    indent = ''
+
+                fprint(f'{indent}    rv = {getter}(interface->eswb_descriptors.in_{input.name}, &interface->i.{input.name});')
+                fprint(f'{indent}    if(rv != eswb_e_ok) {{')
+                fprint(f'{indent}        /*FIXME nothing to do yet*/')
+                fprint(f'{indent}    }}')
+                if additional_bracket:
+                    fprint(f'    }}')
+
                 fprint()
             fprint(f'    return 0;')
             fprint(f'}}')

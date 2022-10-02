@@ -1,28 +1,35 @@
-#include "core_controller_pid.h"
+#include "core_cont_pid.h"
 
 void core_cont_pid_exec(
-        const core_controller_pid_inputs_t *i,
-        core_controller_pid_outputs_t *o,
-        const core_controller_pid_params_t *p,
-        core_controller_pid_state_t *state,
-        const core_controller_pid_injection_t *injection
+        const core_cont_pid_inputs_t *i,
+        core_cont_pid_outputs_t *o,
+        const core_cont_pid_params_t *p,
+        core_cont_pid_state_t *state,
+        const core_cont_pid_injection_t *injection
 )
 {
-    if (1) {
-        double const dt = state->time_from_last_iteration + injection->dt;
+    // if enable input is not connected PID is always enabled
+    int pid_enabled = (i->optional_in_enable_connected && i->enable) || (!i->optional_in_enable_connected);
 
+    if (pid_enabled) {
+        double const dt = state->time_from_last_iteration + injection->dt;
         double const error = i->input - i->feedback;
 
-        state->integral_part += 0.5 * p->Ki * (error + state->previous_error) * dt;
+        if (i->optional_in_preset_connected && !state->activated) {
+            state->integral = i->preset;
+            state->activated = TRUE;
+        } else {
+            state->integral += p->Ki * (error + state->previous_error) * dt;
+        }
 
-        if (state->integral_part > p->integral_max) {
-            state->integral_part = p->integral_max;
-        } else if (state->integral_part < p->integral_min) {
-            state->integral_part = p->integral_min;
+        if (state->integral > p->integral_max) {
+            state->integral = p->integral_max;
+        } else if (state->integral < p->integral_min) {
+            state->integral = p->integral_min;
         }
 
         double const P = p->Kp * error;
-        double const I = state->integral_part;
+        double const I = state->integral;
         double const D = p->Kd * (error - state->previous_error) / dt;
 
         o->output = P + I + D;
@@ -33,12 +40,14 @@ void core_cont_pid_exec(
             o->output = p->output_min;
         }
 
-        o->enable = TRUE;
+        o->enabled = TRUE;
 
         state->time_from_last_iteration = 0;
         state->previous_error = error;
     } else {
-        state->time_from_last_iteration += injection->dt;
-        o->enable = FALSE;
+        o->enabled = FALSE;
+        state->activated = FALSE;
     }
+
+    // state->time_from_last_iteration += injection->dt; --> FIXME will need that after we will be able to "feel" input update event
 }
