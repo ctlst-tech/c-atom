@@ -1,11 +1,11 @@
-#include "core_controller_pid.h"
+#include "core_cont_pid.h"
 
 void core_cont_pid_exec(
-        const core_controller_pid_inputs_t *i,
-        core_controller_pid_outputs_t *o,
-        const core_controller_pid_params_t *p,
-        core_controller_pid_state_t *state,
-        const core_controller_pid_injection_t *injection
+        const core_cont_pid_inputs_t *i,
+        core_cont_pid_outputs_t *o,
+        const core_cont_pid_params_t *p,
+        core_cont_pid_state_t *state,
+        const core_cont_pid_injection_t *injection
 )
 {
     if (1) {
