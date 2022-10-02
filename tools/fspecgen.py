@@ -240,6 +240,9 @@ class GeneratedFunction:
     @staticmethod
     def optional_input_bitfield_name(in_name: str):
         return f'optional_in_{in_name}_connected'
+    @staticmethod
+    def changed_param_bitfield_name(p_name: str):
+        return f'changed_param_{p_name}'
 
     def func_name_prefix(self):
         return self.spec.get_prefix()
@@ -512,7 +515,7 @@ class GeneratedFunction:
         fprint(f' */')
         fprint(f'typedef struct {func.get_prefix()}_params_flags_\n{{')
         for parameter in func.parameters:
-            fprint(f'    uint64_t changed_{parameter.name}:1;')
+            fprint(f'    uint64_t {self.changed_param_bitfield_name(parameter.name)}:1;')
         fprint(f'}} {func.get_prefix()}_params_flags_t;')
         fprint()
 
@@ -633,13 +636,36 @@ class GeneratedFunction:
                 fprint(' else ', end='', )
             fprint(f'if (strcmp({pps}[i].alias, "{parameter.name}") == 0) {{', )
 
+            converter_func_name = ''
+            not_supp = False
             if parameter.value_type.name == 'core.type.f64':
-                # fprint(f'            if ((crv) == conv_rv_ok) {{')
-                fprint(f'            if ((crv = conv_str_double({pps}[i].value, &p.{parameter.name})) == conv_rv_ok) {{')
+                converter_func_name = 'conv_str_double'
+            elif parameter.value_type.name == 'core.type.u64':
+                converter_func_name = 'conv_str_uint64'
+            elif parameter.value_type.name == 'core.type.i64':
+                converter_func_name = 'conv_str_int64'
+            elif parameter.value_type.name == 'core.type.u32':
+                converter_func_name = 'conv_str_uint32'
+            elif parameter.value_type.name == 'core.type.i32':
+                converter_func_name = 'conv_str_int32'
+            elif parameter.value_type.name == 'core.type.u16':
+                converter_func_name = 'conv_str_uint16'
+            elif parameter.value_type.name == 'core.type.i16':
+                converter_func_name = 'conv_str_int16'
+            elif parameter.value_type.name == 'core.type.u8':
+                converter_func_name = 'conv_str_uint8'
+            elif parameter.value_type.name == 'core.type.i8':
+                converter_func_name = 'conv_str_int8'
+            elif parameter.value_type.name == 'core.type.bool':
+                converter_func_name = 'conv_str_bool'
             else:
-                fprint(f'            // TODO: Parse into p.{parameter.name}')
+                converter_func_name = 'conv_str_not_supported'
+                not_supp = True
 
-            fprint(f'                flags.changed_{parameter.name} = 1;', )
+            if not_supp:
+                fprint(f'            #error not supported type ({parameter.value_type.name}) for parameter \"{parameter.name}\" parsing')
+            fprint(f'            if ((crv = {converter_func_name}({pps}[i].value, &p.{parameter.name})) == conv_rv_ok) {{')
+            fprint(f'                flags.{self.changed_param_bitfield_name(parameter.name)} = 1;', )
             fprint(f'            }}')
             # params.Kp = atof(param_str[i].value);
             fprint('        }', end='', )
@@ -662,7 +688,7 @@ class GeneratedFunction:
             for parameter in f_spec.parameters:
                 if not parameter.mandatory:
                     continue
-                fprint(f'        if (!flags.changed_{parameter.name}) {{', )
+                fprint(f'        if (!flags.{self.changed_param_bitfield_name(parameter.name)}) {{', )
                 fprint(f'            error("failed missed mandatory parameter \'{parameter.name}\'");', )
                 fprint(f'            violation_count ++;', )
                 fprint(f'        }}', )
@@ -674,9 +700,9 @@ class GeneratedFunction:
             for parameter in f_spec.parameters:
                 if parameter.mandatory or type(parameter) == ctlst.ComputedParameter:
                     continue
-                fprint(f'        if (!flags.changed_{parameter.name}) {{', )
+                fprint(f'        if (!flags.{self.changed_param_bitfield_name(parameter.name)}) {{', )
                 fprint(f'            p.{parameter.name} = {parameter.default};', )
-                fprint(f'            flags.changed_{parameter.name} = 1;', )
+                fprint(f'            flags.{self.changed_param_bitfield_name(parameter.name)} = 1;', )
                 fprint(f'        }}', )
         fprint('    }', )
         fprint()
