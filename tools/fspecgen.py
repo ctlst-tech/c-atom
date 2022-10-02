@@ -359,7 +359,7 @@ class GeneratedFunction:
 
 
     @staticmethod
-    def variable_type_str(value_type, *, force_f64=True):
+    def variable_type_str(value_type, *, force_f64=False):
         if force_f64:
             if isinstance(value_type, ctlst.Structure):
                 return value_type.get_c_type_name()
@@ -554,8 +554,8 @@ class GeneratedFunction:
             for include in includes:
                 fprint(f'#include "{include}"')
 
-            fprint(f'#include "core_type_f64.h" // FIXME in generator eventually')  # FIXME when we will have type checking
-            fprint()
+            # fprint(f'#include "core_type_f64.h" // FIXME in generator eventually')  # FIXME when we will have type checking
+            # fprint()
 
         if f_spec.has_parameters():
             self.decl_params(f_spec, fprint)
@@ -869,7 +869,7 @@ class GeneratedFunction:
         # elif typename == 'core.type.i16':
         #     return 'tt_uint16'
         elif typename == 'core.type.bool':
-            return 'tt_double'  # FIXME when we will have type check
+            return 'tt_int32'
         else:
             raise Exception(f'No type conversion from C-ATOM type \'{typename}\' to ESWB type')
 
@@ -1145,9 +1145,9 @@ class GeneratedFunction:
         for t in self.spec.get_dependency_types():
             fprint(f'    {os.path.relpath(t.directory, start=self.spec.directory)}')
 
-        # FIXME (delete) when we will have different types check
-        dirty_fix_dir = os.path.relpath(self.spec.get_dependency_types()[-1].directory + '/../f64', start=self.spec.directory)
-        fprint(f'    {dirty_fix_dir}')
+        # # FIXME (delete) when we will have different types check
+        # dirty_fix_dir = os.path.relpath(self.spec.get_dependency_types()[-1].directory + '/../f64', start=self.spec.directory)
+        # fprint(f'    {dirty_fix_dir}')
 
         fprint(')')
 

@@ -434,17 +434,18 @@ class Function(Declarable):
     def get_dependency_types(self):
         dependency_types = set()
 
-        for parameter in self.parameters:
-            dependency_types.add(parameter.value_type)
+        def collect_dependancies(dp, container):
+            for e in container:
+                dp.add(e.value_type)
+                if isinstance(e.value_type, Structure):
+                    d = e.value_type.get_dependency_types()
+                    for j in d:
+                        dp.add(j)
 
-        for input in self.inputs:
-            dependency_types.add(input.value_type)
-
-        for output in self.outputs:
-            dependency_types.add(output.value_type)
-
-        # for variable in self.state:
-        #     dependency_types.add(resolve_type(variable.name))
+        collect_dependancies(dependency_types, self.parameters)
+        collect_dependancies(dependency_types, self.inputs)
+        collect_dependancies(dependency_types, self.outputs)
+        collect_dependancies(dependency_types, self.state)
 
         if None in dependency_types:
             dependency_types.remove(None)
