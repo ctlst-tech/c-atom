@@ -21,10 +21,10 @@ void core_quat_euler_correction_exec(
     core_type_quat_t q_out;
 
     if (fabs(i->yaw_err) > 0.0) {
-        q_err.w = cos(i->yaw_err * 0.5);
+        q_err.w = cos(-i->yaw_err * 0.5);
         q_err.x = 0;
         q_err.y = 0;
-        q_err.z = sin(i->yaw_err * 0.5);
+        q_err.z = sin(-i->yaw_err * 0.5);
 
         quat_product(&q_err, &i->q, &q_out);
     } else {
@@ -32,17 +32,17 @@ void core_quat_euler_correction_exec(
     }
 
     if ((fabs(i->roll_err) > 0.0) || (fabs(i->pitch_err) > 0.0)) {
-        q_err.w = cos(i->roll_err * 0.5);
-        q_err.x = sin(i->roll_err * 0.5);;
+        q_err.w = cos(-i->roll_err * 0.5);
+        q_err.x = sin(-i->roll_err * 0.5);;
         q_err.y = 0;
         q_err.z = 0;
 
         core_type_quat_t q_err2;
-        core_type_f64_t sin_err_pitch = sin(i->pitch_err * 0.5);
-        q_err2.w = cos(i->pitch_err * 0.5);;
+        core_type_f64_t sin_err_pitch = sin(-i->pitch_err * 0.5);
+        q_err2.w = cos(-i->pitch_err * 0.5);;
         q_err2.x = 0;
-        q_err2.y =  sin_err_pitch * cos(i->roll);
-        q_err2.z = -sin_err_pitch * sin(i->roll);
+        q_err2.y =  sin_err_pitch * cos(-i->roll);
+        q_err2.z = -sin_err_pitch * sin(-i->roll);
 
         quat_product(&q_err2, &q_err, &q_err);
         quat_product(&q_out, &q_err, &q_out);
