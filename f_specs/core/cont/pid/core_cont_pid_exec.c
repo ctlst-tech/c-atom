@@ -1,11 +1,11 @@
 #include "core_controller_pid.h"
 
-void core_controller_pid_exec(
-    const core_controller_pid_inputs_t *i,
-    core_controller_pid_outputs_t *o,
-    const core_controller_pid_params_t *p,
-    core_controller_pid_state_t *state,
-    const core_controller_pid_injection_t *injection
+void core_cont_pid_exec(
+        const core_controller_pid_inputs_t *i,
+        core_controller_pid_outputs_t *o,
+        const core_controller_pid_params_t *p,
+        core_controller_pid_state_t *state,
+        const core_controller_pid_injection_t *injection
 )
 {
     if (1) {
@@ -33,12 +33,12 @@ void core_controller_pid_exec(
             o->output = p->output_min;
         }
 
-        o->enable = true;
+        o->enable = TRUE;
 
         state->time_from_last_iteration = 0;
         state->previous_error = error;
     } else {
         state->time_from_last_iteration += injection->dt;
-        o->enable = false;
+        o->enable = FALSE;
     }
 }

@@ -11,9 +11,9 @@ void core_quat_prop_exec(
         o->q = i->q0;
         state->inited = 1;
     } else {
-        o->q.w = i->qN.w + -0.5 * ( i->qN.x*i->wx + i->qN.y*i->wy + i->qN.z*i->wz ) * injection->dt;
-        o->q.x = i->qN.x +  0.5 * ( i->qN.w*i->wx + i->qN.y*i->wz - i->qN.z*i->wy ) * injection->dt;
-        o->q.y = i->qN.y +  0.5 * ( i->qN.w*i->wy + i->qN.z*i->wx - i->qN.x*i->wz ) * injection->dt;
-        o->q.z = i->qN.z +  0.5 * ( i->qN.w*i->wz + i->qN.x*i->wy - i->qN.y*i->wx ) * injection->dt;
+        o->q.w = i->q.w + -0.5 * ( i->q.x*i->wx + i->q.y*i->wy + i->q.z*i->wz ) * injection->dt;
+        o->q.x = i->q.x +  0.5 * ( i->q.w*i->wx + i->q.y*i->wz - i->q.z*i->wy ) * injection->dt;
+        o->q.y = i->q.y +  0.5 * ( i->q.w*i->wy + i->q.z*i->wx - i->q.x*i->wz ) * injection->dt;
+        o->q.z = i->q.z +  0.5 * ( i->q.w*i->wz + i->q.x*i->wy - i->q.y*i->wx ) * injection->dt;
     }
 }

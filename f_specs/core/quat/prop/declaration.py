@@ -33,7 +33,7 @@ Function(
         ),
 
         Input(
-            name='qN',
+            name='q',
             title='Recurrent quat',
             value_type='core.type.quat'
         ),

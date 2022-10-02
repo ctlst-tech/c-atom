@@ -1,8 +1,11 @@
 #ifndef CTLST_CORE_TYPE_BOOL_H
 #define CTLST_CORE_TYPE_BOOL_H
 
-#include <stdbool.h>
+#include <stdint.h>
 
-typedef bool core_type_bool_t;
+typedef int32_t core_type_bool_t;
+
+#define TRUE  ((int32_t)-1)
+#define FALSE ((int32_t) 0)
 
 #endif // CTLST_CORE_TYPE_BOOL_H

@@ -4,5 +4,5 @@ void core_logical_false_exec(
     core_logical_false_outputs_t *o
 )
 {
-    o->output = false;
+    o->output = FALSE;
 }

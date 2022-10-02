@@ -2,7 +2,7 @@ from ctlst import *
 
 
 Function(
-    name='core.controller.pid',
+    name='core.cont.pid',
     title=LocalizedString(
         en='PID controller'
     ),

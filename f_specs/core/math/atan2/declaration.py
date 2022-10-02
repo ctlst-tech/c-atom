@@ -2,11 +2,11 @@ from ctlst import *
 
 
 Function(
-    name='core.controller.mux',
+    name='core.math.atan2',
     title=LocalizedString(
-        en='Multiplexor, 2ch'
+        en='Arc-tangent value for 2 axis'
     ),
-    description=None,
+
     inputs=[
         Input(
             name='input0',
@@ -17,11 +17,6 @@ Function(
             name='input1',
             title='Input 2',
             value_type='core.type.f64'
-        ),
-        Input(
-            name='select',
-            title='Switch input',
-            value_type='core.type.bool'
         )
     ],
     outputs=[
