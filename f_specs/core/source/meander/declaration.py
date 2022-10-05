@@ -8,17 +8,9 @@ Function(
     description=None,
     parameters=[
         Parameter(
-            name='period',
-            title='Meadner period',
-            value_type='core.type.f64',
-            constraints=[
-                ThisValue() > 0
-            ]
-        ),
-        Parameter(
-            name='duty',
-            title='Meadner duty cycle',
-            value_type='core.type.f64',
+            name='semi_period',
+            title='Meadner semi period in cycles (calls number)',
+            value_type='core.type.u32',
             constraints=[
                 ThisValue() > 0
             ]
@@ -26,19 +18,21 @@ Function(
     ],
     outputs=[
         Output(
-            name='out',
-            title='Meander value',
-            value_type='core.type.bool'
+            name='output',
+            title='Meander generator output',
+            value_type='core.type.f64'
         )
     ],
     state=[
         Variable(
-        name='time',
-        title='Free run time accumulator',
-        value_type='core.type.f64'
+            name='counter',
+            title='Meander counter',
+            value_type='core.type.u32'
+        ),
+        Variable(
+            name='state',
+            title='Meander state',
+            value_type='core.type.bool'
         )
-    ],
-    injection=Injection(
-        timedelta=True
-    )
+    ]
 )

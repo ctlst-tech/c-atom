@@ -3,20 +3,18 @@
 void core_source_meander_exec(
     core_source_meander_outputs_t *o,
     const core_source_meander_params_t *p,
-    core_source_meander_state_t *state,
-    const core_source_meander_injection_t *injection
+    core_source_meander_state_t *state
 )
 {
-    // TODO: calculate absolute time
-    if(state->time < (p->period * p->duty)) {
-        o->out = 0;
-    } else {
-        o->out = 1;
+    state->counter++;
+    if(state->counter >= p->semi_period) {
+        state->counter = 0;
+        if (state->state) {
+            state->state = FALSE;
+        } else {
+            state->state = TRUE;
+        }
     }
-    state->time++;
-    if(state->time > p->period) {
-        o->out = 0;
-        state->time = 0;
-    }
-}
 
+    o->output = state->state ? 1.0 : 0.0;
+}
