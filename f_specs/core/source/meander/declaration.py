@@ -28,7 +28,7 @@ Function(
         Output(
             name='out',
             title='Meander value',
-            value_type='core.type.f64'
+            value_type='core.type.bool'
         )
     ],
     state=[

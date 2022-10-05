@@ -13,7 +13,7 @@ void core_source_meander_exec(
     } else {
         o->out = 1;
     }
-    state->time += injection->dt;
+    state->time++;
     if(state->time > p->period) {
         o->out = 0;
         state->time = 0;
