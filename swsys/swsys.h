@@ -15,8 +15,9 @@ typedef uint32_t swsys_priority_t;
 
 typedef enum {
     swsys_e_ok = 0,
-    swsys_e_nomem,
-    swsys_e_notopic,
+//    swsys_e_nomem,
+//    swsys_e_notopic,
+    swsys_e_notask,
     swsys_e_invargs,
     swsys_e_loaderr,
     swsys_e_initerr,
@@ -107,5 +108,7 @@ typedef struct {
 
 swsys_rv_t swsys_load(const char *path, const char *swsys_root_dir, swsys_t *sys);
 swsys_rv_t swsys_top_module_start(swsys_t *swsys);
+swsys_rv_t swsys_set_params(swsys_t *sys, const char *task_name, const char *cmd);
+const char *swsys_strerror(swsys_rv_t rv);
 
 #endif //C_ATOM_SWSYS_H

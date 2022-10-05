@@ -29,6 +29,20 @@ typedef struct {
 
 void *swsys_alloc(size_t s);
 
+const char *swsys_strerror(swsys_rv_t rv) {
+    switch (rv) {
+        case swsys_e_ok:                return "OK";
+        case swsys_e_notask:            return "No such task";
+        case swsys_e_invargs:           return "Invalid arguments";
+        case swsys_e_loaderr:           return "Load error";
+        case swsys_e_initerr:           return "Init error";
+        case swsys_e_no_such_service:   return "No such service";
+        case swsys_e_service_fail:      return "Service fail";
+        default:
+            return "Unknown error code";
+    }
+}
+
 static swsys_rv_t task_load(swsys_task_t *t) {
     swsys_rv_t rv = swsys_e_ok;
 
@@ -74,6 +88,42 @@ static swsys_rv_t task_load(swsys_task_t *t) {
 
 
     return rv;
+}
+
+
+swsys_rv_t swsys_set_params(swsys_t *sys, const char *task_name, const char *cmd) {
+    func_param_t param[3]; // just one for now to parse;
+    char fname[32];
+    char alias[32];
+    char value[32];
+    param[0].alias="func_name";
+    param[0].value = fname;
+
+    param[1].alias = alias;
+    param[1].value = value;
+
+    param[2].alias = NULL;
+
+    if (sscanf(cmd, "func_name=%[^ ] %[A-Za-z0-9_]=%s", fname, alias, value) < 3) {
+        return swsys_e_invargs;
+    }
+
+    for (int i = 0; i < sys->tasks_num; i++) {
+        if (strcmp(sys->tasks[i].name, task_name) == 0) {
+            fspec_rv_t frv = function_set_param(&sys->tasks[i].func_handler, sys->tasks[i].func_call_dhandle,
+                               param, 0);
+            switch (frv) {
+                case fspec_rv_ok:
+                    return swsys_e_ok;
+
+                default:
+                    return swsys_e_invargs;
+            }
+        }
+    }
+
+
+    return swsys_e_notask;
 }
 
 static swsys_rv_t swsys_init(swsys_t *sys) {

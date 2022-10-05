@@ -39,10 +39,10 @@ typedef enum fspec_rv {
     fspec_rv_no_memory,
     fspec_rv_exists,
     //fspec_rv_modules_list_full,
+    fspec_rv_not_exists,
 
     fspec_rv_invtime,
     fspec_rv_not_supported,
-    // fspec_rv_no_func,
     fspec_rv_no_input,
     fspec_rv_no_param,
     fspec_rv_no_topic,
