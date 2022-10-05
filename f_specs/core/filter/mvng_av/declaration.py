@@ -4,7 +4,7 @@ from ctlst import *
 Function(
     name='core.filter.mvng_av',
     title=LocalizedString(
-        en='Covert Euler angles to quaternion'
+        en='Moving average 3 channels function'
     ),
     inputs=[
         Input(
