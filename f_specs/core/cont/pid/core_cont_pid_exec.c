@@ -19,7 +19,7 @@ void core_cont_pid_exec(
             state->integral = i->preset;
             state->activated = TRUE;
         } else {
-            state->integral += p->Ki * (error + state->previous_error) * dt;
+            state->integral += p->Ki *(0.5 * (error + state->previous_error)) * dt;
         }
 
         if (state->integral > p->integral_max) {
