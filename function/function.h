@@ -65,9 +65,12 @@ typedef func_pair_t func_conn_spec_t;
 
 struct function_spec;
 
-typedef fspec_rv_t (*fspec_init_f)(void *interface, const struct function_spec *spec, const char *inv_name, const void *extension_handler);
-typedef fspec_rv_t (*fspec_init_inputs_f)(void *interface, const func_conn_spec_t *conn_spec, eswb_topic_descr_t mounting_td);
-typedef fspec_rv_t (*fspec_init_outputs_f)(void *interface, const func_conn_spec_t *conn_spec, eswb_topic_descr_t mounting_td, const char *func_name);
+typedef fspec_rv_t (*fspec_init_f)(void *interface, const struct function_spec *spec, const char *inv_name,
+        eswb_topic_descr_t mounting_td, const void *extension_handler);
+typedef fspec_rv_t (*fspec_init_inputs_f)(void *interface, const func_conn_spec_t *conn_spec,
+        eswb_topic_descr_t mounting_td);
+typedef fspec_rv_t (*fspec_init_outputs_f)(void *interface, const func_conn_spec_t *conn_spec,
+        eswb_topic_descr_t mounting_td, const char *func_name);
 typedef fspec_rv_t (*fspec_set_param_f)(void *interface, const func_param_t *params, int initial_call);
 typedef void (*fspec_exec_f)(void *interface);
 
@@ -149,10 +152,12 @@ int fspec_conn_arr_size(const connection_spec_t **conn_spec);
 const function_handler_t *fspec_find_handler(const char *spec_name);
 const function_flow_t *fspec_find_flow(const char *spec_name);
 
-fspec_rv_t function_init(const function_handler_t *fh, const char *inv_name, void **dhandle);
-fspec_rv_t function_init_inputs(const function_handler_t *fh, void *interface, const func_conn_spec_t *conn_spec, eswb_topic_descr_t mounting_td);
-fspec_rv_t function_init_outputs(const function_handler_t *fh, void *interface, const func_conn_spec_t *conn_spec,
-                                 eswb_topic_descr_t mounting_td, const char *func_name);
+fspec_rv_t function_init(const function_handler_t *fh, const char *inv_name,
+                         eswb_topic_descr_t mounting_td, void **dhandle);
+fspec_rv_t function_init_inputs(const function_handler_t *fh, void *interface,
+                                const func_conn_spec_t *conn_spec, eswb_topic_descr_t mounting_td);
+fspec_rv_t function_init_outputs(const function_handler_t *fh, void *interface,
+                                 const func_conn_spec_t *conn_spec, eswb_topic_descr_t mounting_td, const char *func_name);
 fspec_rv_t
 function_set_param(const function_handler_t *fh, void *interface, const func_param_t *params, int initial_call);
 void function_exec(const function_handler_t *fh, void *interface);

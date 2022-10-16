@@ -80,7 +80,7 @@ ibr_rv_t ibr_process_setup(ibr_cfg_t *ibr_cfg, const function_spec_t *spec,
 
 void *ibr_alloc(size_t s);
 
-fspec_rv_t ibr_init(void *dhandle, const function_spec_t *spec, const char *inv_name, const void *extension_handler) {
+fspec_rv_t ibr_init(void *dhandle, const function_spec_t *spec, const char *inv_name, eswb_topic_descr_t mounting_td, const void *extension_handler) {
     int err_cnt = 0;
     ibr_cfg_t *ibr_cfg = (ibr_cfg_t *) extension_handler;
     irb_setup_t *ibr_setup = (irb_setup_t *) dhandle;

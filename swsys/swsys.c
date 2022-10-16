@@ -200,7 +200,7 @@ static swsys_rv_t swsys_init(swsys_t *sys) {
         rv = task_load(&sys->tasks[i]);
         if (rv == swsys_e_ok) {
             fspec_rv_t frv;
-            frv = function_init(&sys->tasks[i].func_handler, sys->tasks[i].name, &sys->tasks[i].func_call_dhandle);
+            frv = function_init(&sys->tasks[i].func_handler, sys->tasks[i].name, 0, &sys->tasks[i].func_call_dhandle);
             if (frv != fspec_rv_ok){
                 dbg_msg_ec(frv, "Task \"%s\" function_init error", sys->tasks[i].name);
                 err_num++;
@@ -214,7 +214,8 @@ static swsys_rv_t swsys_init(swsys_t *sys) {
     return err_num > 0 ? swsys_e_loaderr : swsys_e_ok;
 }
 
-static fspec_rv_t swsys_call_init (void *dhandle, const function_spec_t *spec, const char *inv_name, const void *extension_handler) {
+static fspec_rv_t swsys_call_init (void *dhandle, const function_spec_t *spec, const char *inv_name,
+                                   eswb_topic_descr_t mounting_td, const void *extension_handler) {
     swsys_func_dhandle_t *ssdh = (swsys_func_dhandle_t *)dhandle;
 
     ssdh->swsys = (const swsys_t *) extension_handler;
@@ -449,7 +450,7 @@ swsys_rv_t swsys_top_module_start(swsys_t *swsys) {
 
     swsys_func_dhandle_t *dhandle = NULL;
 
-    rv = function_init(&fh, NULL, (void **) &dhandle);
+    rv = function_init(&fh, NULL, 0, (void **) &dhandle);
     if (rv != fspec_rv_ok) {
         dbg_msg_ec(rv, "function_init failed");
         return swsys_e_initerr;

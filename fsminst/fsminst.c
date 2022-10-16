@@ -168,7 +168,7 @@ static symbol_state_handler_t trueduring_sh = {
         .state_activate = eint_func_trueduring_actiavte
 };
 
-fspec_rv_t fsm_init_call(void *iface, const function_spec_t *spec, const char *inv_name, const void *extension_handler) {
+fspec_rv_t fsm_init_call(void *iface, const function_spec_t *spec, const char *inv_name, eswb_topic_descr_t mounting_td, const void *extension_handler) {
     fsm_dhandle_t *dfsm = iface;
     dfsm->fsms = (fsm_t **) extension_handler;
 
