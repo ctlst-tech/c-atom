@@ -18,6 +18,10 @@
         </params>
     </spec>
 
+    <import>
+        <flow file="flow_gen_to_import.xml"/>
+    </import>
+
     <functions>
         <f name="gen1" by_spec="core.source.sin">
             <param alias="period">4</param>
@@ -32,14 +36,29 @@
             <param alias="phase">0.0</param>
         </f>
 
+        <f name="gen4" by_spec="flow_gen_to_import">
+        </f>
+
         <f name="omega_x" by_spec="core.math.gain">
             <in alias="input">gen3/out</in>
             <param alias="gain">0.1</param>
         </f>
 
+        <f name="omega_y" by_spec="core.math.gain">
+            <in alias="input">gen4/output</in>
+            <param alias="gain">0.1</param>
+        </f>
+
+
         <f name="zero" by_spec="core.source.constant">
             <param alias="value">0.0</param>
         </f>
+
+        <f name="omega_y_biased" by_spec="core.math.add">
+            <in alias="input0">omega_y/output</in>
+            <in alias="input1">zero/output</in>
+        </f>
+
 
         <f name="roll0" by_spec="core.source.constant">
             <param alias="value">0.0</param>
@@ -62,7 +81,7 @@
             <in alias="wy">zero/output</in>
             <in alias="wz">zero/output</in>
             <in alias="q0">initial_euler/q</in>
-            <in alias="qN">norm_att_quat/q</in>
+            <in alias="q">norm_att_quat/q</in>
         </f>
 
         <f name="norm_att_quat" by_spec="core.quat.norm">
@@ -79,6 +98,7 @@
         <link alias="o1">gen1/out</link>
         <link alias="o2">gen2/out</link>
         <link alias="o3">gen3/out</link>
+        <link alias="o4">gen4/output</link>
     </link_outputs>
 
 </flow>

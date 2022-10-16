@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<flow>
+    <spec name="flow_gen_to_import">
+        <annotation>
+        </annotation>
+
+        <inputs>
+        </inputs>
+
+        <outputs>
+            <o alias="output" annotation="Nested gen output 1"/>
+        </outputs>
+
+        <params>
+        </params>
+    </spec>
+
+    <functions>
+        <f name="gen1" by_spec="core.source.sin">
+            <param alias="period">4</param>
+            <param alias="phase">0.0</param>
+        </f>
+        <f name="gen2" by_spec="core.source.sin">
+            <param alias="period">2</param>
+            <param alias="phase">1.57</param>
+        </f>
+
+        <f name="mult" by_spec="core.math.mul">
+            <in alias="input0">gen1/out</in>
+            <in alias="input1">gen2/out</in>
+        </f>
+
+    </functions>
+
+    <link_outputs>
+        <link alias="output">mult/output</link>
+    </link_outputs>
+
+</flow>

@@ -173,6 +173,8 @@ typedef enum {
 fspec_rv_t function_gettime(func_time_t ft, struct timespec *t);
 fspec_rv_t function_getdeltatime(func_time_t ft, struct timespec *prev, deltatime_policy_t p, double *dt);
 
+const function_handler_t* function_lookup_declared(const char *spec_name);
+
 #define CATOM_DEBUG YES
 #ifdef CATOM_DEBUG
 #include <stdio.h>

@@ -28,7 +28,7 @@
             <param alias="value">10.0</param>
         </f>
 
-        <f name="mux_const" by_spec="core.controller.mux">
+        <f name="mux_const" by_spec="core.cont.mux">
             <in alias="input0">signal</in>
             <in alias="input1">const_val/output</in>
             <in alias="select">mode1</in>
@@ -39,19 +39,19 @@
             <param alias="gain">15.0</param>
         </f>
 
-        <f name="mux_gain" by_spec="core.controller.mux">
+        <f name="mux_gain" by_spec="core.cont.mux">
             <in alias="input0">gain1/output</in>
             <in alias="input1">signal</in>
             <in alias="select">mode2</in>
         </f>
 
-        <f name="mux_final" by_spec="core.controller.mux">
+        <f name="mux_final" by_spec="core.cont.mux">
             <in alias="input0">mux_gain/output</in>
             <in alias="input1">mux_const/output</in>
             <in alias="select">mode3</in>
         </f>
 
-        <f name="event_out" by_spec="core.controller.mux">
+        <f name="event_out" by_spec="core.cont.mux">
             <in alias="input0">signal</in>
             <in alias="input1">const_val/output</in>
             <in alias="select">mode1</in>

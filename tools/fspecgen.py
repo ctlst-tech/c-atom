@@ -1319,7 +1319,6 @@ class FuncProcessor:
 
         fprint(f'#include <stdlib.h>')
         fprint(f'#include <string.h>')
-        fprint(f'#include "function.h"')
         # fprint(f'#include "{self.spec_header_filename}"')
         fprint()
         fprint()
@@ -1336,14 +1335,14 @@ class FuncProcessor:
         fprint(f'}};')
         fprint()
         fprint()
-        fprint(f'const function_handler_t* fspec_find_handler(const char * spec_name) {{')
+        fprint(f'const function_handler_t* fspec_find_handler(const char *spec_name) {{')
         fprint(f'    function_handler_t * rv;')
         fprint(f'    for (int i = 0; {array_name}[i] != NULL; i++) {{')
         fprint(f'        if (strcmp({array_name}[i]->spec->name, spec_name) == 0) {{')
         fprint(f'            return functions_spec_array[i];')
         fprint(f'        }}')
         fprint(f'    }}')
-        fprint(f'    return NULL;')
+        fprint(f'    return function_lookup_declared(spec_name);')
         fprint(f'}}')
 
     def generate_bbxml(self, fpath):

@@ -178,3 +178,17 @@ const char *fspec_errmsg(fspec_rv_t c) {
         default:                        return "Unknown error";
     }
 }
+
+#include "flow.h"
+
+const function_handler_t* function_lookup_declared(const char *spec_name) {
+    function_handler_t *fh;
+    fspec_rv_t rv;
+
+    rv = flow_reg_find_handler(spec_name, &fh);
+    if (rv == fspec_rv_ok) {
+        return fh;
+    }
+
+    return NULL;
+}

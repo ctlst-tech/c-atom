@@ -14,26 +14,27 @@
             stty raw < /tmp/vserial2 -->
 
 
-    <service type="sdtl" name="sdtl_main">
-        <param alias="baudrate">115200</param>
-        <param alias="ser_path">/tmp/vserial1</param>
+<!--    <service type="sdtl" name="sdtl_main">-->
+<!--        <param alias="baudrate">115200</param>-->
+<!--        <param alias="ser_path">/tmp/vserial1</param>-->
 
-        <channel name="bus_sync" id="1" type="rel" />
-        <channel name="bus_sync_sk" id="2" type="unrel" />
-    </service>
+<!--        <channel name="bus_sync" id="1" type="rel" />-->
+<!--        <channel name="bus_sync_sk" id="2" type="unrel" />-->
+<!--    </service>-->
 
-    <service type="eqrb_sdtl" name="eqrb_test">
-        <param alias="service">sdtl_main</param>
-        <param alias="channel_1">bus_sync</param>
-        <param alias="channel_2">bus_sync_sk</param>
-        <param alias="bus">test</param>
-    </service>
+<!--    <service type="eqrb_sdtl" name="eqrb_test">-->
+<!--        <param alias="service">sdtl_main</param>-->
+<!--        <param alias="channel_1">bus_sync</param>-->
+<!--        <param alias="channel_2">bus_sync_sk</param>-->
+<!--        <param alias="bus">test</param>-->
+<!--    </service>-->
 
-    <task type="flow" name="gen" config="mvp_flow_gen.xml" priority="5" clk_method="timer" clk_period="5000">
+    <task type="flow" name="gen" config="mvp_flow_gen.xml" priority="5" clk_method="timer" clk_period="500">
         <connect>
             <out alias="o1">itb:/test/gen/o1</out>
             <out alias="o2">itb:/test/gen/o2</out>
             <out alias="o3">itb:/test/gen/o3</out>
+            <out alias="o4">itb:/test/gen/o4</out>
         </connect>
     </task>
 

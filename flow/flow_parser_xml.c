@@ -72,6 +72,8 @@ typedef struct flow_reg_record {
     function_flow_t *flow;
     fspec_rv_t load_rv;
 
+    function_handler_t handler;
+
     struct flow_reg_record *next;
 } flow_reg_record_t;
 
@@ -99,6 +101,8 @@ fspec_rv_t flow_reg_add(function_flow_t *flow, const char *path, fspec_rv_t load
     r->load_rv = load_rv;
     r->next = NULL;
 
+    flow_get_handler(flow, &r->handler);
+
     if (flow_reg_root == NULL) {
         flow_reg_root = r;
     } else {
@@ -110,12 +114,12 @@ fspec_rv_t flow_reg_add(function_flow_t *flow, const char *path, fspec_rv_t load
     return fspec_rv_ok;
 }
 
-fspec_rv_t flow_reg_find(const char *fname, function_flow_t **flow_rv) {
+fspec_rv_t flow_reg_find_handler(const char *fname, function_handler_t **flow_rv) {
     flow_reg_record_t *n;
 
     for (n = flow_reg_root; n != NULL; n = n->next) {
-        if (strcmp(n->flow->spec.name, fname) == 0) {
-            *flow_rv = n->flow;
+        if (strcmp(n->handler.spec->name, fname) == 0) {
+            *flow_rv = &n->handler;
             return fspec_rv_ok;
         }
     }
@@ -142,7 +146,7 @@ fspec_rv_t flow_reg_find_by_path(const char *path, function_flow_t **flow_rv) {
 
 fspec_rv_t flow_load(const char *path, function_flow_t **flow_rv) {
 
-    if ((path == NULL) || (flow_rv == NULL)) {
+    if (path == NULL) {
         return fspec_rv_invarg;
     }
 
@@ -198,11 +202,13 @@ fspec_rv_t flow_load(const char *path, function_flow_t **flow_rv) {
         }
 
         xml_node_t *import_node = xml_node_find_child(flow_xml_root, "import");
-        for (xml_node_t *n = import_node->first_child; n != NULL; n = n->next_sibling) {
-            if (xml_node_name_eq(n, "flow")) {
-                xml_rv = import_flow(n);
-                if (xml_rv != xml_e_ok) {
-                    err_num++;
+        if (import_node != NULL) {
+            for (xml_node_t *n = import_node->first_child; n != NULL; n = n->next_sibling) {
+                if (xml_node_name_eq(n, "flow")) {
+                    xml_rv = import_flow(n);
+                    if (xml_rv != xml_e_ok) {
+                        err_num++;
+                    }
                 }
             }
         }

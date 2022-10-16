@@ -101,7 +101,7 @@ fspec_rv_t flow_init(void *iface, const function_spec_t *spec, const char *inv_n
     }
 
     eswb_rv_t rv;
-    char flow_root_path[ESWB_TOPIC_NAME_MAX_LEN + 1];
+    char flow_root_path[ESWB_TOPIC_MAX_PATH_LEN + 1];
 
     if (mounting_td == 0) {
         // TODO count topics num
@@ -130,7 +130,8 @@ fspec_rv_t flow_init(void *iface, const function_spec_t *spec, const char *inv_n
 
         eswb_mkdir(flow_root_path, inv_name);
         // reusing same variable:
-        strncat(flow_root_path, inv_name, ESWB_BUS_NAME_MAX_LEN - strlen(flow_root_path));
+        strncat(flow_root_path, "/", ESWB_TOPIC_MAX_PATH_LEN - strlen(flow_root_path));
+        strncat(flow_root_path, inv_name, ESWB_TOPIC_MAX_PATH_LEN - strlen(flow_root_path));
     }
 
     rv = eswb_connect(flow_root_path, &mounting_td);
@@ -172,21 +173,24 @@ static fspec_rv_t bridge_the_flow(const func_conn_spec_t *src, const func_conn_s
         }
 
         const char *dst_path = fspec_find_path2connect(dst, src[i].alias);
-        if (dst_path == NULL) {
+        if ((dst_path == NULL) && (dst_mtd == 0)) {
             dbg_msg("Terminal %s have no specified connection path", src[i].alias);
             continue;
+        } else if (dst_path == NULL) {
+            dst_mtd = src_mtd; // FIXME tricky convention: if no path specified, post to the source area
+            dst_path = src[i].alias;
         }
 
         erv = eswb_bridge_add_topic(br[i], src_mtd, src[i].value, NULL);
         if (erv != eswb_e_ok) {
             dbg_msg("eswb_bridge_add_topic to \"%s\" failed: %s", src[i].value, eswb_strerror(erv));
             errs++;
-        }
-
-        erv = eswb_bridge_connect_scalar(br[i], dst_mtd, dst_path);
-        if (erv != eswb_e_ok) {
-            dbg_msg("eswb_bridge_connect_scalar failed: %s", eswb_strerror(erv));
-            errs++;
+        } else {
+            erv = eswb_bridge_connect_scalar(br[i], dst_mtd, dst_path);
+            if (erv != eswb_e_ok) {
+                dbg_msg("eswb_bridge_connect_scalar failed: %s", eswb_strerror(erv));
+                errs++;
+            }
         }
     }
 
@@ -207,16 +211,12 @@ fspec_rv_t flow_init_outputs(void *dhandle, const func_conn_spec_t *conn_spec,
 
     fspec_rv_t frv;
 
-    if (mounting_point == 0) {
-        mounting_point = flow_dh->root_td;
-    }
-
     // init control seq outputs
     while (flow_dh->functions_batch[i].h != NULL) {
         frv = function_init_outputs(flow_dh->functions_batch[i].h,
                                     flow_dh->function_handles_batch[i],
                                     NULL,
-                                    mounting_point, flow_dh->functions_batch[i].name);
+                                    flow_dh->root_td, flow_dh->functions_batch[i].name);
         if ((frv != fspec_rv_ok) && (frv != fspec_rv_not_supported)) { // it is ok not to have no outputs
             flow_init_dbg_msg(frv, __func__, &flow_dh->functions_batch[i], flow_dh->flow_name);
             errs++;
@@ -227,7 +227,7 @@ fspec_rv_t flow_init_outputs(void *dhandle, const func_conn_spec_t *conn_spec,
     // TODO if conn_spec is NULL, then mount all outputs to local dir
 
     frv = bridge_the_flow(flow_dh->outputs_links, conn_spec,
-                          mounting_point, 0,
+                          flow_dh->root_td, mounting_point, // FIXME doubling of tds
                           &flow_dh->out_bridges, &flow_dh->out_bridges_num);
 
     if (frv != fspec_rv_ok) {
