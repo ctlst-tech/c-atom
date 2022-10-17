@@ -48,7 +48,13 @@ xml_rv_t load_func(xml_node_t *f_node, function_inside_flow_t *f) {
     return err_cnt > 0 ? xml_e_dom_process : xml_e_ok;
 }
 
-static xml_rv_t import_flow(xml_node_t *flow_import_node) {
+/**
+ *
+ * @param flow_import_node
+ * @param flow_root_path string with a size of FUNC_XML_FILEPATH_MAX_LEN
+ * @return
+ */
+static xml_rv_t import_flow(xml_node_t *flow_import_node, char *flow_root_path) {
     int err_cnt = 0;
     GET_ATTR_INIT();
 
@@ -57,7 +63,10 @@ static xml_rv_t import_flow(xml_node_t *flow_import_node) {
     const char *import_path = GET_ATTR_AND_PROCESS_ERR(xml_attr_str, flow_import_node, "file", &err_cnt);
 
     if (import_path != NULL) {
-        if (flow_load(import_path, NULL) != fspec_rv_ok) {
+        // flow_root_path name become confusing, but let's save some stack
+        strncat(flow_root_path, import_path, FUNC_XML_FILEPATH_MAX_LEN - strlen(flow_root_path));
+
+        if (flow_load(flow_root_path, NULL) != fspec_rv_ok) {
             err_cnt++;
         }
     }
@@ -118,9 +127,11 @@ fspec_rv_t flow_reg_find_handler(const char *fname, function_handler_t **flow_rv
     flow_reg_record_t *n;
 
     for (n = flow_reg_root; n != NULL; n = n->next) {
-        if (strcmp(n->handler.spec->name, fname) == 0) {
-            *flow_rv = &n->handler;
-            return fspec_rv_ok;
+        if (n->load_rv == fspec_rv_ok) {
+            if (strcmp(n->flow->spec.name, fname) == 0) {
+                *flow_rv = &n->handler;
+                return fspec_rv_ok;
+            }
         }
     }
 
@@ -201,11 +212,19 @@ fspec_rv_t flow_load(const char *path, function_flow_t **flow_rv) {
             err_num++;
         }
 
+        char *trailing_slash = strrchr(path, '/');
+        char flow_root_path[FUNC_XML_FILEPATH_MAX_LEN];
+        if (trailing_slash != NULL) {
+            strncpy(flow_root_path, path, trailing_slash - path + 1);
+        } else {
+            strcpy(flow_root_path, "./");
+        }
+
         xml_node_t *import_node = xml_node_find_child(flow_xml_root, "import");
         if (import_node != NULL) {
             for (xml_node_t *n = import_node->first_child; n != NULL; n = n->next_sibling) {
                 if (xml_node_name_eq(n, "flow")) {
-                    xml_rv = import_flow(n);
+                    xml_rv = import_flow(n, flow_root_path);
                     if (xml_rv != xml_e_ok) {
                         err_num++;
                     }

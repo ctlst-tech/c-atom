@@ -28,9 +28,6 @@ typedef connection_spec_t input_spec_t;
 typedef connection_spec_t output_spec_t;
 typedef connection_spec_t param_spec_t;
 
-
-
-
 typedef enum fspec_rv {
     fspec_rv_ok = 0,
     fspec_rv_no_update = 1,
@@ -174,6 +171,8 @@ fspec_rv_t function_gettime(func_time_t ft, struct timespec *t);
 fspec_rv_t function_getdeltatime(func_time_t ft, struct timespec *prev, deltatime_policy_t p, double *dt);
 
 const function_handler_t* function_lookup_declared(const char *spec_name);
+
+
 
 #define CATOM_DEBUG YES
 #ifdef CATOM_DEBUG

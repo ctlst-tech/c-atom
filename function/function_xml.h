@@ -10,6 +10,8 @@
 
 #define FUNC_XML_TAG_PARAM "param"
 
+#define FUNC_XML_FILEPATH_MAX_LEN 256
+
 xml_rv_t func_xml_load_spec(xml_node_t* spec_node, function_spec_t *func_spec);
 xml_rv_t func_xml_load_connections(xml_node_t* n, const char *tag, connection_spec_t ***spec);
 
