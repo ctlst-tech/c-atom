@@ -1,9 +1,5 @@
-//
-// Created by goofy on 5/31/21.
-//
-
-#ifndef ESWB_PROTO_MODULE_H
-#define ESWB_PROTO_MODULE_H
+#ifndef FUNCTION_H
+#define FUNCTION_H
 
 #include <stdint.h>
 #include <string.h>
@@ -184,4 +180,4 @@ const function_handler_t* function_lookup_declared(const char *spec_name);
 #define dbg_msg_ec(txt,ec,...)
 #endif
 
-#endif //ESWB_PROTO_MODULE_H
+#endif //FUNCTION_H
