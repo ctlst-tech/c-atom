@@ -8,6 +8,7 @@ import importlib
 import importlib.machinery
 import importlib.util
 
+
 def find_type_in_context(type_alias, context):
     for pkg in context:
         t = pkg.find_type(type_alias)
@@ -15,6 +16,7 @@ def find_type_in_context(type_alias, context):
             return t
 
     raise Exception(f'Type with name `{type_alias}` is not declared.')
+
 
 class Package:
     def __init__(self):
@@ -54,8 +56,8 @@ class Package:
             for parameter in function.parameters:
                 parameter.value_type = parameter.value_type.resolve(resolve_lambda)
 
-            for input in function.inputs:
-                input.value_type = input.value_type.resolve(resolve_lambda)
+            for inp in function.inputs:
+                inp.value_type = inp.value_type.resolve(resolve_lambda)
 
             for output in function.outputs:
                 output.value_type = output.value_type.resolve(resolve_lambda)
@@ -144,8 +146,6 @@ class ThisValue(ParameterValue):
 #     return ExpressionValue()
 
 
-
-
 class LocalizedString:
     def __init__(self, *, en, **kwargs):
         self.en = en
@@ -184,6 +184,7 @@ class TypeReference(ValueType):
     def resolve(self, resolving_lambda):
         return resolving_lambda(self.type_alias)
         # return pkg.resolve_type(self.type_alias)
+
 
 class VectorOf(ValueType):
     def __init__(self, *,
@@ -252,6 +253,7 @@ class Input:
         self.value_type = ValueType.make(value_type)
         self.mandatory = mandatory
 
+
 class Output:
     def __init__(self, *,
                  name: str,
@@ -278,6 +280,7 @@ class Variable:
 
 
 declaration_filename = 'declaration.py'
+
 
 class Declarable:
     def __init__(self, *,
@@ -314,7 +317,6 @@ class Declarable:
                 raise Exception('Declaration name could not be validated')
             else:
                 self.rel_directory = os.path.relpath(self.pkg_rel_directory)
-
 
     def get_escaped_name(self):
         return re.sub(r'(\.)', '_', self.name)
@@ -382,8 +384,6 @@ class Function(Declarable):
 
         if not dynamic:
             curr_pkg.functions.append(self)
-
-
 
     def get_prefix(self):
         return super().get_escaped_name()

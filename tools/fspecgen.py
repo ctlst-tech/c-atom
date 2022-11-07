@@ -10,6 +10,7 @@ override_implementation = False
 
 src_files_dict = dict()
 
+
 def create_generated_file(*, full_path: str, tag: str ):
     if tag != 'None':
         if not tag in src_files_dict:
@@ -18,6 +19,7 @@ def create_generated_file(*, full_path: str, tag: str ):
         src_files_dict[tag].append(full_path)
 
     return open(full_path, 'w')
+
 
 def wrap_if_required(expr, parent_expr):
     if type(expr) in [ctlst.ThisValue, int, float]:
@@ -169,6 +171,7 @@ class GType:
     def get_name(self):
         return self.typename
 
+
 class GArgument:
     def __init__(self, *, type: GType, varname: str, ptr: bool = False, const: bool = False):
         self.type = type
@@ -183,6 +186,7 @@ class GArgument:
 
     def get_symbol(self):
         return self.name
+
 
 class GCallableFunction:
     def __init__(self, *, name: str, return_type: str, arguments: Optional[List[GArgument]]):
@@ -1252,6 +1256,8 @@ class GeneratedFunction:
 class FuncProcessor:
     def __init__(self, package: ctlst.Package, context: List[ctlst.Package], process_context=False):
         self.generated_funcs_list = []
+        self.types_list = []
+
         self.spec_header_filename = 'fspecs.h'
 
         self.package = package
@@ -1262,6 +1268,8 @@ class FuncProcessor:
                 for function in pkg.functions:
                     f = GeneratedFunction(function, self)
                     self.generated_funcs_list.append(f)
+                for t in pkg.types:
+                    self.types_list.append(t)
         else:
             for function in package.functions:
                 f = GeneratedFunction(function, self)
@@ -1346,23 +1354,24 @@ class FuncProcessor:
         fprint(f'}}')
 
     def generate_bbxml(self, fpath):
-        fprint = new_file_write_call(f'{fpath}')
+        local_fprint = new_file_write_call(f'{fpath}')
 
-        def bb2xml(fprint, fs):
-            fprint(f'    <bblock type="{fs.name}" title="{fs.title}" group="{fs.namespace}">')
-            fprint(f'        <description>{fs.description}</description>')
+        def print_fspec(fprint, fs):
+            fprint(f'    <fspec type="{fs.name}" title="{fs.title}" group="{fs.namespace}">')
+            if fs.description:
+                fprint(f'        <description>{fs.description}</description>')
 
             fprint(f'        <inputs>')
             for i in fs.inputs:
-                fprint(f'            <input id="{i.name}" required="{i.mandatory}" title="{i.title}" type="{i.value_type.name}">')
-                if i.description is not None:
+                fprint(f'            <input name="{i.name}" required="{i.mandatory}" title="{i.title}" type="{i.value_type.name}">')
+                if i.description:
                     fprint(f'                {i.description}')
                 fprint(f'            </input>')
             fprint(f'        </inputs>')
 
             fprint(f'        <outputs>')
             for o in fs.outputs:
-                fprint(f'            <output id="{o.name}" title="{o.title}" type="{o.value_type.name}">')
+                fprint(f'            <output name="{o.name}" title="{o.title}" type="{o.value_type.name}">')
                 if o.description:
                     fprint(f'                {o.description}')
                 fprint(f'            </output>')
@@ -1371,19 +1380,30 @@ class FuncProcessor:
 
             for prm in fs.parameters:
                 if not prm.computable:
-                    fprint(f'            <param id="{prm.name}" title="{prm.title}" type="{prm.value_type.name}">')
+                    fprint(f'            <param name="{prm.name}" title="{prm.title}" type="{prm.value_type.name}">')
                     if prm.description:
                         fprint(f'                {prm.description}')
                     fprint(f'            </param>')
             fprint(f'        </params>')
-            fprint(f'    </bblock>')
+            fprint(f'    </fspec>')
 
-        fprint('<BuildingBlocks_root>')
+        def print_type(fprint, tp: ctlst.Type):
+            fprint(f'    <ftype name="{tp.name}" title="{tp.description}">')
+            if tp.description:
+                fprint(f'        <description>{tp.description}</description>')
+            fprint(f'    </ftype>')
+
+        local_fprint('<fspecs>')
+
+        for t in self.types_list:
+            print_type(local_fprint, t)
+
+        local_fprint()
 
         for f in self.generated_funcs_list:
-            bb2xml(fprint, f.spec)
+            print_fspec(local_fprint, f.spec)
 
-        fprint('</BuildingBlocks_root>')
+        local_fprint('</fspecs>')
 
     def generate_cmake_lists(self, fpath, has_registry=True):
         fprint = new_file_write_call(f'{fpath}/CMakeLists.txt')
@@ -1443,7 +1463,6 @@ class FuncProcessor:
             self.generate_fspecs_registry_c(self.package.root_path)
 
 
-
 def init_parser():
     import argparse
 
@@ -1451,7 +1470,7 @@ def init_parser():
 
     parser.add_argument(
         '--code',
-        help='Generate C code fir f_specs',
+        help='Generate C code for f_specs',
         action='store_true'
     )
 
@@ -1466,7 +1485,6 @@ def init_parser():
         help='Stdout variable for cmake integration',
         action='store_true'
     )
-
 
     parser.add_argument(
         '--bbxml',
@@ -1493,12 +1511,14 @@ def init_parser():
 
     return parser
 
+
 def find_f_spec_packages(rootdir):
     rv = []
     for it in os.scandir(rootdir):
         if it.is_dir():
             rv.append(it.path)
     return rv
+
 
 if __name__ == "__main__":
 
@@ -1551,10 +1571,10 @@ if __name__ == "__main__":
         (path, fp.fspec_registry_c_filename) = os.path.split(args.registry_c)
         fp.generate_fspecs_registry_c(path)
 
-    if (args.bbxml):
+    if args.bbxml:
         fp.generate_bbxml(args.bbxml)
 
-    if (args.cmake):
+    if args.cmake:
         fprint = new_file_write_call('./fspecs.cmake')
         fprint('include_directories(c-atom/function)')
 
@@ -1572,8 +1592,7 @@ if __name__ == "__main__":
             fprint()
             fprint(f'set(FSPECS_REG {args.registry_c})')
 
-
-    if (args.cmake_vars):
+    if args.cmake_vars:
         for p in pkgs:
             print(f'SUBDIR={os.path.relpath(p.root_path, start=os.curdir)}')
             print(f'TARGET={p.cmake_target}')
