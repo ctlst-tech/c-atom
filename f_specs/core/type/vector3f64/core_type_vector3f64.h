@@ -1,5 +1,5 @@
-#ifndef CTLST_CORE_TYPE_VECTOR3F64_H
-#define CTLST_CORE_TYPE_VECTOR3F64_H
+#ifndef FSPEC_CORE_TYPE_VECTOR3F64_H
+#define FSPEC_CORE_TYPE_VECTOR3F64_H
 
 /* Include declaration of dependency types */
 #include "core_type_f64.h"
@@ -26,4 +26,4 @@ typedef struct core_type_vector3f64_
 
 } core_type_vector3f64_t;
 
-#endif // CTLST_CORE_TYPE_VECTOR3F64_H
+#endif // FSPEC_CORE_TYPE_VECTOR3F64_H

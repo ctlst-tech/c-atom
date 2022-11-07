@@ -1,5 +1,5 @@
-#ifndef CTLST_CORE_TYPE_QUAT_H
-#define CTLST_CORE_TYPE_QUAT_H
+#ifndef FSPEC_CORE_TYPE_QUAT_H
+#define FSPEC_CORE_TYPE_QUAT_H
 
 /* Include declaration of dependency types */
 #include "core_type_f64.h"
@@ -32,4 +32,4 @@ typedef struct core_type_quat_
 
 } core_type_quat_t;
 
-#endif // CTLST_CORE_TYPE_QUAT_H
+#endif // FSPEC_CORE_TYPE_QUAT_H

@@ -1,4 +1,4 @@
-from ctlst import *
+from fspeclib import *
 
 Structure(
     name='core.type.vector3f64',

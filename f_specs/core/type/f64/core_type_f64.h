@@ -1,6 +1,6 @@
-#ifndef CTLST_CORE_TYPE_F64_H
-#define CTLST_CORE_TYPE_F64_H
+#ifndef FSPEC_CORE_TYPE_F64_H
+#define FSPEC_CORE_TYPE_F64_H
 
 typedef double core_type_f64_t;
 
-#endif // CTLST_CORE_TYPE_F64_H
+#endif // FSPEC_CORE_TYPE_F64_H

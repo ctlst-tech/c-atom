@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import sys
 
-import ctlst
+import fspeclib
 import os.path
 from typing import *
 from common import *
@@ -22,17 +22,17 @@ def create_generated_file(*, full_path: str, tag: str ):
 
 
 def wrap_if_required(expr, parent_expr):
-    if type(expr) in [ctlst.ThisValue, int, float]:
+    if type(expr) in [fspeclib.ThisValue, int, float]:
         return expr
     return f'{expr}'
 
 
 def generate_expression(expr, map_name):
-    if isinstance(expr, ctlst.ParameterValue):
+    if isinstance(expr, fspeclib.ParameterValue):
         return map_name(expr.name)
     elif type(expr) in [int, float]:
         return f'{expr}'
-    elif type(expr) is ctlst.ExpressionBinaryOperation:
+    elif type(expr) is fspeclib.ExpressionBinaryOperation:
         lhs = wrap_if_required(generate_expression(expr.lhs, map_name), expr)
         rhs = wrap_if_required(generate_expression(expr.rhs, map_name), expr)
         return f'{lhs} {expr.operator} {rhs}'
@@ -49,7 +49,7 @@ def replace_name(name, mapper):
     return name
 
 class GeneratedType:
-    def __init__(self, spec: ctlst.Type):
+    def __init__(self, spec: fspeclib.Type):
         self.spec = spec
         self.h_path = spec.get_common_h_filepath()
         self.rel_h_path = os.path.relpath(self.h_path)
@@ -62,7 +62,7 @@ class GeneratedType:
 
         type_name = self.spec.get_escaped_name()
 
-        header_guard = f'ctlst_{type_name}_h'.upper()
+        header_guard = f'fspec_{type_name}_h'.upper()
 
         fprint(f'#ifndef {header_guard}')
         fprint(f'#define {header_guard}')
@@ -76,7 +76,7 @@ class GeneratedType:
         fprint(f'#endif // {header_guard}')
 
 class GPackage:
-    def __init__(self, pkg: ctlst.Package):
+    def __init__(self, pkg: fspeclib.Package):
         self.package = pkg
 
     def process_types(self):
@@ -95,7 +95,7 @@ class GPackage:
             header_file = create_generated_file(full_path=common_filename, tag='consts')
 
             constant_id = constant.get_escaped_name().upper()
-            header_guard = f'ctlst_{constant_id}_h'.upper()
+            header_guard = f'fspec_{constant_id}_h'.upper()
 
             def fprint(*args, **kwargs):
                 print(*args, **kwargs, file=header_file)
@@ -125,7 +125,7 @@ class GPackage:
             def fprint(*args, **kwargs):
                 print(*args, **kwargs, file=header_file)
 
-            header_guard = f'ctlst_{structure_name}_h'.upper()
+            header_guard = f'fspec_{structure_name}_h'.upper()
 
             fprint(f'#ifndef {header_guard}')
             fprint(f'#define {header_guard}')
@@ -251,7 +251,7 @@ class GeneratedFunction:
     def func_name_prefix(self):
         return self.spec.get_prefix()
 
-    def __init__(self, func: ctlst.Function, processor):
+    def __init__(self, func: fspeclib.Function, processor):
         self.spec = func
         self.processor = processor
         self.spec.generator = self
@@ -259,12 +259,12 @@ class GeneratedFunction:
         self.cmake_src_list = []
         self.function_name = func.get_escaped_name()
 
-        self.cmakelists_src_define = f'F_SPEC_{self.function_name.upper()}_SRC'
-        self.cmakelists_lib_name = f'f_spec_{self.function_name.lower()}-static'
+        self.cmakelists_src_define = f'FSPEC_{self.function_name.upper()}_SRC'
+        self.cmakelists_lib_name = f'fspec_{self.function_name.lower()}-static'
 
-        self.spec_name = f'ctlst_{self.spec.get_prefix()}_spec'
-        self.handler_name = f'ctlst_{self.spec.get_prefix()}_handler'
-        self.calls_struct_name = f'ctlst_{self.spec.get_prefix()}_calls'
+        self.spec_name = f'fspec_{self.spec.get_prefix()}_spec'
+        self.handler_name = f'fspec_{self.spec.get_prefix()}_handler'
+        self.calls_struct_name = f'fspec_{self.spec.get_prefix()}_calls'
         self.generated_code_dir = 'g'
 
         # compute params function
@@ -371,7 +371,7 @@ class GeneratedFunction:
     @staticmethod
     def variable_type_str(value_type, *, force_f64=False):
         if force_f64:
-            if isinstance(value_type, ctlst.Structure):
+            if isinstance(value_type, fspeclib.Structure):
                 return value_type.get_c_type_name()
             else:
                 # FIXME when we have types checks
@@ -387,7 +387,7 @@ class GeneratedFunction:
         fprint(f'typedef struct {func.get_prefix()}_params_\n{{')
         for parameter in func.parameters:
             value_type = parameter.value_type
-            if type(value_type) is not ctlst.VectorOf:
+            if type(value_type) is not fspeclib.VectorOf:
                 fprint(f'    /**')
                 fprint(f'     * @brief {parameter.title.en}')
                 fprint(f'     */')
@@ -528,7 +528,7 @@ class GeneratedFunction:
         includes = []
         if len(dependency_types) > 0:
             for dependency_type in dependency_types:
-                if type(dependency_type) is not ctlst.VectorOf:
+                if type(dependency_type) is not fspeclib.VectorOf:
                     includes.append(dependency_type.get_common_h_filename())
             includes.sort()
 
@@ -538,7 +538,7 @@ class GeneratedFunction:
         fprint = new_file_write_call(hdr_file_name)
         f_spec = self.spec
 
-        header_guard = f'ctlst_{self.function_name}_h'.upper()
+        header_guard = f'fspec_{self.function_name}_h'.upper()
 
         fprint('/**')
         fprint(' *  Automatically-generated file. Do not edit!')
@@ -702,7 +702,7 @@ class GeneratedFunction:
                 fprint()
             fprint('        // Set default value for non mandatory parameters which are not set', )
             for parameter in f_spec.parameters:
-                if parameter.mandatory or type(parameter) == ctlst.ComputedParameter:
+                if parameter.mandatory or type(parameter) == fspeclib.ComputedParameter:
                     continue
                 fprint(f'        if (!flags.{self.changed_param_bitfield_name(parameter.name)}) {{', )
                 fprint(f'            p.{parameter.name} = {parameter.default};', )
@@ -1010,10 +1010,10 @@ class GeneratedFunction:
             impl_inputs_update()
 
         def impl_outputs_init():
-            def declare_structure_elems(root_node_name: str, struct_type_name: str, outputs: List[ctlst.Output], *, dry_run: bool):
+            def declare_structure_elems(root_node_name: str, struct_type_name: str, outputs: List[fspeclib.Output], *, dry_run: bool):
                 tree_elem_num = 0
                 for output in outputs:
-                    structure_type = isinstance(output.value_type, ctlst.Structure)
+                    structure_type = isinstance(output.value_type, fspeclib.Structure)
                     tree_sub_root = output.name + '_s_root' if structure_type else ''
                     tree_sub_root_assignment = f'topic_proclaiming_tree_t* {tree_sub_root} = ' if structure_type else ''
                     typename = 'tt_struct' if structure_type else self.scalar_topic_typename(output.value_type.name)
@@ -1254,7 +1254,7 @@ class GeneratedFunction:
             self.generate_cmkelists(cmakelists_path, self.spec.custom_cmakefile)
 
 class FuncProcessor:
-    def __init__(self, package: ctlst.Package, context: List[ctlst.Package], process_context=False):
+    def __init__(self, package: fspeclib.Package, context: List[fspeclib.Package], process_context=False):
         self.generated_funcs_list = []
         self.types_list = []
 
@@ -1278,7 +1278,7 @@ class FuncProcessor:
         self.fspec_registry_c_filename = f'{self.package.name}_registry.c'
 
     def find_type(self, alias):
-        return ctlst.find_type_in_context(alias, self.context)
+        return fspeclib.find_type_in_context(alias, self.context)
 
     def register_src_file(self, func_name):
         #tag='func_src_' + self.current_function_file_tag
@@ -1298,7 +1298,7 @@ class FuncProcessor:
 
         fprint = new_file_write_call(f'{path}/{self.spec_header_filename}')
 
-        header_guard = f'ctlst_fspec_h'.upper()
+        header_guard = f'fspecs_h'.upper()
 
         fprint('/**')
         fprint(' *  Automatically-generated file. Do not edit!')
@@ -1387,7 +1387,7 @@ class FuncProcessor:
             fprint(f'        </params>')
             fprint(f'    </fspec>')
 
-        def print_type(fprint, tp: ctlst.Type):
+        def print_type(fprint, tp: fspeclib.Type):
             fprint(f'    <ftype name="{tp.name}" title="{tp.description}">')
             if tp.description:
                 fprint(f'        <description>{tp.description}</description>')
@@ -1541,10 +1541,10 @@ if __name__ == "__main__":
         if not name or not path:
             raise Exception("Name and path must be specified in format name:path ")
 
-        pkgs.append(ctlst.load(name, path))
+        pkgs.append(fspeclib.load(name, path))
         # pkgs += find_f_spec_packages(fsp)
 
-    # ctlst.load(['core'])
+    # fspeclib.load(['core'])
 
     for p in pkgs:
         p.resolve_types(pkgs)
