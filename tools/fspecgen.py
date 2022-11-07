@@ -1363,7 +1363,7 @@ class FuncProcessor:
 
             fprint(f'        <inputs>')
             for i in fs.inputs:
-                fprint(f'            <input name="{i.name}" required="{i.mandatory}" title="{i.title}" type="{i.value_type.name}">')
+                fprint(f'            <input alias="{i.name}" required="{i.mandatory}" title="{i.title}" type="{i.value_type.name}">')
                 if i.description:
                     fprint(f'                {i.description}')
                 fprint(f'            </input>')
@@ -1371,7 +1371,7 @@ class FuncProcessor:
 
             fprint(f'        <outputs>')
             for o in fs.outputs:
-                fprint(f'            <output name="{o.name}" title="{o.title}" type="{o.value_type.name}">')
+                fprint(f'            <output alias="{o.name}" title="{o.title}" type="{o.value_type.name}">')
                 if o.description:
                     fprint(f'                {o.description}')
                 fprint(f'            </output>')
@@ -1380,7 +1380,7 @@ class FuncProcessor:
 
             for prm in fs.parameters:
                 if not prm.computable:
-                    fprint(f'            <param name="{prm.name}" title="{prm.title}" type="{prm.value_type.name}">')
+                    fprint(f'            <param alias="{prm.name}" title="{prm.title}" type="{prm.value_type.name}">')
                     if prm.description:
                         fprint(f'                {prm.description}')
                     fprint(f'            </param>')
@@ -1388,7 +1388,8 @@ class FuncProcessor:
             fprint(f'    </fspec>')
 
         def print_type(fprint, tp: fspeclib.Type):
-            fprint(f'    <ftype name="{tp.name}" title="{tp.description}">')
+            title_str = f' title="{tp.title}"' if tp.title else ''
+            fprint(f'    <ftype name="{tp.name}"{title_str}>')
             if tp.description:
                 fprint(f'        <description>{tp.description}</description>')
             fprint(f'    </ftype>')
