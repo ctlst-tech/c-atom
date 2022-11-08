@@ -9,7 +9,7 @@ Structure(
     description=LocalizedString(
         en='''Quaternion that can represent a rotation about an axis in 3-D space.'''
     ),
-    members=[
+    fields=[
         Field(
             name='w',
             title=LocalizedString(

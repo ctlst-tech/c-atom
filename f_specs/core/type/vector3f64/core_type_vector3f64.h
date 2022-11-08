@@ -7,7 +7,7 @@
 /**
  * @brief 3d vector of f64 type
  */
-typedef struct core_type_vector3f64_
+typedef struct core_type_vector3f64
 {
     /**
      * @brief The vectors's X-component

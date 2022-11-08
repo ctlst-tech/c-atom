@@ -75,6 +75,7 @@ class GeneratedType:
         fprint()
         fprint(f'#endif // {header_guard}')
 
+
 class GPackage:
     def __init__(self, pkg: fspeclib.Package):
         self.package = pkg
@@ -86,7 +87,6 @@ class GPackage:
 
             if not os.path.exists(common_filename) or override_implementation:
                 gt.generate()
-
 
     def process_constants(self):
         for constant in self.package.constants:
@@ -113,7 +113,6 @@ class GPackage:
             fprint()
 
             fprint(f'#endif // {header_guard}')
-
 
     def process_structures(self):
         for structure in self.package.structures:
@@ -147,10 +146,10 @@ class GPackage:
             if structure.description is not None:
                 fprint(f' * {structure.description.en}')
             fprint(f' */')
-            fprint(f'typedef struct {structure_name}_')
+            fprint(f'typedef struct {structure_name}')
             fprint(f'{{')
 
-            for member in structure.members:
+            for member in structure.fields:
                 fprint(f'    /**')
                 fprint(f'     * @brief {member.title.en}')
                 fprint(f'     */')
@@ -237,7 +236,6 @@ class GCallableFunction:
         rv += f'    #error "Function `{self.name}_exec` is not implemented."\n'
         rv += f'}}\n'
         return rv
-
 
 
 class GeneratedFunction:
@@ -512,7 +510,6 @@ class GeneratedFunction:
         fprint(f'}} {self.function_name}_interface_t;')
         fprint()
 
-
     def decl_params_flags(self, func, fprint):
         fprint(f'/**')
         fprint(f' * @brief Parameter flags of `{func.name}` function')
@@ -599,7 +596,6 @@ class GeneratedFunction:
         fprint()
 
         fprint(f'#endif // {header_guard}')
-
 
     def decl_impl_set_params(self, set_params_filename):
 
@@ -1028,7 +1024,7 @@ class GeneratedFunction:
                     if structure_type:
                         tree_elem_num += declare_structure_elems(tree_sub_root,
                                                                  output.value_type.get_c_type_name(),
-                                                                 output.value_type.members, dry_run=dry_run)  # FIXME not inheritance based prop
+                                                                 output.value_type.fields, dry_run=dry_run)  # FIXME not inheritance based prop
                         if not dry_run:
                             fprint()
 
@@ -1141,18 +1137,18 @@ class GeneratedFunction:
             fprint(f'}}')
             fprint()
 
-        if (self.spec.has_parameters()):
+        if self.spec.has_parameters():
             gen_wrapper(self.callable_call_set_params, self.callable_set_params,
                         arg_list=['&interface->p', self.callable_call_set_params.arguments[-2].name,
                                   self.callable_call_set_params.arguments[-1].name]
                         )
 
-        if (self.spec.has_inputs()):
+        if self.spec.has_inputs():
             gen_wrapper(self.callable_call_init_inputs, self.callable_interface_inputs_init,
                         arg_list=['interface', 'conn_spec', 'mounting_td'])
 
 
-        if (self.spec.has_outputs()):
+        if self.spec.has_outputs():
             gen_wrapper(self.callable_call_init_outputs, self.callable_interface_outputs_init,
                         arg_list=['interface', 'conn_spec', 'mounting_td', 'func_name'])
 
@@ -1253,10 +1249,12 @@ class GeneratedFunction:
         if not self.spec.custom_cmakefile or not os.path.exists(cmakelists_path) or cmakefile_override_implementation:
             self.generate_cmkelists(cmakelists_path, self.spec.custom_cmakefile)
 
+
 class FuncProcessor:
     def __init__(self, package: fspeclib.Package, context: List[fspeclib.Package], process_context=False):
         self.generated_funcs_list = []
         self.types_list = []
+        self.types_structures_list = []
 
         self.spec_header_filename = 'fspecs.h'
 
@@ -1270,6 +1268,8 @@ class FuncProcessor:
                     self.generated_funcs_list.append(f)
                 for t in pkg.types:
                     self.types_list.append(t)
+                for t in pkg.structures:
+                    self.types_structures_list.append(t)
         else:
             for function in package.functions:
                 f = GeneratedFunction(function, self)
@@ -1387,16 +1387,24 @@ class FuncProcessor:
             fprint(f'        </params>')
             fprint(f'    </fspec>')
 
-        def print_type(fprint, tp: fspeclib.Type):
+        def print_type(fprint, tp: Union[fspeclib.Type, fspeclib.Structure]):
             title_str = f' title="{tp.title}"' if tp.title else ''
-            fprint(f'    <ftype name="{tp.name}"{title_str}>')
+
+            tag = 'type' if not isinstance(tp, fspeclib.Structure) else 'type_structure'
+
+            fprint(f'    <{tag} name="{tp.name}"{title_str}>')
             if tp.description:
                 fprint(f'        <description>{tp.description}</description>')
-            fprint(f'    </ftype>')
+            if isinstance(tp, fspeclib.Structure):
+                for field in tp.fields:
+                    fprint(f'         <field name="{field.name}" title="{field.title}" type="{field.value_type.name}"/>')
+                    if field.description:
+                        fprint(f'            <description>{field.description}</description>')
+            fprint(f'    </{tag}>')
 
         local_fprint('<fspecs>')
 
-        for t in self.types_list:
+        for t in [*self.types_list, *self.types_structures_list]:
             print_type(local_fprint, t)
 
         local_fprint()

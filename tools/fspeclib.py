@@ -21,9 +21,9 @@ def find_type_in_context(type_alias, context):
 class Package:
     def __init__(self):
         self.constants = []
-        self.structures = []
-        self.types = []
-        self.functions = []
+        self.structures: List[Structure] = []
+        self.types: List[Type] = []
+        self.functions: List[Function] = []
         self.root_path = ''
         self.name = ''
         self.cmake_target = None
@@ -48,8 +48,8 @@ class Package:
             return find_type_in_context(type_alias, context)
 
         for structure in self.structures:
-            for member in structure.members:
-                member.value_type = member.value_type.resolve(resolve_lambda)
+            for field in structure.fields:
+                field.value_type = field.value_type.resolve(resolve_lambda)
 
         # Resolve type reference in function
         for function in self.functions:
@@ -473,6 +473,7 @@ class Field:
                  value_type: Union[str, ValueType]):
         self.name = name
         self.title = LocalizedString.make(title)
+        self.description = description
         self.value_type = ValueType.make(value_type)
 
 
@@ -481,9 +482,9 @@ class Structure(Declarable):
                  name: str,
                  title: Union[str, LocalizedString],
                  description: Optional[Union[str, LocalizedString]] = None,
-                 members: List[Field]):
+                 fields: List[Field]):
         super().__init__(name=name, title=title, description=description)
-        self.members = members
+        self.fields: List[Field] = fields
         curr_pkg.structures.append(self)
 
     def get_c_type_name(self):
@@ -492,7 +493,7 @@ class Structure(Declarable):
     def get_dependency_types(self):
         dependency_types = set()
 
-        for member in self.members:
+        for member in self.fields:
             dependency_types.add(member.value_type)
 
         if None in dependency_types:

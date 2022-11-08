@@ -5,7 +5,7 @@ Structure(
     title=LocalizedString(
         en='3d vector of f64 type'
     ),
-    members=[
+    fields=[
         Field(
             name='x',
             title=LocalizedString(

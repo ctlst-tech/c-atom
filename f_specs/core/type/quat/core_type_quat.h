@@ -8,7 +8,7 @@
  * @brief Quaternion
  * Quaternion that can represent a rotation about an axis in 3-D space.
  */
-typedef struct core_type_quat_
+typedef struct core_type_quat
 {
     /**
      * @brief The quaternion's W-component
