@@ -286,12 +286,19 @@ fspec_rv_t flow_init_inputs(void *dhandle, const func_conn_spec_t *conn_spec, es
         }
         inputs_bridging_spec[i].value = inputs_bridging_spec[i].alias = flow_dh->inputs_spec[i]->name;
     }
-
     inputs_bridging_spec[i].alias = NULL;
+
     if (i > 0) {
+        eswb_topic_descr_t inputs_dir_td;
+        eswb_rv_t erv = eswb_mkdir_nested(flow_dh->root_td, "inputs", &inputs_dir_td);
+        if (erv != eswb_e_ok) {
+            dbg_msg("eswb_mkdir_nested failed: %s", eswb_strerror(erv));
+            errs++;
+        }
+
         frv = bridge_the_flow(conn_spec, inputs_bridging_spec,
                               flow_dh->mounted_to_dir ? flow_dh->parent_root_td : 0,
-                              flow_dh->root_td, &flow_dh->in_bridges, &flow_dh->in_bridges_num);
+                              inputs_dir_td, &flow_dh->in_bridges, &flow_dh->in_bridges_num);
         if (frv != fspec_rv_ok) {
             dbg_msg_ec(frv, "bridge_the_flow failed");
             errs++;
@@ -351,7 +358,7 @@ fspec_rv_t flow_pre_exec_init(void *dhandle) {
     unsigned err_cnt = 0;
 
     while (flow_dh->functions_batch[i].h != NULL) {
-        rv = flow_dh->functions_batch[i].h->calls->pre_exec_init(flow_dh->function_handles_batch[i]);
+        rv = function_pre_exec_init(flow_dh->functions_batch[i].h, flow_dh->function_handles_batch[i]);
         if ((rv != fspec_rv_ok) && (rv != fspec_rv_not_supported)) {
             err_cnt++;
         }
@@ -372,7 +379,7 @@ void flow_exec(void *dhandle) {
 
     i = 0;
     while (flow_dh->functions_batch[i].h != NULL) {
-        flow_dh->functions_batch[i].h->calls->exec(flow_dh->function_handles_batch[i]);
+        function_exec(flow_dh->functions_batch[i].h, flow_dh->function_handles_batch[i]);
         i++;
     }
 
