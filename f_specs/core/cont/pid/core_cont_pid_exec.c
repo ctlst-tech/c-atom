@@ -9,13 +9,13 @@ void core_cont_pid_exec(
 )
 {
     // if enable input is not connected PID is always enabled
-    int pid_enabled = (i->optional_in_enable_connected && i->enable) || (!i->optional_in_enable_connected);
+    int pid_enabled = (i->optional_inputs_flags.enable && i->enable) || (!i->optional_inputs_flags.enable);
 
     if (pid_enabled) {
         double const dt = state->time_from_last_iteration + injection->dt;
         double const error = i->input - i->feedback;
 
-        if (i->optional_in_preset_connected && !state->activated) {
+        if (i->optional_inputs_flags.preset && !state->activated) {
             state->integral = i->preset;
             state->activated = TRUE;
         } else {

@@ -65,6 +65,7 @@ typedef fspec_rv_t (*fspec_init_inputs_f)(void *interface, const func_conn_spec_
 typedef fspec_rv_t (*fspec_init_outputs_f)(void *interface, const func_conn_spec_t *conn_spec,
         eswb_topic_descr_t mounting_td, const char *func_name);
 typedef fspec_rv_t (*fspec_set_param_f)(void *interface, const func_param_t *params, int initial_call);
+typedef fspec_rv_t (*fspec_pre_exec_init_f)(void *interface);
 typedef void (*fspec_exec_f)(void *interface);
 
 
@@ -85,6 +86,7 @@ typedef struct function_calls {
     const fspec_init_inputs_f init_inputs;
     const fspec_init_outputs_f init_outputs;
 
+    const fspec_pre_exec_init_f pre_exec_init;
     const fspec_exec_f exec;
     const fspec_set_param_f set_params;
 } function_calls_t;
@@ -153,6 +155,7 @@ fspec_rv_t function_init_outputs(const function_handler_t *fh, void *interface,
                                  const func_conn_spec_t *conn_spec, eswb_topic_descr_t mounting_td, const char *func_name);
 fspec_rv_t
 function_set_param(const function_handler_t *fh, void *interface, const func_param_t *params, int initial_call);
+fspec_rv_t function_pre_exec_init(const function_handler_t *fh, void *interface);
 void function_exec(const function_handler_t *fh, void *interface);
 
 const char *fspec_errmsg(fspec_rv_t c);

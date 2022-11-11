@@ -6,6 +6,7 @@ Function(
     title=LocalizedString(
         en='Moving average 3 channels function'
     ),
+    has_pre_exec_init_call=True,
     inputs=[
         Input(
             name='i1',

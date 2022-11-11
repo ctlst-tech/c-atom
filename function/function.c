@@ -118,6 +118,14 @@ function_set_param(const function_handler_t *fh, void *interface, const func_par
     }
 }
 
+fspec_rv_t function_pre_exec_init(const function_handler_t *fh, void *interface) {
+    if (fh->calls->pre_exec_init != NULL) {
+        return fh->calls->pre_exec_init(interface);
+    } else {
+        return fspec_rv_not_supported;
+    }
+}
+
 void function_exec(const function_handler_t *fh, void *interface){
     fh->calls->exec(interface);
 }

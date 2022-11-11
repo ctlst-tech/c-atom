@@ -384,6 +384,22 @@ int start_task(swsys_task_handle_t *th){
 
 int swsys_service_start(const swsys_service_t *s);
 
+static fspec_rv_t swsys_call_pre_exec_init (void *dhandle) {
+    swsys_func_dhandle_t *ssdh = (swsys_func_dhandle_t *)dhandle;
+    const swsys_t *swsys = ssdh->swsys;
+
+    int err_cnt = 0;
+
+    for (int i = 0; i < swsys->tasks_num; i++) {
+        fspec_rv_t rv = function_pre_exec_init(&swsys->tasks[i].func_handler, swsys->tasks[i].func_call_dhandle);
+        if ((rv != fspec_rv_ok) && (rv != fspec_rv_not_supported)) {
+            err_cnt++;
+        }
+    }
+
+    return err_cnt > 0 ? fspec_rv_initerr : fspec_rv_ok;
+}
+
 static void swsys_call_exec (void *dhandle) {
     swsys_func_dhandle_t *ssdh = (swsys_func_dhandle_t *)dhandle;
 
@@ -430,6 +446,7 @@ static const function_calls_t swsys_calls = {
     .init_outputs = swsys_call_init_outputs,
     .init_inputs = swsys_call_init_inputs,
     .set_params = swsys_call_set_param,
+    .pre_exec_init = swsys_call_pre_exec_init,
     .exec = swsys_call_exec
 };
 
@@ -474,6 +491,8 @@ swsys_rv_t swsys_top_module_start(swsys_t *swsys) {
         return swsys_e_initerr;
     }
 
+    function_pre_exec_init(&fh, dhandle);
+    
     function_exec(&fh, dhandle);
 
     return swsys_e_ok;

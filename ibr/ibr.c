@@ -210,6 +210,7 @@ static const function_calls_t ibr_calls = {
         .init_outputs = ibr_init_outputs,
         .init_inputs = ibr_init_inputs,
         .set_params = ibr_set_params,
+        .pre_exec_init = NULL,
         .exec = ibr_exec
 };
 

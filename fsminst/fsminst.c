@@ -414,6 +414,7 @@ static function_calls_t fsminst_calls = {
     .init_outputs = fsm_init_outputs,
     .init_inputs = fsm_init_inputs,
     .set_params = fsm_set_params,
+    .pre_exec_init = NULL,
     .exec = fsm_exec
 };
 

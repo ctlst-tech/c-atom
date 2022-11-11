@@ -344,9 +344,27 @@ fspec_rv_t flow_set_params(void *dhandle, const func_param_t *params, int initia
 }
 
 
+fspec_rv_t flow_pre_exec_init(void *dhandle) {
+    flow_interface_t *flow_dh = (flow_interface_t *) dhandle;
+    unsigned i = 0;
+    fspec_rv_t rv;
+    unsigned err_cnt = 0;
+
+    while (flow_dh->functions_batch[i].h != NULL) {
+        rv = flow_dh->functions_batch[i].h->calls->pre_exec_init(flow_dh->function_handles_batch[i]);
+        if ((rv != fspec_rv_ok) && (rv != fspec_rv_not_supported)) {
+            err_cnt++;
+        }
+        i++;
+    }
+
+    return err_cnt > 0 ? fspec_rv_initerr : fspec_rv_ok;
+}
+
+
 void flow_exec(void *dhandle) {
     flow_interface_t *flow_dh = (flow_interface_t *) dhandle;
-    int i;
+    unsigned i;
 
     for (i = 0; i < flow_dh->in_bridges_num; i++) {
         eswb_bridge_update(flow_dh->in_bridges[i]);
@@ -373,7 +391,7 @@ fspec_rv_t flow_find_invocation(flow_interface_t *flow_dh, const char *inv_name,
         return fspec_rv_inval_param;
     }
 
-    for (int i = 0; flow_dh->functions_batch[i].h != NULL; i++) {
+    for (unsigned i = 0; flow_dh->functions_batch[i].h != NULL; i++) {
         if (strcmp(flow_dh->functions_batch[i].name, inv_name) == 0){
             *inv = &flow_dh->functions_batch[i];
             *dhandle = flow_dh->function_handles_batch[i];
@@ -405,5 +423,6 @@ static const function_calls_t flow_calls_template = {
     .init_outputs = flow_init_outputs,
     .init_inputs = flow_init_inputs,
     .set_params = flow_set_params,
+    .pre_exec_init = flow_pre_exec_init,
     .exec = flow_exec
 };

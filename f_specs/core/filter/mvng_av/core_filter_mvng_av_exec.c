@@ -9,6 +9,11 @@ static core_type_f64_t selection[SELECTION_SIZE][3];
 static core_type_f64_t output[3];
 static int counter = 0;
 
+fspec_rv_t core_filter_mvng_av_pre_exec_init(core_filter_mvng_av_state_t *state) {
+
+    return fspec_rv_ok;
+}
+
 void core_filter_mvng_av_exec(const core_filter_mvng_av_inputs_t *i, core_filter_mvng_av_outputs_t *o, core_filter_mvng_av_state_t *state)
 {
     if (counter < SELECTION_SIZE) {

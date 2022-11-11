@@ -230,18 +230,28 @@ class GCallableFunction:
         rv += ')'
         return rv
 
-    def dummy_implementation(self):
+    def dummy_implementation(self, dummy_call_name):
         rv  = f'{{\n'
-        rv += f'    // TODO: Implement flow_exec method for `{self.name}`\n'
-        rv += f'    #error "Function `{self.name}_exec` is not implemented."\n'
+        rv += f'    // TODO: Implement {dummy_call_name} method for `{self.name}`\n'
+        rv += f'    #error "Function `{dummy_call_name}` is not implemented."\n'
         rv += f'}}\n'
         return rv
 
 
 class GeneratedFunction:
+
+    @staticmethod
+    def optional_in_struct_name():
+        return f'optional_inputs_flags'
+
+    @staticmethod
+    def optional_in_struct_typename(funcname: str):
+        return f'{funcname}_{GeneratedFunction.optional_in_struct_name()}_t'
+
     @staticmethod
     def optional_input_bitfield_name(in_name: str):
-        return f'optional_in_{in_name}_connected'
+        return f'{GeneratedFunction.optional_in_struct_name()}.{in_name}'
+
     @staticmethod
     def changed_param_bitfield_name(p_name: str):
         return f'changed_param_{p_name}'
@@ -277,6 +287,7 @@ class GeneratedFunction:
                                                                     ])
 
         exec_func_args = []
+        pre_exec_init_func_args = []
 
         # flow_update function
         self.type_inputs = GType(typename=f'{func.get_prefix()}_inputs_t')
@@ -288,23 +299,37 @@ class GeneratedFunction:
         self.type_void = GType(typename='void')
         self.type_char = GType(typename='char')
         self.type_int = GType(typename='int')
+        self.type_function_spec = GType(typename='struct function_spec')
         self.type_eswb_topic_descr = GType(typename='eswb_topic_descr_t')
-
+        self.type_optional_inputs_flags = GType(typename=self.optional_in_struct_typename(func.get_prefix()))
 
         if func.has_inputs():
             exec_func_args.append(GArgument(type=self.type_inputs, varname='i', ptr=True, const=True))
+            if func.has_optional_inputs():
+                pre_exec_init_func_args.append(GArgument(type=self.type_optional_inputs_flags, varname='input_flags', ptr=True, const=True))
+
         if func.has_outputs():
             exec_func_args.append(GArgument(type=self.type_outputs, varname='o', ptr=True))
         if func.has_parameters():
-            exec_func_args.append(GArgument(type=self.type_params, varname='p', ptr=True, const=True))
+            a = GArgument(type=self.type_params, varname='p', ptr=True, const=True)
+            exec_func_args.append(a)
+            pre_exec_init_func_args.append(a)
         if func.has_state():
-            exec_func_args.append(GArgument(type=self.type_state, varname='state', ptr=True))
+            a = GArgument(type=self.type_state, varname='state', ptr=True)
+            exec_func_args.append(a)
+            pre_exec_init_func_args.append(a)
         if func.has_injection():
-            exec_func_args.append(GArgument(type=self.type_injection, varname='injection', ptr=True, const=True))
+            a = GArgument(type=self.type_injection, varname='injection', ptr=True, const=True)
+            exec_func_args.append(a)
+            pre_exec_init_func_args.append(a)
 
         self.callable_exec = GCallableFunction(name=f'{self.func_name_prefix()}_exec',
                                                return_type='void',
                                                arguments=exec_func_args)
+
+        self.callable_pre_exec_init = GCallableFunction(name=f'{self.func_name_prefix()}_pre_exec_init',
+                                                        return_type='fspec_rv_t',
+                                                        arguments=pre_exec_init_func_args)
 
         # interface calls
         self.type_interface = GType(typename=f'{func.get_prefix()}_interface_t')
@@ -329,11 +354,13 @@ class GeneratedFunction:
         self.callable_interface_outputs_update = GCallableFunction(name=f'{self.func_name_prefix()}_interface_outputs_update',
                                                                    return_type='fspec_rv_t', arguments=[interface_calls_arg])
 
-        self.callable_interface_exec = GCallableFunction(name=f'{self.func_name_prefix()}_interface_update',
+        self.callable_interface_pre_exec_init \
+            = GCallableFunction(name=f'{self.func_name_prefix()}_interface_pre_exec_init',
+                                return_type='fspec_rv_t',
+                                arguments=[interface_calls_arg])
+
+        self.callable_interface_update = GCallableFunction(name=f'{self.func_name_prefix()}_interface_update',
                                                            return_type='void', arguments=[interface_calls_arg])
-
-
-
 
         # set params func
         self.type_func_param = GType(typename='func_param_t')
@@ -349,6 +376,7 @@ class GeneratedFunction:
         # func calls
         data_handle = GArgument(type=self.type_void, varname='dh', ptr=True)
 
+        # Note: these calls are forming function_calls_t which is part of function_handler_t
         self.callable_call_init_inputs = GCallableFunction(name=f'{self.func_name_prefix()}_call_init_inputs',
                                                       return_type='fspec_rv_t',
                                                       arguments=[data_handle, connect_spec, mounting_td])
@@ -361,10 +389,14 @@ class GeneratedFunction:
                                                     return_type='void',
                                                     arguments=[GArgument(type=self.type_void, varname='dh', ptr=True)])
 
+        self.callable_call_pre_exec_init = \
+            GCallableFunction(name=f'{self.func_name_prefix()}_call_pre_exec_init',
+                              return_type='fspec_rv_t',
+                              arguments=[GArgument(type=self.type_void, varname='dh', ptr=True)])
+
         self.callable_call_set_params = GCallableFunction(name=f'{self.func_name_prefix()}_call_set_params',
                                                       return_type='fspec_rv_t',
                                                       arguments=[data_handle, params_pairs, initial_call_flag])
-
 
     @staticmethod
     def variable_type_str(value_type, *, force_f64=False):
@@ -382,31 +414,47 @@ class GeneratedFunction:
         fprint(f'/**')
         fprint(f' * @brief Parameters of `{func.name}` function')
         fprint(f' */')
-        fprint(f'typedef struct {func.get_prefix()}_params_\n{{')
+        fprint(f'typedef struct {func.get_prefix()}_params_{{')
         for parameter in func.parameters:
             value_type = parameter.value_type
             if type(value_type) is not fspeclib.VectorOf:
-                fprint(f'    /**')
-                fprint(f'     * @brief {parameter.title.en}')
-                fprint(f'     */')
-                fprint(f'    {self.variable_type_str(value_type)} {parameter.name};')
-                fprint()
+                fprint(f'    {self.variable_type_str(value_type)} {parameter.name};  /// {parameter.title.en}')
         fprint(f'}} {func.get_prefix()}_params_t;')
         fprint()
 
+    def decl_optional_input_flags(self, func, fprint):
+
+        if not func.has_optional_inputs():
+            return False
+
+        fprint(f'/**')
+        fprint(f' * @brief Optional inputs connectivity flags structure for `{func.name}` function')
+        fprint(f' */')
+        fprint(f'typedef struct {{')
+
+        for inp in func.inputs:
+            if not inp.mandatory:
+                fprint(f'    uint32_t {inp.name}:1;')
+
+        fprint(f'}} {self.optional_in_struct_typename(func.get_prefix())};')
+        fprint()
+
+        return True
+
     def decl_inputs(self, func, fprint):
+        has_optional_inputs = self.decl_optional_input_flags(func, fprint)
+
         fprint(f'/**')
         fprint(f' * @brief Inputs of `{func.name}` function')
         fprint(f' */')
-        fprint(f'typedef struct {func.get_prefix()}_inputs_\n{{')
+        fprint(f'typedef struct {func.get_prefix()}_inputs_ {{')
         for inp in func.inputs:
             value_type = inp.value_type
-            fprint(f'    /** @brief {inp.title.en}*/')
-            fprint(f'    {self.variable_type_str(value_type)} {inp.name};')
+            fprint(f'    {self.variable_type_str(value_type)} {inp.name};  /// {inp.title.en}')
         fprint()
-        for inp in func.inputs:
-            if not inp.mandatory:
-                fprint(f'    uint32_t {self.optional_input_bitfield_name(inp.name)}:1;')
+
+        if has_optional_inputs:
+            fprint(f'    {self.optional_in_struct_typename(func.get_prefix())} {self.optional_in_struct_name()};')
 
         fprint(f'}} {func.get_prefix()}_inputs_t;')
         fprint()
@@ -415,13 +463,10 @@ class GeneratedFunction:
         fprint(f'/**')
         fprint(f' * @brief Outputs of `{func.name}` function')
         fprint(f' */')
-        fprint(f'typedef struct {func.get_prefix()}_outputs_\n{{')
+        fprint(f'typedef struct {func.get_prefix()}_outputs_ {{')
         for output in func.outputs:
             value_type = output.value_type
-            fprint(f'    /**')
-            fprint(f'     * @brief {output.title.en}')
-            fprint(f'     */')
-            fprint(f'    {self.variable_type_str(value_type)} {output.name};')
+            fprint(f'    {self.variable_type_str(value_type)} {output.name}; /// {output.title.en}')
             fprint()
         fprint(f'}} {func.get_prefix()}_outputs_t;')
         fprint()
@@ -430,14 +475,10 @@ class GeneratedFunction:
         fprint(f'/**')
         fprint(f' * @brief State variables of `{func.name}` function')
         fprint(f' */')
-        fprint(f'typedef struct {func.get_prefix()}_state_\n{{')
+        fprint(f'typedef struct {func.get_prefix()}_state_ {{')
         for variable in func.state:
             value_type = variable.value_type
-            fprint(f'    /**')
-            fprint(f'     * @brief {variable.title.en}')
-            fprint(f'     */')
-            fprint(f'    {self.variable_type_str(value_type)} {variable.name};') # FIXME force_f64=False
-            fprint()
+            fprint(f'    {self.variable_type_str(value_type)} {variable.name};  /// {variable.title.en}')
         fprint(f'}} {func.get_prefix()}_state_t;')
         fprint()
 
@@ -445,20 +486,16 @@ class GeneratedFunction:
         fprint(f'/**')
         fprint(f' * @brief Injections for `{func.name}` function')
         fprint(f' */')
-        fprint(f'typedef struct {func.get_prefix()}_injection_\n{{')
+        fprint(f'typedef struct {func.get_prefix()}_injection_ {{')
 
         if func.injection.timedelta:
-            fprint(f'    /**')
-            fprint(f'     * @brief Time delta from previous iteration (measured in seconds)')
-            fprint(f'     */')
-            fprint(f'    {self.processor.find_type("core.type.f64").get_c_type_name()} dt;')
+            doc = f'Time delta from previous iteration (measured in seconds)'
+            fprint(f'    {self.processor.find_type("core.type.f64").get_c_type_name()} dt;  /// {doc}')
             fprint()
 
         if func.injection.timestamp:
-            fprint(f'    /**')
-            fprint(f'     * @brief Current timestamp (measured in microseconds)')
-            fprint(f'     */')
-            fprint(f'    {self.processor.find_type("core.type.u64").get_c_type_name()} timestamp;')
+            doc = f'Current timestamp (measured in microseconds)'
+            fprint(f'    {self.processor.find_type("core.type.u64").get_c_type_name()} timestamp;  /// {doc}')
             fprint()
 
         fprint(f'}} {func.get_prefix()}_injection_t;')
@@ -467,8 +504,7 @@ class GeneratedFunction:
     def decl_interface_structs(self, func, fprint):
 
         if func.has_inputs() or func.has_outputs():
-            fprint(f'typedef struct {self.function_name}_eswb_descriptors_')
-            fprint(f'{{')
+            fprint(f'typedef struct {self.function_name}_eswb_descriptors_ {{')
 
             if func.has_inputs:
                 for input in func.inputs:
@@ -480,8 +516,7 @@ class GeneratedFunction:
             fprint(f'}} {self.function_name}_eswb_descriptors_t;')
             fprint()
 
-        fprint(f'typedef struct {self.function_name}_interface_')
-        fprint(f'{{')
+        fprint(f'typedef struct {self.function_name}_interface_ {{')
 
         #fprint(f'    char *name;')
         #fprint(f'    eswb_topic_descr_t mnt_pnt_td;')
@@ -514,7 +549,7 @@ class GeneratedFunction:
         fprint(f'/**')
         fprint(f' * @brief Parameter flags of `{func.name}` function')
         fprint(f' */')
-        fprint(f'typedef struct {func.get_prefix()}_params_flags_\n{{')
+        fprint(f'typedef struct {func.get_prefix()}_params_flags_ {{')
         for parameter in func.parameters:
             fprint(f'    uint64_t {self.changed_param_bitfield_name(parameter.name)}:1;')
         fprint(f'}} {func.get_prefix()}_params_flags_t;')
@@ -561,6 +596,7 @@ class GeneratedFunction:
             for include in includes:
                 fprint(f'#include "{include}"')
 
+            fprint()
             # fprint(f'#include "core_type_f64.h" // FIXME in generator eventually')  # FIXME when we will have type checking
             # fprint()
 
@@ -591,6 +627,9 @@ class GeneratedFunction:
         if f_spec.has_compute_parameters():
             fprint(f'{self.callable_compute_params.prototype()}')
             fprint()
+
+        if f_spec.has_pre_exec_init_call:
+            fprint(f'{self.callable_pre_exec_init.prototype()}')
 
         fprint(f'{self.callable_exec.prototype()}')
         fprint()
@@ -764,9 +803,12 @@ class GeneratedFunction:
         fprint(f'#include "{f_spec.get_name()}.h"', )
         fprint()
 
-        fprint(f'{self.callable_exec.declaration()}')
-        fprint(f'{self.callable_exec.dummy_implementation()}')
+        if self.spec.has_pre_exec_init_call:
+            fprint(f'{self.callable_pre_exec_init.declaration()}')
+            fprint(f'{self.callable_pre_exec_init.dummy_implementation(self.callable_exec.name)}')
 
+        fprint(f'{self.callable_exec.declaration()}')
+        fprint(f'{self.callable_exec.dummy_implementation(self.callable_exec.name)}')
 
     def decl_impl_compute_params(self, impl_compute_params_filename):
         # Generate implementation for configure state
@@ -845,11 +887,18 @@ class GeneratedFunction:
 
         if self.spec.has_inputs():
             fprint(f'{self.callable_call_init_inputs.prototype()}')
+            fprint()
 
         if self.spec.has_outputs():
             fprint(f'{self.callable_call_init_outputs.prototype()}')
+            fprint()
+
+        if self.spec.has_pre_exec_init_call:
+            fprint(f'{self.callable_call_pre_exec_init.prototype()}')
+            fprint()
 
         fprint(f'{self.callable_call_exec.prototype()}')
+        fprint()
 
         if f_spec.has_parameters():
             fprint(f'{self.callable_call_set_params.prototype()}')
@@ -871,6 +920,9 @@ class GeneratedFunction:
         init_out_sym = self.callable_call_init_outputs.symbol() if self.spec.has_outputs() else 'NULL'
         fprint(f'    .init_inputs = {init_in_sym},')
         fprint(f'    .init_outputs = {init_out_sym},')
+        pre_exec_init = self.callable_call_pre_exec_init.symbol() if self.spec.has_pre_exec_init_call else 'NULL'
+
+        fprint(f'    .pre_exec_init = {pre_exec_init},')
         fprint(f'    .exec = {self.callable_call_exec.symbol()},')
         sp = self.callable_call_set_params.symbol() if f_spec.has_parameters() else 'NULL'
         fprint(f'    .set_params = {sp}')
@@ -1074,9 +1126,40 @@ class GeneratedFunction:
             impl_outputs_init()
             impl_outputs_update()
 
+        def impl_interface_pre_exec_init():
+            fprint(f'{self.callable_interface_pre_exec_init.declaration()}')
+            fprint(f'{{')
+
+            # update_curr_time = False
+            if f_func.has_injection():
+                if f_func.injection.timedelta:
+                    # update_curr_time = True
+                    fprint('    if (interface->prev_exec_time_inited) {')
+                    fprint('        function_getdeltatime(ft_monotonic, &interface->prev_exec_time, dtp_update_prev, &interface->injection.dt);')
+                    fprint('    } else {')
+                    fprint('        function_gettime(ft_monotonic, &interface->prev_exec_time);')
+                    fprint('        interface->prev_exec_time_inited = -1;')
+                    fprint('        interface->injection.dt = 0;')
+                    fprint('    }')
+                    fprint()
+
+
+            arguments = []
+            if f_func.has_optional_inputs():
+                arguments.append(f'&interface->i.{self.optional_in_struct_name()}')
+            if f_func.has_parameters():
+                arguments.append('&interface->p')
+            if f_func.has_state():
+                arguments.append('&interface->state')
+            if f_func.has_injection():
+                arguments.append('&interface->injection')
+            fprint(f'    return {self.callable_pre_exec_init.call(arguments)}')
+
+            fprint(f'}}')
+            fprint()
 
         def impl_interface_exec():
-            fprint(f'{self.callable_interface_exec.declaration()}')
+            fprint(f'{self.callable_interface_update.declaration()}')
             fprint(f'{{')
 
             if f_func.has_inputs():
@@ -1113,13 +1196,11 @@ class GeneratedFunction:
                 fcall = self.callable_interface_outputs_update.call(['interface'])
                 fprint(f'    {fcall}')
 
-            # if update_curr_time:
-            #     fprint()
-            #     fprint('    interface->prev_update_time = curr_time;')
-
-
             fprint(f'}}')
             fprint()
+
+        if f_func.has_pre_exec_init_call:
+            impl_interface_pre_exec_init()
 
         impl_interface_exec()
 
@@ -1147,13 +1228,15 @@ class GeneratedFunction:
             gen_wrapper(self.callable_call_init_inputs, self.callable_interface_inputs_init,
                         arg_list=['interface', 'conn_spec', 'mounting_td'])
 
-
         if self.spec.has_outputs():
             gen_wrapper(self.callable_call_init_outputs, self.callable_interface_outputs_init,
                         arg_list=['interface', 'conn_spec', 'mounting_td', 'func_name'])
 
+        if self.spec.has_pre_exec_init_call:
+            gen_wrapper(self.callable_call_pre_exec_init, self.callable_interface_pre_exec_init)
+
         ## flow_update
-        gen_wrapper(self.callable_call_exec, self.callable_interface_exec, do_ret=False)
+        gen_wrapper(self.callable_call_exec, self.callable_interface_update, do_ret=False)
 
         fprint(close_file=True)
 
@@ -1201,10 +1284,12 @@ class GeneratedFunction:
         fn_compute_params_c = f'{self.function_name}_compute_params.c'
 
         # generated
-        fn_spec_c = f'{self.generated_code_dir}/{self.function_name}_spec.c'
-        fn_set_params_c = f'{self.generated_code_dir}/{self.function_name}_set_params.c'
-        fn_interface_c = f'{self.generated_code_dir}/{self.function_name}_interface.c'
-        fn_h = f'{self.generated_code_dir}/{self.function_name}.h'
+        common_generated_basepath = f'{self.generated_code_dir}/{self.function_name}'
+
+        fn_spec_c = f'{common_generated_basepath}_spec.c'
+        fn_set_params_c = f'{common_generated_basepath}_set_params.c'
+        fn_interface_c = f'{common_generated_basepath}_interface.c'
+        fn_h = f'{common_generated_basepath}.h'
 
         full_gen_path = f'{self.spec.directory}/{self.generated_code_dir}'
         if not os.path.exists(full_gen_path):

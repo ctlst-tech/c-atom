@@ -369,6 +369,7 @@ class Function(Declarable):
                  outputs: Optional[List[Output]] = None,
                  state: Optional[List[Variable]] = None,
                  injection: Optional[Injection] = None,
+                 has_pre_exec_init_call = False,
                  custom_cmakefile: bool = False,
                  dynamic: bool = False):
         super().__init__(name=name, title=title, description=description, omit_validation=dynamic)
@@ -379,7 +380,7 @@ class Function(Declarable):
         self.state = state if state is not None else []
         self.injection = injection if injection is not None else Injection()
         self.custom_cmakefile = custom_cmakefile
-
+        self.has_pre_exec_init_call = has_pre_exec_init_call
         self.generator = None
 
         if not dynamic:
@@ -393,6 +394,12 @@ class Function(Declarable):
 
     def has_inputs(self):
         return len(self.inputs) > 0
+
+    def has_optional_inputs(self):
+        for inp in self.inputs:
+            if not inp.mandatory:
+                return True
+        return False
 
     def has_outputs(self):
         return len(self.outputs) > 0
