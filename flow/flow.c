@@ -37,12 +37,12 @@ int flow_batch_size(const function_inside_flow_t *batch_array) {
     return i;
 }
 
-static const function_calls_t flow_calls_template;
+static const function_calls_t flow_calls;
 
 void flow_get_handler(function_flow_t *flow, function_handler_t *fh) {
     fh->spec = &flow->spec;
     fh->extension_handler = &flow->cfg; // must be aligned with flow_init type
-    fh->calls = &flow_calls_template;
+    fh->calls = &flow_calls;
 }
 
 static int check_connectivity(const char *flow_name, const char *inv_name, const char *spec_name, const char *entity,
@@ -424,7 +424,7 @@ fspec_rv_t flow_set_invocation_params(flow_interface_t *flow_dh, const char *inv
     return rv;
 }
 
-static const function_calls_t flow_calls_template = {
+static const function_calls_t flow_calls = {
     .interface_handle_size = sizeof(flow_interface_t),
     .init = flow_init,
     .init_outputs = flow_init_outputs,
