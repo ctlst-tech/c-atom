@@ -1,7 +1,3 @@
-//
-// Created by Ivan Makarov on 21/9/21.
-//
-
 #ifndef HW_BRIDGE_CLK_H
 #define HW_BRIDGE_CLK_H
 

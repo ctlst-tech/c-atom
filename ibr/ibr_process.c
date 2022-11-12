@@ -1,7 +1,3 @@
-//
-// Created by Ivan Makarov on 5/4/22.
-//
-
 #include <stdint.h>
 #include <stdlib.h>
 #include <eswb/api.h>

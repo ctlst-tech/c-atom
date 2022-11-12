@@ -1,7 +1,3 @@
-//
-// Created by Ivan Makarov on 7/4/22.
-//
-
 #include <eswb/api.h>
 #include "function.h"
 #include "ibr_process.h"

@@ -1,7 +1,3 @@
-//
-// Created by goofy on 9/14/21.
-//
-
 #include <stddef.h>
 #include <stdlib.h>
 #include "fsm_interpr.h"

@@ -1,7 +1,3 @@
-//
-// Created by goofy on 9/4/21.
-//
-
 #ifndef HW_BRIDGE_AST_H
 #define HW_BRIDGE_AST_H
 

@@ -1,7 +1,3 @@
-//
-// Created by Ivan Makarov on 4/4/22.
-//
-
 #include <string.h>
 #include <stdlib.h>
 #include "ibr_msg.h"

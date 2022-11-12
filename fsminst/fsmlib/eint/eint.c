@@ -1,7 +1,3 @@
-//
-// Created by goofy on 9/10/21.
-//
-
 #include "eint.h"
 
 #include "ast.h"

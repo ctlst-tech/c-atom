@@ -1,7 +1,3 @@
-//
-// Created by goofy on 2/5/22.
-//
-
 #ifndef C_ATOM_FLOW_H
 #define C_ATOM_FLOW_H
 

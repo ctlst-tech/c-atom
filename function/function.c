@@ -1,7 +1,3 @@
-//
-// Created by Ivan Makarov on 22/1/22.
-//
-
 #include "function.h"
 
 const char *fspec_find_path2connect(const func_conn_spec_t *conn_spec, const char *in_alias) {

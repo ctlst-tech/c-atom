@@ -1,7 +1,3 @@
-//
-// Created by goofy on 9/14/21.
-//
-
 #ifndef HW_BRIDGE_FSM_INTERPR_H
 #define HW_BRIDGE_FSM_INTERPR_H
 

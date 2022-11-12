@@ -1,7 +1,3 @@
-//
-// Created by goofy on 9/5/21.
-//
-
 #ifndef HW_BRIDGE_SYMBOL_H
 #define HW_BRIDGE_SYMBOL_H
 

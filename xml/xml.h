@@ -1,7 +1,3 @@
-//
-// Created by goofy on 2/2/22.
-//
-
 #ifndef C_ATOM_XML_H
 #define C_ATOM_XML_H
 

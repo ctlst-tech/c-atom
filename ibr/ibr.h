@@ -1,7 +1,3 @@
-//
-// Created by Ivan Makarov on 7/4/22.
-//
-
 #ifndef C_ATOM_IBR_H
 #define C_ATOM_IBR_H
 

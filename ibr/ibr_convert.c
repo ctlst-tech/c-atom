@@ -1,7 +1,3 @@
-//
-// Created by goofy on 9/17/21.
-//
-
 #include <string.h>
 #include "ibr_convert.h"
 

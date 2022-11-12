@@ -1,8 +1,3 @@
-//
-// Created by goofy on 9/5/21.
-//
-
-
 #include "fsm.h"
 
 #include <stdlib.h>

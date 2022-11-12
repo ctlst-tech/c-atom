@@ -1,7 +1,3 @@
-//
-// Created by goofy on 9/17/21.
-//
-
 #ifndef HW_BRIDGE_MDM_CONVERT_H
 #define HW_BRIDGE_MDM_CONVERT_H
 

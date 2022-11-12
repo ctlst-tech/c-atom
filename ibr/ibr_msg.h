@@ -1,7 +1,3 @@
-//
-// Created by goofy on 9/14/21.
-//
-
 #ifndef HW_IBR_H
 #define HW_IBR_H
 

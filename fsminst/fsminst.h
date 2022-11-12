@@ -1,7 +1,3 @@
-//
-// Created by goofy on 2/3/22.
-//
-
 #ifndef C_ATOM_FSMINST_H
 #define C_ATOM_FSMINST_H
 
