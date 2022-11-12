@@ -48,6 +48,7 @@ typedef enum {
     tsk_flow,
     tsk_fsm,
     tsk_ibr,
+    tsk_ebr,
     tsk_arbitrary,
     tsk_unknown
 } swsys_task_type_t;

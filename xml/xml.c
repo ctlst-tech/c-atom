@@ -67,6 +67,11 @@ static int tokenize(char *s, char **token_list) {
 
 #define MAX_ATTR_STR_LEN 128
 
+/**
+ * Calculates size of the potential list created by tokenization s with space and comma separators
+ * @param s string to see elements in
+ * @return number of the tokens inside s
+ */
 int xml_list_from_attr_size(const char *s) {
     char str_tmp[MAX_ATTR_STR_LEN + 1];
     if (strlen(s) > MAX_ATTR_STR_LEN) {

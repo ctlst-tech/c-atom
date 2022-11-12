@@ -77,6 +77,10 @@ static swsys_rv_t task_load(swsys_task_t *t) {
             t->exec_once = -1;
             break;
 
+        case tsk_ebr:
+            // loaded at swsys loading
+            break;
+
         default:
             rv = swsys_e_invargs;
             break;
@@ -291,7 +295,7 @@ static fspec_rv_t swsys_call_set_param(void *dhandle, const func_param_t *params
     for (int i = 0; i < swsys->tasks_num; i++) {
         fspec_rv_t rv = function_set_param(&swsys->tasks[i].func_handler, swsys->tasks[i].func_call_dhandle,
                                            swsys->tasks[i].params, initial_call);
-        if (rv != fspec_rv_ok) {
+        if (rv != fspec_rv_ok && rv != fspec_rv_not_supported) {
             err_cnt++;
         }
     }
@@ -487,8 +491,12 @@ swsys_rv_t swsys_top_module_start(swsys_t *swsys) {
         return swsys_e_initerr;
     }
 
-    function_pre_exec_init(&fh, dhandle);
-    
+    rv = function_pre_exec_init(&fh, dhandle);
+    if (rv != fspec_rv_ok) {
+        dbg_msg_ec(rv, "function_pre_exec_init failed");
+        return swsys_e_initerr;
+    }
+
     function_exec(&fh, dhandle);
 
     return swsys_e_ok;

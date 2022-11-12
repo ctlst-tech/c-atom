@@ -2,10 +2,10 @@
 #include <string.h>
 #include <stdlib.h>
 
-
 #include "swsys.h"
 #include "xml.h"
 #include "function_xml.h"
+#include "ebr.h"
 
 void *swsys_alloc(size_t s) {
     return calloc(1, s);
@@ -65,8 +65,6 @@ static xml_rv_t load_bus(xml_node_t *bus_node, swsys_bus_t *bus) {
     return err_num > 0 ? xml_e_dom_process : xml_e_ok;;
 }
 
-
-
 swsys_task_type_t task_type_from_str(const char *tts) {
     if (strcmp(tts, "flow") == 0) return tsk_flow;
     else if (strcmp(tts, "fsm") == 0) return tsk_fsm;
@@ -82,41 +80,9 @@ swsys_task_clk_method_t task_clk_method_from_str(const char *m) {
     else return swsys_clk_none;
 }
 
-static xml_rv_t load_task(xml_node_t *task_node, const char *top_cfg_dir, swsys_task_t *task) {
-
-    xml_rv_t rv;
-    int err_num = 0;
-
+unsigned load_task_clock_method(xml_node_t *task_node, swsys_task_t *task) {
+    unsigned err_num = 0;
     GET_ATTR_INIT();
-
-    task->name = GET_ATTR_AND_PROCESS_ERR(xml_attr_str, task_node, "name", &err_num);
-    task->priority = GET_ATTR_AND_PROCESS_ERR(xml_attr_int, task_node, "priority", &err_num);
-
-    const char *cfg_path = GET_ATTR_AND_PROCESS_ERR(xml_attr_str, task_node, "config", &err_num);
-
-    if (top_cfg_dir != NULL && cfg_path != NULL) {
-        char *abs_path = swsys_alloc(strlen(top_cfg_dir) + strlen(cfg_path) + 2);
-        if (abs_path == NULL) {
-            return xml_e_nomem;
-        }
-
-        strcpy(abs_path, top_cfg_dir);
-        strcat(abs_path, "/");
-        strcat(abs_path, cfg_path);
-
-        task->config_path = abs_path;
-    } else {
-        task->config_path = cfg_path;
-    }
-
-    const char *type =  GET_ATTR_AND_PROCESS_ERR(xml_attr_str, task_node, "type", &err_num);
-    if (type != NULL) {
-        task->type = task_type_from_str(type);
-        if (task->type == tsk_unknown) {
-            xml_err("Invalid task type for %s", task->name);
-            err_num++;
-        }
-    }
 
     const char *clk_method =  GET_ATTR_AND_PROCESS_ERR(xml_attr_str, task_node, "clk_method", &err_num);
     if (clk_method != NULL) {
@@ -149,6 +115,57 @@ static xml_rv_t load_task(xml_node_t *task_node, const char *top_cfg_dir, swsys_
             }
         }
     }
+
+    return err_num;
+}
+
+unsigned load_test_name_and_priority(xml_node_t *task_node, swsys_task_t *task) {
+    unsigned err_num = 0;
+
+    GET_ATTR_INIT();
+
+    task->name = GET_ATTR_AND_PROCESS_ERR(xml_attr_str, task_node, "name", &err_num);
+    task->priority = GET_ATTR_AND_PROCESS_ERR(xml_attr_int, task_node, "priority", &err_num);
+
+    return err_num;
+}
+
+static xml_rv_t load_task(xml_node_t *task_node, const char *top_cfg_dir, swsys_task_t *task) {
+
+    xml_rv_t rv;
+    unsigned err_num = 0;
+
+    GET_ATTR_INIT();
+
+    err_num += load_test_name_and_priority(task_node, task);
+
+    const char *cfg_path = GET_ATTR_AND_PROCESS_ERR(xml_attr_str, task_node, "config", &err_num);
+
+    if (top_cfg_dir != NULL && cfg_path != NULL) {
+        char *abs_path = swsys_alloc(strlen(top_cfg_dir) + strlen(cfg_path) + 2);
+        if (abs_path == NULL) {
+            return xml_e_nomem;
+        }
+
+        strcpy(abs_path, top_cfg_dir);
+        strcat(abs_path, "/");
+        strcat(abs_path, cfg_path);
+
+        task->config_path = abs_path;
+    } else {
+        task->config_path = cfg_path;
+    }
+
+    const char *type =  GET_ATTR_AND_PROCESS_ERR(xml_attr_str, task_node, "type", &err_num);
+    if (type != NULL) {
+        task->type = task_type_from_str(type);
+        if (task->type == tsk_unknown) {
+            xml_err("Invalid task type for %s", task->name);
+            err_num++;
+        }
+    }
+
+    err_num += load_task_clock_method(task_node, task);
 
     if (err_num == 0) {
 #   define TAG_CONNECT "connect"
@@ -209,6 +226,7 @@ static xml_rv_t load_service(xml_node_t *service_node, swsys_service_t *service)
     return err_num > 0 ? xml_e_dom_process : xml_e_ok;
 }
 
+
 swsys_rv_t swsys_load(const char *path, const char *swsys_root_dir, swsys_t *sys) {
 
     xml_node_t *xml_root;
@@ -233,15 +251,18 @@ swsys_rv_t swsys_load(const char *path, const char *swsys_root_dir, swsys_t *sys
             if (xrv == xml_e_ok) {
                 sys->busses_num++;
             }
-        }
-        if (xml_node_name_eq(n, "task")) {
+        } else if (xml_node_name_eq(n, "task")) {
             xrv = load_task(n, swsys_root_dir, &sys->tasks[sys->tasks_num]);
             if (xrv == xml_e_ok) {
                 sys->tasks_num++;
             }
-        }
-
-        if (xml_node_name_eq(n, "service")) {
+        } else if (xml_node_name_eq(n, "bridge")) {
+            // ESWB bridge service is wrapped inside usual task for simplicity
+            xrv = ebr_load_task(n, &sys->tasks[sys->tasks_num]);
+            if (xrv == xml_e_ok) {
+                sys->tasks_num++;
+            }
+        } else if (xml_node_name_eq(n, "service")) {
             xrv = load_service(n, &sys->services[sys->services_num]);
             if (xrv == xml_e_ok) {
                 sys->services_num++;

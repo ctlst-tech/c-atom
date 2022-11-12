@@ -39,6 +39,9 @@ set(CATOM_SRC
         swsys/swsys_services.c
         swsys/swsys.h
         swsys/swsys_parser_xml.c
+        ebr/ebr.c
+        ebr/ebr.h
+        ebr/ebr_parser_xml.c
         ibr/ibr.c
         ibr/ibr.h
         ibr/ibr_msg.c
@@ -71,6 +74,7 @@ target_include_directories(c-atom-static PUBLIC
         flow
         fsminst
         ibr
+        ebr
         )
 
 target_link_libraries(c-atom-static PRIVATE
