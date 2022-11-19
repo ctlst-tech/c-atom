@@ -75,6 +75,7 @@ target_include_directories(c-atom-static PUBLIC
         fsminst
         ibr
         ebr
+        swsys
         )
 
 target_link_libraries(c-atom-static PRIVATE

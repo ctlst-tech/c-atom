@@ -79,6 +79,7 @@
 #include <stdlib.h> /* getenv, rand_s */
 #include <stdint.h> /* uintptr_t */
 #include <math.h>   /* isnan */
+#include <time.h>
 
 #ifdef _WIN32
 #  define getpid GetCurrentProcessId
