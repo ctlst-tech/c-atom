@@ -60,10 +60,12 @@ static xml_rv_t load_connectivity_spec(xml_node_t *conn_node, const char *tag, c
 
             const char *type_str = GET_ATTR_OPTIONAL(xml_attr_str, n, "type", &err_num);
 
+            /* fixme: get_conn_type is inappropriate
             sp->type = type_str == NULL ? tt_double : get_conn_type(type_str);
             if (sp->type == tt_none) {
                 xml_err("Invalid type specification for %s \"%s\"", tag, sp->name);
             }
+            */
 
             specs[i++] = sp;
         }
