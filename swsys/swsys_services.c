@@ -95,7 +95,8 @@ static swsys_rv_t sdtl_init_and_start(const swsys_service_t *s) {
     }
 
     if (!sdtl_bus_inited) {
-        eswb_rv_t erv = eswb_create(SDTL_BUS_NAME, eswb_inter_thread, 8 * ch_num);
+        // TODO get proper metrics for needed topics num
+        eswb_rv_t erv = eswb_create(SDTL_BUS_NAME, eswb_inter_thread, 10 + 16 * ch_num);
         if (erv != eswb_e_ok) {
             return swsys_e_service_fail;
         }
