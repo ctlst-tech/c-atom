@@ -1520,12 +1520,12 @@ class FuncProcessor:
                     fprint(f'{idnt(3)}</param>')
             fprint(f'{idnt(2)}</params>')
 
+            render_source_file(fprint, func.gen_file_exec_c)
+            render_source_file(fprint, func.gen_file_compute_params_c)
             render_source_file(fprint, func.gen_file_h)
             render_source_file(fprint, func.gen_file_spec_c)
             render_source_file(fprint, func.gen_file_interface_c)
             render_source_file(fprint, func.gen_file_set_params_c)
-            render_source_file(fprint, func.gen_file_exec_c)
-            render_source_file(fprint, func.gen_file_compute_params_c)
 
             fprint(f'{idnt(1)}</fspec>')
 
