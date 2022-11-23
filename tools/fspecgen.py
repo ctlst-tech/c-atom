@@ -238,6 +238,22 @@ class GCallableFunction:
         return rv
 
 
+class SourceFile:
+    def __init__(self, filename, *, title, subdir='', root_dir=''):
+        self.filename = filename
+        self.title = title
+        self.subdir = subdir
+        self.root_dir = root_dir
+
+    def full_path(self):
+        rd = self.root_dir + os.sep if self.root_dir else ''
+        return rd + self.rel_path()
+
+    def rel_path(self):
+        mydir = self.subdir + os.sep if self.subdir else ''
+        return mydir + self.filename
+
+
 class GeneratedFunction:
 
     @staticmethod
@@ -274,6 +290,44 @@ class GeneratedFunction:
         self.handler_name = f'fspec_{self.spec.get_prefix()}_handler'
         self.calls_struct_name = f'fspec_{self.spec.get_prefix()}_calls'
         self.generated_code_dir = 'g'
+
+        sources_dir = self.spec.directory
+
+        # user defined (generated once)
+        self.gen_file_exec_c = \
+            SourceFile(f'{self.function_name}_exec.c',
+                       title=f'Implementation for {self.function_name}',
+                       root_dir=sources_dir)
+
+        self.gen_file_compute_params_c = \
+            SourceFile(f'{self.function_name}_compute_params.c',
+                       title=f'Params computing implemtation for {self.function_name}',
+                       root_dir=sources_dir) if self.spec.has_compute_parameters() else None
+
+        # generated files
+        self.gen_file_spec_c = \
+            SourceFile(f'{self.function_name}_spec.c',
+                       title=f'Specification of {self.function_name}',
+                       subdir=self.generated_code_dir,
+                       root_dir=sources_dir)
+
+        self.gen_file_set_params_c = \
+            SourceFile(f'{self.function_name}_set_params.c',
+                       title=f'Set parameters code for {self.function_name}',
+                       subdir=self.generated_code_dir,
+                       root_dir=sources_dir) if self.spec.has_parameters() else None
+
+        self.gen_file_interface_c = \
+            SourceFile(f'{self.function_name}_interface.c',
+                       title=f'Interface of {self.function_name}',
+                       subdir=self.generated_code_dir,
+                       root_dir=sources_dir)
+
+        self.gen_file_h = \
+            SourceFile(f'{self.function_name}.h',
+                       title=f'Header of {self.function_name}',
+                       subdir=self.generated_code_dir,
+                       root_dir=sources_dir)
 
         # compute params function
         self.type_params = GType(typename=f'{func.get_prefix()}_params_t')
@@ -1277,57 +1331,44 @@ class GeneratedFunction:
 
         # fprint(f'target_link_libraries({self.cmakelists_lib_name} PUBLIC eswb-if)')
 
-    def generate_code(self, as_static_lib = False):
+    def generate_code(self, as_static_lib=False):
 
-        # user defined (generated once)
-        fn_exec_c = f'{self.function_name}_exec.c'
-        fn_compute_params_c = f'{self.function_name}_compute_params.c'
+        gf_root = self.spec.directory
 
-        # generated
-        common_generated_basepath = f'{self.generated_code_dir}/{self.function_name}'
-
-        fn_spec_c = f'{common_generated_basepath}_spec.c'
-        fn_set_params_c = f'{common_generated_basepath}_set_params.c'
-        fn_interface_c = f'{common_generated_basepath}_interface.c'
-        fn_h = f'{common_generated_basepath}.h'
-
-        full_gen_path = f'{self.spec.directory}/{self.generated_code_dir}'
+        full_gen_path = f'{gf_root}/{self.generated_code_dir}'
         if not os.path.exists(full_gen_path):
             os.mkdir(full_gen_path)
 
-        self.decl_header(f'{self.spec.directory}/{fn_h}')
-        self.cmake_src_list.append(fn_h)
+        self.decl_header(self.gen_file_h.full_path())
+        self.cmake_src_list.append(self.gen_file_h.rel_path())
 
-        gitgnore_path = f'{self.spec.directory}/.gitignore'
+        gitgnore_path = f'{gf_root}/.gitignore'
         if not os.path.exists(gitgnore_path):
             fprint = new_file_write_call(gitgnore_path)
             fprint(f'{self.generated_code_dir}')
 
         if self.spec.has_parameters():
-            impl_set_params_filename = f'{self.spec.directory}/{fn_set_params_c}'
-            self.decl_impl_set_params(impl_set_params_filename)
-            self.cmake_src_list.append(fn_set_params_c)
+            self.decl_impl_set_params(self.gen_file_set_params_c.full_path())
+            self.cmake_src_list.append(self.gen_file_set_params_c.rel_path())
 
-        implementation_exec_filename = f'{self.spec.directory}/{fn_exec_c}'
-        if not os.path.exists(implementation_exec_filename) or override_implementation:
-            self.decl_impl_exec(implementation_exec_filename)
-        self.cmake_src_list.append(fn_exec_c)
+        self.decl_spec_src(self.gen_file_spec_c.full_path())
+        self.cmake_src_list.append(self.gen_file_spec_c.rel_path())
+
+        self.decl_interface_src(self.gen_file_interface_c.full_path())
+        self.cmake_src_list.append(self.gen_file_interface_c.rel_path())
+
+        exec_src_full_path = self.gen_file_exec_c.full_path()
+        if not os.path.exists(exec_src_full_path) or override_implementation:
+            self.decl_impl_exec(exec_src_full_path)
+        self.cmake_src_list.append(self.gen_file_exec_c.rel_path())
 
         if self.spec.has_compute_parameters():
-            impl_compute_params_filename = f'{self.spec.directory}/{fn_compute_params_c}'
-            if not os.path.exists(impl_compute_params_filename) or override_implementation:
-                self.decl_impl_compute_params(impl_compute_params_filename)
-            self.cmake_src_list.append(fn_compute_params_c)
+            compute_param_src_full_path = self.gen_file_compute_params_c.full_path()
+            if not os.path.exists(compute_param_src_full_path) or override_implementation:
+                self.decl_impl_compute_params(compute_param_src_full_path)
+            self.cmake_src_list.append(self.gen_file_compute_params_c.rel_path())
 
-        spec_source_filename = f'{self.spec.directory}/{fn_spec_c}'
-        self.decl_spec_src(spec_source_filename)
-        self.cmake_src_list.append(fn_spec_c)
-
-        interface_source_filename = f'{self.spec.directory}/{fn_interface_c}'
-        self.decl_interface_src(interface_source_filename)
-        self.cmake_src_list.append(fn_interface_c)
-
-        cmakelists_path = f'{self.spec.directory}/CMakeLists.txt'
+        cmakelists_path = f'{gf_root}/CMakeLists.txt'
 
         cmakefile_override_implementation = True
 
@@ -1337,7 +1378,7 @@ class GeneratedFunction:
 
 class FuncProcessor:
     def __init__(self, package: fspeclib.Package, context: List[fspeclib.Package], process_context=False):
-        self.generated_funcs_list = []
+        self.generated_funcs_list: List[GeneratedFunction] = []
         self.types_list = []
         self.types_structures_list = []
 
@@ -1441,36 +1482,52 @@ class FuncProcessor:
     def generate_bbxml(self, fpath):
         local_fprint = new_file_write_call(f'{fpath}')
 
-        def print_fspec(fprint, fs):
-            fprint(f'    <fspec type="{fs.name}" title="{fs.title}" group="{fs.namespace}">')
+        def idnt(i):
+            return i * '    '
+
+        def render_source_file(fprint, file: SourceFile):
+            if file:
+                fprint(f'{idnt(2)} <source_file filename="{file.filename}" title="{file.title}" path="{file.full_path()}"/>')
+
+        def print_fspec(fprint, func: GeneratedFunction):
+            fs = func.spec
+            fprint(f'{idnt(1)}<fspec type="{fs.name}" title="{fs.title}" group="{fs.namespace}">')
             if fs.description:
-                fprint(f'        <description>{fs.description}</description>')
+                fprint(f'{idnt(2)}<description>{fs.description}</description>')
 
-            fprint(f'        <inputs>')
+            fprint(f'{idnt(2)}<inputs>')
             for i in fs.inputs:
-                fprint(f'            <input alias="{i.name}" required="{i.mandatory}" title="{i.title}" type="{i.value_type.name}">')
+                fprint(f'{idnt(2)}<input alias="{i.name}" required="{i.mandatory}" title="{i.title}" type="{i.value_type.name}">')
                 if i.description:
-                    fprint(f'                {i.description}')
-                fprint(f'            </input>')
-            fprint(f'        </inputs>')
+                    fprint(f'{idnt(3)}{i.description}')
+                fprint(f'{idnt(2)}</input>')
+            fprint(f'{idnt(2)}</inputs>')
 
-            fprint(f'        <outputs>')
+            fprint(f'{idnt(2)}<outputs>')
             for o in fs.outputs:
-                fprint(f'            <output alias="{o.name}" title="{o.title}" type="{o.value_type.name}">')
+                fprint(f'{idnt(3)}<output alias="{o.name}" title="{o.title}" type="{o.value_type.name}">')
                 if o.description:
-                    fprint(f'                {o.description}')
-                fprint(f'            </output>')
-            fprint(f'        </outputs>')
-            fprint(f'        <params>')
+                    fprint(f'{idnt(3)}{o.description}')
+                fprint(f'{idnt(3)}</output>')
+            fprint(f'{idnt(2)}</outputs>')
+            fprint(f'{idnt(2)}<params>')
 
             for prm in fs.parameters:
                 if not prm.computable:
-                    fprint(f'            <param alias="{prm.name}" title="{prm.title}" type="{prm.value_type.name}">')
+                    fprint(f'{idnt(3)}<param alias="{prm.name}" title="{prm.title}" type="{prm.value_type.name}">')
                     if prm.description:
-                        fprint(f'                {prm.description}')
-                    fprint(f'            </param>')
-            fprint(f'        </params>')
-            fprint(f'    </fspec>')
+                        fprint(f'{idnt(4)}{prm.description}')
+                    fprint(f'{idnt(3)}</param>')
+            fprint(f'{idnt(2)}</params>')
+
+            render_source_file(fprint, func.gen_file_h)
+            render_source_file(fprint, func.gen_file_spec_c)
+            render_source_file(fprint, func.gen_file_interface_c)
+            render_source_file(fprint, func.gen_file_set_params_c)
+            render_source_file(fprint, func.gen_file_exec_c)
+            render_source_file(fprint, func.gen_file_compute_params_c)
+
+            fprint(f'{idnt(1)}</fspec>')
 
         def print_type(fprint, tp: Union[fspeclib.Type, fspeclib.Structure]):
             title_str = f' title="{tp.title}"' if tp.title else ''
@@ -1495,7 +1552,7 @@ class FuncProcessor:
         local_fprint()
 
         for f in self.generated_funcs_list:
-            print_fspec(local_fprint, f.spec)
+            print_fspec(local_fprint, f)
 
         local_fprint('</fspecs>')
 
@@ -1661,7 +1718,6 @@ if __name__ == "__main__":
     fp = FuncProcessor(pkgs[0], pkgs, True)
 
     if central_registry:
-
         (path, fp.fspec_registry_c_filename) = os.path.split(args.registry_c)
         fp.generate_fspecs_registry_c(path)
 
