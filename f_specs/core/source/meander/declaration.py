@@ -19,7 +19,8 @@ Function(
     outputs=[
         Output(
             name='output',
-            title='Meander generator output',
+            title='Output',
+            description='Meander generator output',
             value_type='core.type.f64'
         )
     ],

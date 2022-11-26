@@ -20,7 +20,7 @@ Function(
         ),
         Input(
             name='select',
-            title='Switch input',
+            title='Select input',
             value_type='core.type.bool'
         )
     ],

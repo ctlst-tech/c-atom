@@ -83,23 +83,23 @@ Function(
     inputs=[
         Input(
             name='transv',
-            title='Input',
+            title='Transv',
             value_type='core.type.f64'
         ),
         Input(
             name='longit',
-            title='Feedback',
+            title='Longit',
             value_type='core.type.f64'
         ),
         Input(
             name='rudder',
-            title='Enable',
+            title='Rudder',
             value_type='core.type.f64',
             mandatory=False
         ),
         Input(
             name='collective',
-            title='Enable',
+            title='Collective',
             value_type='core.type.f64',
             mandatory=False
         ),
@@ -107,22 +107,26 @@ Function(
     outputs=[
         Output(
             name='m1',
-            title='Motor 1 ESC output',
+            title='Motor 1',
+            description='Motor 1 ESC output',
             value_type='core.type.f64'
         ),
         Output(
             name='m2',
-            title='Motor 2 ESC output',
+            title='Motor 2',
+            description='Motor 2 ESC output',
             value_type='core.type.f64'
         ),
         Output(
             name='m3',
-            title='Motor 3 ESC output',
+            title='Motor 3',
+            description='Motor 3 ESC output',
             value_type='core.type.f64'
         ),
         Output(
             name='m4',
-            title='Motor 4 ESC output',
+            title='Motor 4',
+            description='Motor 4 ESC output',
             value_type='core.type.f64'
         ),
     ],

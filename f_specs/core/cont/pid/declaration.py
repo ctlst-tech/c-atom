@@ -111,7 +111,7 @@ Function(
         ),
         Output(
             name='enabled',
-            title='Enable',
+            title='Enabled',
             value_type='core.type.bool',
         )
     ],

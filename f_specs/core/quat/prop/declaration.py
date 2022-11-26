@@ -30,7 +30,8 @@ Function(
 
         Input(
             name='reset',
-            title='Command for re-initializing output quat by q0',
+            title='Reset',
+            description='Command for re-initializing output quat by q0',
             value_type='core.type.bool',
             mandatory=False
         ),
@@ -45,8 +46,8 @@ Function(
     state=[
         Variable(
             name='inited',
-            title='Integral part',
-            value_type='core.type.u32'
+            title='Initialized flag',
+            value_type='core.type.bool'
         ),
     ],
 

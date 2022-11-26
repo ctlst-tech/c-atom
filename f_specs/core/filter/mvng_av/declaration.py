@@ -10,34 +10,34 @@ Function(
     inputs=[
         Input(
             name='i1',
-            title='',
+            title='Input 1',
             value_type='core.type.f64'
         ),
         Input(
             name='i2',
-            title='',
+            title='Input 2',
             value_type='core.type.f64'
         ),
         Input(
             name='i3',
-            title='',
+            title='Input 3',
             value_type='core.type.f64'
         ),
     ],
     outputs=[
         Output(
             name='a1',
-            title='',
+            title='Average 1',
             value_type='core.type.f64'
         ),
         Output(
             name='a2',
-            title='',
+            title='Average 2',
             value_type='core.type.f64'
         ),
         Output(
             name='a3',
-            title='',
+            title='Average 3',
             value_type='core.type.f64'
         ),
     ],
