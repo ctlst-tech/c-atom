@@ -1,5 +1,5 @@
-#ifndef FSPEC_CORE_TYPE_VECTOR3F64_H
-#define FSPEC_CORE_TYPE_VECTOR3F64_H
+#ifndef FSPEC_CORE_TYPE_V3F64_H
+#define FSPEC_CORE_TYPE_V3F64_H
 
 /* Include declaration of dependency types */
 #include "core_type_f64.h"
@@ -7,7 +7,7 @@
 /**
  * @brief 3d vector of f64 type
  */
-typedef struct core_type_vector3f64
+typedef struct core_type_v3f64
 {
     /**
      * @brief The vectors's X-component
@@ -24,6 +24,6 @@ typedef struct core_type_vector3f64
      */
     core_type_f64_t z;
 
-} core_type_vector3f64_t;
+} core_type_v3f64_t;
 
-#endif // FSPEC_CORE_TYPE_VECTOR3F64_H
+#endif // FSPEC_CORE_TYPE_V3F64_H

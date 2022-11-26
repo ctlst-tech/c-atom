@@ -11,7 +11,7 @@ Function(
         Input(
             name='a',
             title='Input acceleration vector',
-            value_type='core.type.vector3f64'
+            value_type='core.type.v3f64'
         ),
     ],
 

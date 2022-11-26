@@ -1,7 +1,7 @@
 from fspeclib import *
 
 Structure(
-    name='core.type.vector3f64',
+    name='core.type.v3f64',
     title=LocalizedString(
         en='3d vector of f64 type'
     ),

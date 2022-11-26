@@ -11,12 +11,12 @@ Function(
         Input(
             name='input0',
             title='Input 1 vector',
-            value_type='core.type.vector3f64'
+            value_type='core.type.v3f64'
         ),
         Input(
             name='input1',
             title='Input 2 vector',
-            value_type='core.type.vector3f64'
+            value_type='core.type.v3f64'
         ),
         Input(
             name='select',
@@ -28,7 +28,7 @@ Function(
         Output(
             name='output',
             title='Output',
-            value_type='core.type.vector3f64'
+            value_type='core.type.v3f64'
         )
     ]
 )

@@ -2,9 +2,9 @@ from fspeclib import *
 
 
 Function(
-    name='core.math.vector3',
+    name='core.math.vector3f64',
     title=LocalizedString(
-        en='Convert 3 scalars to 3d vector'
+        en='Convert 3 scalars to 3d vector of f64'
     ),
 
     inputs=[
@@ -29,7 +29,7 @@ Function(
         Input(
             name='v',
             title='3d vector',
-            value_type='core.type.vector3f64'
+            value_type='core.type.v3f64'
         ),
     ],
 )
