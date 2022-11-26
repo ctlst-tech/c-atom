@@ -7,13 +7,13 @@ void core_quat_prop_exec(
     const core_quat_prop_injection_t *injection
 )
 {
-    if (!state->inited) {
+    if (!state->inited || (i->optional_inputs_flags.reset && i->reset == TRUE)) {
         o->q = i->q0;
         state->inited = 1;
     } else {
-        o->q.w = i->q.w + -0.5 * ( i->q.x*i->wx + i->q.y*i->wy + i->q.z*i->wz ) * injection->dt;
-        o->q.x = i->q.x +  0.5 * ( i->q.w*i->wx + i->q.y*i->wz - i->q.z*i->wy ) * injection->dt;
-        o->q.y = i->q.y +  0.5 * ( i->q.w*i->wy + i->q.z*i->wx - i->q.x*i->wz ) * injection->dt;
-        o->q.z = i->q.z +  0.5 * ( i->q.w*i->wz + i->q.x*i->wy - i->q.y*i->wx ) * injection->dt;
+        o->q.w = i->q.w + -0.5 * ( i->q.x * i->omega.x + i->q.y * i->omega.y + i->q.z * i->omega.z ) * injection->dt;
+        o->q.x = i->q.x +  0.5 * ( i->q.w * i->omega.x + i->q.y * i->omega.z - i->q.z * i->omega.y ) * injection->dt;
+        o->q.y = i->q.y +  0.5 * ( i->q.w * i->omega.y + i->q.z * i->omega.x - i->q.x * i->omega.z ) * injection->dt;
+        o->q.z = i->q.z +  0.5 * ( i->q.w * i->omega.z + i->q.x * i->omega.y - i->q.y * i->omega.x ) * injection->dt;
     }
 }

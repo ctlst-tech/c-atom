@@ -11,19 +11,9 @@ Function(
     ],
     inputs=[
         Input(
-            name='wx',
-            title='Angrate X',
-            value_type='core.type.f64'
-        ),
-        Input(
-            name='wy',
-            title='Angrate Y',
-            value_type='core.type.f64'
-        ),
-        Input(
-            name='wz',
-            title='Angrate Z',
-            value_type='core.type.f64'
+            name='omega',
+            title='Angular rate vector',
+            value_type='core.type.v3f64'
         ),
 
         Input(
@@ -36,6 +26,13 @@ Function(
             name='q',
             title='Recurrent quat',
             value_type='core.type.quat'
+        ),
+
+        Input(
+            name='reset',
+            title='Command for re-initializing output quat by q0',
+            value_type='core.type.bool',
+            mandatory=False
         ),
     ],
     outputs=[
