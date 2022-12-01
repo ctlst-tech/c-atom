@@ -150,7 +150,7 @@ fsm_rv_t fsminst_load(const char *path, fsminst_t **fsminst_rv) {
 
 
     if (xml_rv != xml_e_ok) {
-        xml_err("XML file (%s) load error", path);
+        xml_err("XML file (%s) load error: %s", path, xml_strerror(xml_rv));
         return fsm_rv_loaderr;
     }
 

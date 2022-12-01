@@ -545,3 +545,22 @@ int xml_dom_process_attr_parser_err(const char *attr_name, xml_node_t *node, xml
 
     return rv;
 }
+
+const char *xml_strerror(xml_rv_t ec) {
+    switch(ec) {
+        case xml_e_ok:                  return "Ok";
+        case xml_e_invarg:              return "Invalid argument";
+        case xml_e_nomem:               return "No memory";
+        case xml_e_parser_creation:     return "Parser creation failed";
+        case xml_e_parser_reset:        return "Parser reset";
+        case xml_e_dom_parsing:         return "DOM parsing error";
+        case xml_e_no_file:             return "No file";
+        case xml_e_file_open_unkn:      return "Unknown opening error";
+        case xml_e_file_read:           return "File read error";
+        case xml_e_noattr:              return "No attribute";
+        case xml_e_invattr:             return "Invalid attribute";
+        case xml_e_dom_process:         return "DOM process error";
+        case xml_e_dom_empty:           return "DOM empty";
+        default:                        return "Unknown code";
+    }
+}

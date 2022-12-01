@@ -170,7 +170,6 @@ fspec_rv_t flow_load(const char *path, function_flow_t **flow_rv) {
     do {
         flow = flow_alloc(sizeof(*flow));
 
-
         if (flow == NULL) {
             rv = fspec_rv_no_memory;
             break;
@@ -180,7 +179,7 @@ fspec_rv_t flow_load(const char *path, function_flow_t **flow_rv) {
         xml_rv_t xml_rv = xml_parse_from_file(path, &flow_xml_root);
 
         if (xml_rv != xml_e_ok) {
-            xml_err("XML file (%s) load error", path);
+            xml_err("XML file (%s) load error: %s", path, xml_strerror(xml_rv));
             rv = fspec_rv_loaderr;
             break;
         }

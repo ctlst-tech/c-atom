@@ -67,6 +67,8 @@ char* xml_strdup(const char *s);
 
 int xml_dom_process_attr_parser_err(const char *attr_name, xml_node_t *node, xml_rv_t err_code);
 
+const char *xml_strerror(xml_rv_t ec);
+
 #define GET_ATTR_INIT()     xml_rv_t ___xml_rv_;                             \
                             int ____cnt = 0;
 

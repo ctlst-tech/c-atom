@@ -198,7 +198,7 @@ ibr_rv_t ibr_cfg_load(const char *path, ibr_cfg_t **ibr_cfg_rv) {
     int err_cnt = 0;
 
     if (xrv != xml_e_ok) {
-        xml_err("XML file (%s) load error", path);
+        xml_err("XML file (%s) load error: %s", path, xml_strerror(xrv));
         return ibr_loaderr;
     }
 

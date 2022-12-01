@@ -234,7 +234,7 @@ swsys_rv_t swsys_load(const char *path, const char *swsys_root_dir, swsys_t *sys
     swsys_rv_t rv;
 
     if (xrv != xml_e_ok) {
-        xml_err("XML file (%s) load error", path);
+        xml_err("XML file (%s) load error %s", path, xml_strerror(xrv));
         return swsys_e_loaderr;
     }
 
