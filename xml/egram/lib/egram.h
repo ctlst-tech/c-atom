@@ -111,7 +111,7 @@ typedef enum {
     r_continue
 } rule_rv_t;
 
-void reset_parsing_context(parsing_context_t *cntx);
-rule_rv_t process(parsing_context_t *cntx, gsymbol_t  *symbol, const char *input, unsigned len, unsigned *processed);
+void egram_reset_parser(parsing_context_t *cntx);
+rule_rv_t egram_process(parsing_context_t *cntx, gsymbol_t  *symbol, const char *input, unsigned len, unsigned *processed);
 
 #endif //C_ATOM_EGRAM_H

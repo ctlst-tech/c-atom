@@ -10,7 +10,7 @@ token_t* tokenize(parsing_context_t *cntx, const char *input, unsigned len, unsi
 void tokenize_reset__context(token_context_t *tc);
 
 
-void reset_parsing_context(parsing_context_t *cntx) {
+void egram_reset_parser(parsing_context_t *cntx) {
     tokenize_reset__context(&cntx->token_context);
 }
 
@@ -132,6 +132,6 @@ static rule_rv_t process_line(parsing_context_t *cntx, gsymbol_t *upper_rule, co
     return rrv;
 }
 
-rule_rv_t process(parsing_context_t *cntx, gsymbol_t  *symbol, const char *input, unsigned len, unsigned *processed) {
+rule_rv_t egram_process(parsing_context_t *cntx, gsymbol_t  *symbol, const char *input, unsigned len, unsigned *processed) {
     return process_line(cntx, symbol, input, len, processed, 0);
 }
