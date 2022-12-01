@@ -198,8 +198,9 @@ xml_rv_t func_load_connections(xml_node_t *conn_node, const char *tag, func_pair
             const char *alias = GET_ATTR_AND_PROCESS_ERR(xml_attr_str, n, ALIAS_ATTR, &err_num);
             const char *value = n->data;
             if ((value == NULL) || value[0] == 0) {
-                xml_err("Value must be specified for \"%s\" %s", alias != NULL ? alias : "N\\A", tag);
-                err_num++;
+                xml_err("Warning: value is not specified for \"%s\" while tag \"%s\" is present", alias != NULL ? alias : "N\\A", tag);
+                // err_num++;
+                continue;
             }
 
             rv = xml_list_from_attr(alias, &attr_list);
