@@ -6,11 +6,11 @@
 #include "egram.h"
 
 
-token_t* tokenize(parsing_context_t *cntx, const char *input, unsigned len, unsigned *processed);
+token_t* tokenize(egram_parsing_context_t *cntx, const char *input, unsigned len, unsigned *processed);
 void tokenize_reset__context(token_context_t *tc);
 
 
-void egram_reset_parser(parsing_context_t *cntx) {
+void egram_reset_parser(egram_parsing_context_t *cntx) {
     tokenize_reset__context(&cntx->token_context);
 }
 
@@ -64,7 +64,7 @@ static void dbg_msg(gsymbol_t *symbol, const char *curr_input, rule_rv_t status,
     printf("...\"\n");
 }
 
-static rule_rv_t process_line(parsing_context_t *cntx, gsymbol_t *upper_rule, const char *input, unsigned len, unsigned *processed, unsigned depth) {
+static rule_rv_t process_line(egram_parsing_context_t *cntx, gsymbol_t *upper_rule, const char *input, unsigned len, unsigned *processed, unsigned depth) {
     unsigned parsed_bytes;
     const char *initial_input = input;
 
@@ -104,8 +104,7 @@ static rule_rv_t process_line(parsing_context_t *cntx, gsymbol_t *upper_rule, co
 
         if (rrv == r_match) {
             if (symb->h != NULL) {
-                cntx->token_context.value[cntx->token_context.offset] = 0; // fixme: not generic
-                symb->h(cntx->user_data, cntx->token_context.value);
+                symb->h(cntx->user_data, cntx->token_context.value, cntx->token_context.offset);
             }
             if (!symb->many) {
                 EAT_TERM();
@@ -123,7 +122,7 @@ static rule_rv_t process_line(parsing_context_t *cntx, gsymbol_t *upper_rule, co
 
     if (IS_END(*symb) && (rrv == r_match)) {
         if (symb->h != NULL) {
-            symb->h(cntx->user_data, NULL);
+            symb->h(cntx->user_data, NULL, 0);
         }
     }
 
@@ -132,6 +131,6 @@ static rule_rv_t process_line(parsing_context_t *cntx, gsymbol_t *upper_rule, co
     return rrv;
 }
 
-rule_rv_t egram_process(parsing_context_t *cntx, gsymbol_t  *symbol, const char *input, unsigned len, unsigned *processed) {
+rule_rv_t egram_process(egram_parsing_context_t *cntx, gsymbol_t  *symbol, const char *input, unsigned len, unsigned *processed) {
     return process_line(cntx, symbol, input, len, processed, 0);
 }

@@ -8,6 +8,9 @@ target_link_libraries(xml-static PUBLIC xml-parser-expat-static)
 
 add_executable(xml_test_egram
             tests/xml_egram.cpp
+            xml.c
+            xml.h
+            xml_priv.h
         )
 
 target_include_directories(xml_test_egram PRIVATE src/lib/include)

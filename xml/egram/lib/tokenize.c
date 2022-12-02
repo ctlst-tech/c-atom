@@ -84,7 +84,7 @@ void tokenize_reset__context(token_context_t *tc) {
 }
 
 
-token_t* tokenize(parsing_context_t *cntx, const char *input, unsigned len, unsigned *processed) {
+token_t* tokenize(egram_parsing_context_t *cntx, const char *input, unsigned len, unsigned *processed) {
     tokenize_rv_t tr;
     token_t *t;
     int i = 0;

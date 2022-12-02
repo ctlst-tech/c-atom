@@ -39,7 +39,7 @@ typedef enum {
     RT_END
 } symbol_type_t;
 
-typedef const char * (*rule_handler_t)(void *context, const char* value);
+typedef const char * (*rule_handler_t)(void *context, const char* value, unsigned len);
 
 struct gsybmbol;
 
@@ -64,7 +64,7 @@ typedef struct {
     token_t *hanged_token;
     int token_process_error;
     token_t **token_list;
-} parsing_context_t;
+} egram_parsing_context_t;
 
 
 #define DEFINE_CONSTANT_STR_TOKEN(lit__) {.type=TT_CONST, .literal=(lit__), .literal_size=(sizeof(lit__)-1)}
@@ -111,7 +111,7 @@ typedef enum {
     r_continue
 } rule_rv_t;
 
-void egram_reset_parser(parsing_context_t *cntx);
-rule_rv_t egram_process(parsing_context_t *cntx, gsymbol_t  *symbol, const char *input, unsigned len, unsigned *processed);
+void egram_reset_parser(egram_parsing_context_t *cntx);
+rule_rv_t egram_process(egram_parsing_context_t *cntx, gsymbol_t  *symbol, const char *input, unsigned len, unsigned *processed);
 
 #endif //C_ATOM_EGRAM_H
