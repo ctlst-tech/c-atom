@@ -96,8 +96,10 @@ typedef struct {
 #define TOKEN__OH(name__, t__, h__) DEFINE_TERMINAL(name__, &(t__), 0, 1, h__)
 #define TOKEN_MO_(name__, t__) DEFINE_TERMINAL(name__, &(t__), 1, 1, NULL)
 #define TOKEN_M__(name__, t__) DEFINE_TERMINAL(name__, &(t__), 1, 0, NULL)
+#define TOKEN__O_(name__, t__) DEFINE_TERMINAL(name__, &(t__), 0, 1, NULL)
 
 #define NONTERM____(name__, elems__) DEFINE_NONTERMINAL(name__, elems__, 0, 0, NULL)
+#define NONTERM__O_(name__, elems__) DEFINE_NONTERMINAL(name__, elems__, 0, 1, NULL)
 #define NONTERM_MO_(name__, elems__) DEFINE_NONTERMINAL(name__, elems__, 1, 1, NULL)
 
 #define T_WHITESPACE_MO DEFINE_TERMINAL("whitespace", &whitespace, 1, 1, NULL)

@@ -38,6 +38,7 @@ public:
 class Node: public Base{
     std::list<Attr *> attrs;
     std::list<Node *> children;
+    std::string xml_header;
 
 protected:
     Node *parent;
@@ -59,6 +60,14 @@ public:
     Node* add_attr(Attr *a) {
         attrs.push_back(a);
         return this;
+    }
+
+    void add_xml_header() {
+        if (parent == NULL) {
+            xml_header = "<?xml version=\"1.0\" encoding=\"utf-8\" ?>";
+        } else {
+            throw NULL;
+        }
     }
 
     unsigned matchable_children_num() {
@@ -93,7 +102,12 @@ public:
     virtual std::string render(unsigned ident = 0) {
         std::string rv;
         std::string identation = std::string(ident * 4, ' ');
-        rv = identation + "<" + name;
+
+        if (!xml_header.empty()) {
+            rv += xml_header + "\n";
+        }
+
+        rv += identation + "<" + name;
 
         for (auto a : attrs) {
             rv += " " + a->render();
@@ -111,7 +125,7 @@ public:
             for (auto n : children) {
                 rv += n->render(ident+1);
             }
-            rv += "</" + name + ">\n";
+            rv += identation + "</" + name + ">\n";
         }
 
         return rv;
@@ -119,6 +133,9 @@ public:
 
 
     bool match_with(xml_node_t *n) {
+        if (n == NULL) {
+            return false;
+        }
         bool tag_name_match = name == std::string(n->name);
 //        bool value_match = value == std::string(n->data);
 
@@ -210,54 +227,66 @@ void parse_and_validate(Node &tree) {
 }
 
 TEST_CASE("XML by EGRAM Normal") {
-    Node n = Node("root", "\n");
+    Node root_node = Node("root", "\n");
     SECTION("Empty") {
         FAIL("Not implemented");
     }
     SECTION("Just root tag") {
-        parse_and_validate(n);
+        parse_and_validate(root_node);
     }
 
-    auto nn = n.add_node(new Node("node"));
+    auto nn = root_node.add_node(new Node("node"));
 
     SECTION("Multiple nesting") {
-        parse_and_validate(n);
+        parse_and_validate(root_node);
     }
 
     nn->add_attr(new Attr("attr1", "val1"))
         ->add_attr(new Attr("attr2", "val2"));
 
     SECTION("With attributes") {
-        parse_and_validate(n);
+        parse_and_validate(root_node);
     }
 
-    n.add_node(new Comment("random comment to break the parsing"));
+    root_node.add_node(new Comment("random comment to break the parsing"));
 
     SECTION("With comments") {
-        parse_and_validate(n);
+        parse_and_validate(root_node);
     }
 
-    n.add_node(new Node("after_comment_node"));
+    root_node.add_node(new Node("after_comment_node"));
 
     SECTION("With nodes after comment") {
-        parse_and_validate(n);
+        parse_and_validate(root_node);
     }
 
     for (auto i : {0, 10}) {
-        n.add_node(new Node("node"))
+        root_node.add_node(new Node("node"))
             ->add_node(new Node("subnode"))
             ->add_attr(new Attr("a", "v" + std::to_string(i)));
     }
 
     SECTION("Multiple nodes and attrs") {
-        parse_and_validate(n);
+        parse_and_validate(root_node);
     }
+
+    root_node.add_xml_header();
 
     SECTION("Root tag w doc header") {
-        FAIL("Not implemented");
+        parse_and_validate(root_node);
     }
 
-//    SECTION("Non closed token") {
-//        FAIL("Not implemented");
-//    }
+    auto nnn = nn;
+
+    for (auto i : {0, 4}) {
+        nnn = nnn->add_node(new Node("node" + std::to_string(i)));
+        for (auto j : {0, 10}) {
+            nnn->add_attr(new Attr("attr" + std::to_string(j), "value" + std::to_string(j) ));
+        }
+    }
+
+    SECTION("Multiple nesting") {
+        parse_and_validate(root_node);
+    }
+
 }

@@ -161,7 +161,7 @@ token_t anychar = {.type = TT_ANY};
 token_t token_attr_equal =        DEFINE_CONSTANT_STR_TOKEN("=");
 token_t token_comment_begin =     DEFINE_CONSTANT_STR_TOKEN("<!--");
 token_t token_tag_closing_begin = DEFINE_CONSTANT_STR_TOKEN("</");
-token_t token_header_begin =      DEFINE_CONSTANT_STR_TOKEN("<?");
+token_t token_header_begin =      DEFINE_CONSTANT_STR_TOKEN("<?xml");
 token_t token_tag_begin =         DEFINE_CONSTANT_STR_TOKEN("<");
 token_t token_comment_end =       DEFINE_CONSTANT_STR_TOKEN("-->");
 token_t token_tag_closing_end =   DEFINE_CONSTANT_STR_TOKEN("/>");
@@ -288,8 +288,23 @@ gsymbol_t *tag_pack[] = {
         NULL
 };
 
+gsymbol_t xml_header[] = {
+        T_WHITESPACE_MO,
+        TOKEN("<?xml", token_header_begin),
+        NONTERM_MO_("Attributes", attr_line_pack),
+        TOKEN("?>", token_header_end),
+        END
+};
+
+
+gsymbol_t *header_pack[] = {
+        xml_header,
+        NULL
+};
+
 gsymbol_t rule_xml_document[] = {
-        NONTERM_MO_("Tag", tag_pack),
+        NONTERM__O_("XML Header", header_pack),
+        NONTERM_MO_("Root Tag", tag_pack),
         END
 };
 
@@ -368,6 +383,5 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
-
 
 #endif
