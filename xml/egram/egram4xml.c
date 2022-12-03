@@ -85,10 +85,13 @@ const char *do_tag_reset(void *context, const char* value, unsigned len) {
 
 const char *got_tag_open(void *context, const char* value, unsigned len) {
     xml_parse_context_t *c = (xml_parse_context_t *) context;
-//    printf("Got tag \"%s\" open with %d attrs:\n", c->tagname, c->attrs_num);
-//    for (unsigned i = 0; i < c->attrs_num; i++) {
-//        printf("    Attr: %s=\"%s\"\n", c->attrs[i].name, c->attrs[i].value);
-//    }
+    printf("Got tag \"%s\" open with %d attrs:\n", c->tagname, c->attrs_num);
+    for (unsigned i = 0; i < c->attrs_num; i++) {
+        printf("    Attr: %s=\"%s\"\n", c->attrs[i].name, c->attrs[i].value);
+    }
+
+    c->attrs[c->attrs_num].value = NULL;
+
     c->start_element(c->elements_data_handle, c->tagname, c->attrs);
     return NULL;
 }
@@ -102,7 +105,7 @@ const char *set_tag_value(void *context, const char* value, unsigned len) {
 
 const char *got_tag_close(void *context, const char* value, unsigned len) {
     xml_parse_context_t *c = (xml_parse_context_t *) context;
-//    printf("Got tag \"%s\" close\n", c->tagname);
+    printf("Got tag \"%s\" close\n", c->tagname);
     c->end_element(c->elements_data_handle, c->tagname);
     return NULL;
 }
@@ -152,7 +155,8 @@ tokenize_rv_t attr_val(token_context_t *pc, const char *input, unsigned len, uns
 token_t token_attr_value =        DEFINE_CUSTOM_TOKEN(attr_val);
 
 token_t whitespace = {.type = TT_WHITESPACE};
-token_t alphanum = {TT_ALPHANUM};
+token_t alphanum = {.type = TT_ALPHANUM};
+token_t anychar = {.type = TT_ANY};
 
 token_t token_attr_equal =        DEFINE_CONSTANT_STR_TOKEN("=");
 token_t token_comment_begin =     DEFINE_CONSTANT_STR_TOKEN("<!--");
@@ -178,6 +182,7 @@ token_t *token_list[] = {
         &token_tag_closing_end,
         &token_header_end,
         &token_tag_end,
+        &anychar,
         NULL
 };
 
@@ -195,11 +200,59 @@ gsymbol_t *attr_line_pack[] = {
         NULL
 };
 
+gsymbol_t whitespace_line_many[] = {
+        T_WHITESPACE_M_,
+        END
+};
+
+gsymbol_t aplhanum_line[] = {
+        TOKEN_M__("A-z0-9", alphanum),
+        END
+};
+gsymbol_t anychar_line[] = {
+        TOKEN_M__("*", anychar),
+        END
+};
+
+gsymbol_t *comment_value_pack[] = {
+        whitespace_line_many,
+        aplhanum_line,
+        anychar_line,
+        NULL
+};
+
+
+gsymbol_t comment_line[] = {
+        T_WHITESPACE_MO,
+        TOKEN("Cmnt open", token_comment_begin),
+        NONTERM_MO_("Cmnt val", comment_value_pack),
+        TOKEN("Cmnt close", token_comment_end),
+        END
+};
+
+
+
+#define TAG_RECOURSE_LABEL_NAME "Recurse Tag"
+
+gsymbol_t recourse_tag_line[] = {
+        NONTERM_MO_(TAG_RECOURSE_LABEL_NAME, NULL),
+        END
+};
+
+gsymbol_t *content_pack[] = {
+//        comment_line,
+//        whitespace_line,
+        recourse_tag_line,
+        NULL
+};
+
 gsymbol_t rule_xml_tag_end_full[] = {
         TOKEN___H(">", token_tag_end, got_tag_open),
-        T_WHITESPACE_MO,
-        NONTERM_MO_("Recurse Tag", NULL),
-        T_WHITESPACE_MO,
+//        T_WHITESPACE_MO,
+        NONTERM_MO_("Content", content_pack),
+//        T_WHITESPACE_MO,
+//        NONTERM_MO_(TAG_RECOURSE_LABEL_NAME, NULL),
+//        T_WHITESPACE_MO,
         TOKEN__OH("TagValue", alphanum, set_tag_value), // TODO handle tag's value
         T_WHITESPACE_MO,
         TOKEN("</", token_tag_closing_begin),
@@ -231,6 +284,7 @@ gsymbol_t rule_xml_tag[] = {
 
 gsymbol_t *tag_pack[] = {
         rule_xml_tag,
+        comment_line,
         NULL
 };
 
@@ -238,6 +292,17 @@ gsymbol_t rule_xml_document[] = {
         NONTERM_MO_("Tag", tag_pack),
         END
 };
+
+gsymbol_t *find_symbol(gsymbol_t *s, const char *name) {
+
+    for (gsymbol_t *n = s; !IS_END(*n); n++) {
+        if (strcmp(name, n->name) == 0) {
+            return n;
+        }
+    }
+
+    return NULL;
+}
 
 void egram4xml_parser_init(egram4xml_parser_t *parser,
                            xml_parser_t *data_handle,
@@ -255,7 +320,10 @@ void egram4xml_parser_init(egram4xml_parser_t *parser,
     xml_parse_state.char_datahandler = char_datahandler;
     xml_parse_state.end_element = end_element;
 
-    rule_xml_tag_end_full[2].elems = tag_pack; // link recurse
+    gsymbol_t *to_recourse = find_symbol(recourse_tag_line, TAG_RECOURSE_LABEL_NAME);
+//    gsymbol_t *to_recourse = find_symbol(rule_xml_tag_end_full, TAG_RECOURSE_LABEL_NAME);
+    to_recourse->elems = tag_pack; // link recurse // let it crash if not found
+
     memset(&parser->pc, 0, sizeof(parser->pc));
     egram_reset_parser(&parser->pc);
     parser->pc.token_list = token_list;

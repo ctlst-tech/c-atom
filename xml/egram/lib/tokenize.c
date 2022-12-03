@@ -73,7 +73,10 @@ static tokenize_rv_t read_token(token_context_t *context, token_t *t, const char
         case TT_ALPHANUM: return read_token_alphanum(context, input, len, processed);
         case TT_WHITESPACE: return read_token_whitespace(context, input, len, processed);
         case TT_CUSTOM: return t->custom_handler(context, input, len, processed);
-//        case TT_ANY: read_token_any(context, t_next, input, len, processed);
+        case TT_ANY: {
+            *processed = 1;
+            return t_match;
+        }
     }
 }
 

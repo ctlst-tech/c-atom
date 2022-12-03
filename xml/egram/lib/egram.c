@@ -14,17 +14,18 @@ void egram_reset_parser(egram_parsing_context_t *cntx) {
     tokenize_reset__context(&cntx->token_context);
 }
 
-static void dbg_msg(gsymbol_t *symbol, const char *curr_input, rule_rv_t status, unsigned indent) {
-    const char *sts = status == r_match ? "MATCH" : "MISS ";
-//
-//    if (symbol->type == GST_TERM) {
-//        return;
-//    }
+static void dbg_msg(gsymbol_t *symbol, const char *curr_input, rule_rv_t status, int note_entrance, unsigned indent) {
 
     for (int i = 0; i < indent; i++) {
-        printf("  ");
+        printf("__");
     }
-    printf("%s ", sts);
+
+    if (!note_entrance) {
+        const char *sts = status == r_match ? "MATCH" : "MISS ";
+        printf("%s ", sts);
+    } else {
+        printf("Entering ");
+    }
 
     if (symbol->type == GST_NONTERM) {
         printf("Non-term symbol \"%s\" to \"", symbol->name);
@@ -36,6 +37,8 @@ static void dbg_msg(gsymbol_t *symbol, const char *curr_input, rule_rv_t status,
             case TT_ALPHANUM: tt="TT_ALPHANUM"; break;
             case TT_WHITESPACE: tt="TT_WHITESPACE"; break;
             case TT_CUSTOM: tt="TT_CUSTOM"; break;
+            case TT_ANY: tt="TT_ANY"; break;
+            default: tt="UNDEFINED"; break;
         }
         printf("Term symbol %s of type %s \"%s\" lookup to \"", symbol->name, tt, tn);
     }
@@ -68,11 +71,15 @@ static rule_rv_t process_line(egram_parsing_context_t *cntx, gsymbol_t *upper_ru
     unsigned parsed_bytes;
     const char *initial_input = input;
 
+    unsigned matches = 0;
 
 #   define EAT_TERM() symb++
 
     gsymbol_t *symb = upper_rule;
     rule_rv_t rrv = r_more;
+
+    dbg_msg(symb, input, rrv, 1, depth);
+
 
     while ((len > 0) && !IS_END(*symb)) {
         parsed_bytes = 0;
@@ -100,7 +107,7 @@ static rule_rv_t process_line(egram_parsing_context_t *cntx, gsymbol_t *upper_ru
             default:
                 return r_err;
         }
-        dbg_msg(symb, input, rrv, depth);
+        dbg_msg(symb, input, rrv, 0, depth);
 
         if (rrv == r_match) {
             if (symb->h != NULL) {
@@ -109,24 +116,30 @@ static rule_rv_t process_line(egram_parsing_context_t *cntx, gsymbol_t *upper_ru
             if (!symb->many) {
                 EAT_TERM();
             }
+            matches++;
         } else if (symb->optional) {
             EAT_TERM();
             continue; // start over for the next token
         } else {
-            return r_miss;
+            break;
         }
 
         input += parsed_bytes;
         len -= parsed_bytes;
     }
 
-    if (IS_END(*symb) && (rrv == r_match)) {
-        if (symb->h != NULL) {
-            symb->h(cntx->user_data, NULL, 0);
-        }
+    if (matches > 0) {
+        rrv = r_match;
     }
 
-    *processed = input - initial_input;
+    if (rrv == r_match) {
+        if (IS_END(*symb)) {
+            if (symb->h != NULL) {
+                symb->h(cntx->user_data, NULL, 0);
+            }
+        }
+        *processed = input - initial_input;
+    }
 
     return rrv;
 }

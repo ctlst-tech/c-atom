@@ -206,7 +206,12 @@ xml_node_t *xml_node_find_following_sibling(xml_node_t *sibling, char *name) {
     return NULL;
 }
 
-
+/**
+ *
+ * @param first_sibling
+ * @param name2cnt if NULL all sibling will be counted
+ * @return
+ */
 int xml_node_count_siblings(xml_node_t *first_sibling, const char *name2cnt) {
     int rv = 0;
     for (xml_node_t *n = first_sibling; n != NULL; n = n->next_sibling) {
