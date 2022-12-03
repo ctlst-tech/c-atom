@@ -4,6 +4,8 @@
 #include <string.h>
 #include <regex>
 #include <utility>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "../xml.h"
 
@@ -34,6 +36,40 @@ public:
         return name_match & value_match;
     }
 };
+
+std::string remove_char(std::string str, char c) {
+    str.erase(std::remove(str.begin(), str.end(), c), str.end());
+
+    return str;
+}
+
+std::string identation(unsigned ident) {
+    return std::string(ident * 4, ' ');
+}
+
+
+bool replace_first(
+        std::string& s,
+        std::string const& toReplace,
+        std::string const& replaceWith
+) {
+    std::size_t pos = s.find(toReplace);
+    if (pos == std::string::npos) return false;
+    s.replace(pos, toReplace.length(), replaceWith);
+    return true;
+}
+
+std::string remove_nrts_chars(std::string str) {
+
+    str = remove_char(str, '\n');
+    str = remove_char(str, '\r');
+    str = remove_char(str, '\t');
+
+    auto idnt = identation(1);
+    while(replace_first(str, idnt, ""));
+
+    return str;
+}
 
 class Node: public Base{
     std::list<Attr *> attrs;
@@ -101,13 +137,12 @@ public:
 
     virtual std::string render(unsigned ident = 0) {
         std::string rv;
-        std::string identation = std::string(ident * 4, ' ');
 
         if (!xml_header.empty()) {
             rv += xml_header + "\n";
         }
 
-        rv += identation + "<" + name;
+        rv += identation(ident) + "<" + name;
 
         for (auto a : attrs) {
             rv += " " + a->render();
@@ -125,19 +160,19 @@ public:
             for (auto n : children) {
                 rv += n->render(ident+1);
             }
-            rv += identation + "</" + name + ">\n";
+            rv += identation(ident) + "</" + name + ">\n";
         }
 
         return rv;
     }
-
 
     bool match_with(xml_node_t *n) {
         if (n == NULL) {
             return false;
         }
         bool tag_name_match = name == std::string(n->name);
-//        bool value_match = value == std::string(n->data);
+        bool value_match = remove_nrts_chars(value)
+                           == remove_nrts_chars(n->data != NULL ? std::string(n->data) : "");
 
         bool attr_num_match = attrs.size() == xml_node_count_attrs(n);
 
@@ -173,7 +208,7 @@ public:
         }
 
 //        return tag_name_match & value_match & attr_num_match & attrs_match;
-        bool rv = tag_name_match & attr_num_match & attrs_match & nodes_num_match & nodes_match;
+        bool rv = tag_name_match & value_match & attr_num_match & attrs_match & nodes_num_match & nodes_match;
         std::string identation = std::string(depth() * 4, '_');
 
         #define MS(v__) ((v__) ? "MATCH" : "DIFF")
@@ -182,6 +217,7 @@ public:
         if (!rv) {
             std::cerr << identation << name << std::endl;
             PRINT("Name     ", tag_name_match);
+            PRINT("Value     ", value_match);
             PRINT("Attr num ", attr_num_match);
             PRINT("Attrs    ", attrs_match);
             PRINT("Nodes num", nodes_num_match);
@@ -197,6 +233,21 @@ public:
         std::cout << "END Printing rendered node \"" + name + "\" END\n";
     }
 };
+
+Node *nodes_tree_from_dom(xml_node_t *dom_el) {
+    Node *N = new Node(std::string(dom_el->name),
+                       dom_el->data != NULL ? std::string(dom_el->data) : "");
+
+    for (xml_attr_t *attr = dom_el->attrs_list; attr != NULL; attr = attr->next_attr) {
+        N->add_attr(new Attr(std::string(attr->name), std::string(attr->value)));
+    }
+    for (xml_node_t *n = dom_el->first_child; n != NULL; n = n->next_sibling) {
+        auto nn = nodes_tree_from_dom(n);
+        N->add_node(nn);
+    }
+
+    return N;
+}
 
 class Comment: public Node {
     std::string comment;
@@ -228,9 +279,9 @@ void parse_and_validate(Node &tree) {
 
 TEST_CASE("XML by EGRAM Normal") {
     Node root_node = Node("root", "\n");
-    SECTION("Empty") {
-        FAIL("Not implemented");
-    }
+//    SECTION("Empty") {
+//        FAIL("Not implemented");
+//    }
     SECTION("Just root tag") {
         parse_and_validate(root_node);
     }
@@ -272,7 +323,7 @@ TEST_CASE("XML by EGRAM Normal") {
 
     root_node.add_xml_header();
 
-    SECTION("Root tag w doc header") {
+    SECTION("With doc header") {
         parse_and_validate(root_node);
     }
 
@@ -289,4 +340,72 @@ TEST_CASE("XML by EGRAM Normal") {
         parse_and_validate(root_node);
     }
 
+    nn->value = ",.:{}_-=@#$%^*()";
+
+    SECTION("With various chars in values") {
+        parse_and_validate(root_node);
+    }
+
+}
+
+bool file_to_str(const char *path, std::string &content) {
+    #define BUF_SIZE 256
+    char buf[BUF_SIZE + 1];
+    int rv;
+
+    int fd = open(path, O_RDONLY);
+    if (fd < 0) {
+        std::cerr << "File \"" << path <<"\" opening error: " << strerror(errno);
+        return false;
+    }
+    content = "";
+
+    while((rv = read(fd, buf, BUF_SIZE)) > 0) {
+        content += std::string(buf);
+    }
+
+    return true;
+}
+
+xml_rv_t egram_parse_from_file_test(const char *path, xml_node_t **parse_result_root) {
+
+    std::string file_content;
+
+    if (!file_to_str(path, file_content)) {
+        return xml_e_no_file;
+    }
+
+    return xml_egram_parse_from_str(file_content.c_str(), parse_result_root);
+}
+
+extern "C" xml_rv_t expat_parse_from_file(const char *path, xml_node_t **parse_result_root);
+
+TEST_CASE("Real files as single string testing") {
+
+    const char *files[] = {
+        "config/cube/flow_cont_angpos.xml",
+        "config/cube/flow_cont_angrate.xml",
+        "config/cube/flow_housekeeping.xml",
+        "config/cube/flow_nav_attitude_filter.xml",
+        "config/cube/flow_nav_attitude_prop.xml",
+        "config/cube/flow_nav_imu_alignment.xml",
+        "config/cube/flow_rc.xml",
+        "config/cube/swsys.xml",
+    };
+
+    for (auto f : files) {
+        SECTION(f) {
+            xml_node_t *expat_dom;
+            xml_node_t *egram_dom;
+            xml_rv_t rv = expat_parse_from_file(f, &expat_dom);
+            REQUIRE(rv == xml_e_ok);
+            Node *expat_root_node = nodes_tree_from_dom(expat_dom);
+            REQUIRE(expat_root_node != NULL);
+            rv = egram_parse_from_file_test(f, &egram_dom);
+            REQUIRE(rv == xml_e_ok);
+            bool match = expat_root_node->match_with(egram_dom);
+            REQUIRE(match == true);
+        }
+    }
+    // try to match
 }

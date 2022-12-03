@@ -14,7 +14,7 @@ add_executable(xml_test_egram
         )
 
 target_include_directories(xml_test_egram PRIVATE src/lib/include)
-target_link_libraries(xml_test_egram PUBLIC  Catch2::Catch2WithMain xml-parser-egram-static)
+target_link_libraries(xml_test_egram PUBLIC  Catch2::Catch2WithMain xml-parser-egram-static xml-parser-expat-static)
 
 
 #add_executable(xml_test test/xml_test.c)

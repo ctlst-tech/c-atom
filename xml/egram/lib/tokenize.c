@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <string.h>
 
 #include "egram.h"
 
@@ -40,6 +41,22 @@ static tokenize_rv_t read_token_whitespace(token_context_t *tc, const char *inpu
     }
 }
 
+static tokenize_rv_t read_any_but(token_context_t *pc, token_t *t, const char *input, unsigned len, unsigned *processed) {
+    int i;
+    for (i = 0; i < len; i++) {
+        if (strchr(t->literal, input[i]) != NULL) {
+            break;
+        } else {
+            pc->value[pc->offset++] = input[i];
+            // TODO check overflow
+        }
+    }
+
+    *processed = i;
+
+    return i > 0 ? t_match : t_miss;
+}
+
 static tokenize_rv_t read_token_alphanum(token_context_t *tc, const char *input, unsigned len, unsigned *processed) {
     unsigned i = 0;
     tokenize_rv_t rv;
@@ -67,21 +84,18 @@ static tokenize_rv_t read_token_alphanum(token_context_t *tc, const char *input,
 }
 
 
-static tokenize_rv_t read_token(token_context_t *context, token_t *t, const char *input, unsigned len, unsigned *processed) {
+tokenize_rv_t read_token(token_context_t *context, token_t *t, const char *input, unsigned len, unsigned *processed) {
     switch (t->type) {
         case TT_CONST: return read_token_const(context, t, input, len, processed);
         case TT_ALPHANUM: return read_token_alphanum(context, input, len, processed);
         case TT_WHITESPACE: return read_token_whitespace(context, input, len, processed);
         case TT_CUSTOM: return t->custom_handler(context, input, len, processed);
-        case TT_ANY: {
-            *processed = 1;
-            return t_match;
-        }
+        case TT_ANY_BUT: return read_any_but(context, t, input, len, processed);
     }
 }
 
 
-void tokenize_reset__context(token_context_t *tc) {
+void tokenize_reset_context(token_context_t *tc) {
     tc->offset = 0;
     tc->state = 0;
 }
@@ -97,7 +111,7 @@ token_t* tokenize(egram_parsing_context_t *cntx, const char *input, unsigned len
         tr = read_token(&cntx->token_context, cntx->hanged_token, input, len, processed);
     } else {
         for (i = 0; cntx->token_list[i] != NULL; i++) {
-            tokenize_reset__context(&cntx->token_context);
+            tokenize_reset_context(&cntx->token_context);
             tr = read_token(&cntx->token_context, cntx->token_list[i], input, len, &used_bytes);
             if (tr != t_miss) {
                 break;

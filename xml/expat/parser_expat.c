@@ -88,7 +88,7 @@ static void XMLCALL endElement(void *userData, const char *name) {
 }
 
 
-static xml_rv_t xml_parser_reset(xml_parser_t *xml_parser, int free_dom) {
+static xml_rv_t expat_reset(xml_parser_t *xml_parser, int free_dom) {
     if (xml_parser == NULL)
         return xml_e_invarg;
 
@@ -98,7 +98,7 @@ static xml_rv_t xml_parser_reset(xml_parser_t *xml_parser, int free_dom) {
     }
 
     if (free_dom) {
-        // TODO implement freeing of DOM
+        // TODO implement freeing of DOM?
     }
 
     xml_parser->current_parent = NULL;
@@ -106,21 +106,13 @@ static xml_rv_t xml_parser_reset(xml_parser_t *xml_parser, int free_dom) {
 
     xml_parser->src_file_path = NULL;
 
-    // Инициализация expat
     XML_SetUserData(xml_parser->parser_data_handle, xml_parser);
     XML_SetElementHandler(xml_parser->parser_data_handle, startElement, endElement);
     XML_SetCharacterDataHandler(xml_parser->parser_data_handle, charDatahandler);
     return xml_e_ok;
 }
 
-xml_parser_t *xml_parser_alloc() {
-    return xml_alloc(sizeof(xml_parser_t));
-}
-void xml_parser_dealloc(xml_parser_t *p) {
-    xml_free(p);
-}
-
-xml_rv_t xml_parser_init(xml_parser_t *xml_parser) {
+xml_rv_t expat_init(xml_parser_t *xml_parser) {
     if (xml_parser == NULL)
         return xml_e_invarg;
 
@@ -131,16 +123,15 @@ xml_rv_t xml_parser_init(xml_parser_t *xml_parser) {
         return xml_e_parser_creation;
     }
 
-    return xml_parser_reset(xml_parser, 0);;
+    return expat_reset(xml_parser, 0);
 }
 
-void xml_parser_destroy(xml_parser_t *xml_parser) {
+void expat_destroy(xml_parser_t *xml_parser) {
     XML_ParserFree(xml_parser->parser_data_handle);
 }
 
 
-
-static xml_rv_t xml_parse(xml_parser_t *xml_parser, const char *s, int len, int isFinal ) {
+static xml_rv_t expat_parse(xml_parser_t *xml_parser, const char *s, int len, int isFinal ) {
 
 
     if (XML_Parse(xml_parser->parser_data_handle, s, len, isFinal ) == XML_STATUS_ERROR) {
@@ -153,25 +144,24 @@ static xml_rv_t xml_parse(xml_parser_t *xml_parser, const char *s, int len, int 
     return xml_e_ok;
 }
 
-int xml_parse_get_current_line(xml_parser_t *xml_parser) {
+int expat_get_current_line(xml_parser_t *xml_parser) {
     return ( int ) XML_GetCurrentLineNumber(xml_parser->parser_data_handle);
 }
 
-
-xml_rv_t xml_parse_from_file(const char *path, xml_node_t **parse_result_root) {
+xml_rv_t expat_parse_from_file(const char *path, xml_node_t **parse_result_root) {
     if (path == NULL)
         return xml_e_invarg;
 
-    static xml_parser_t xml_parser;
+    xml_parser_t xml_parser;
 
     xml_rv_t rv;
 
 #   define BUF_SIZE 4096
-    static char buff[BUF_SIZE];
+    char buff[BUF_SIZE];
     int fd = -1;
 
     do {
-        rv = xml_parser_init(&xml_parser);
+        rv = expat_init(&xml_parser);
         if (rv != xml_e_ok) {
             break;
         }
@@ -190,7 +180,7 @@ xml_rv_t xml_parse_from_file(const char *path, xml_node_t **parse_result_root) {
             break;
         }
 
-        xml_parser_reset(&xml_parser, 0);
+        expat_reset(&xml_parser, 0);
         xml_parser.src_file_path = path;
         ssize_t br;
 
@@ -200,7 +190,7 @@ xml_rv_t xml_parse_from_file(const char *path, xml_node_t **parse_result_root) {
                 rv = xml_e_file_read;
                 break;
             }
-            rv = xml_parse(&xml_parser, buff, (int) br, (br < BUF_SIZE) ? -1 : 0);
+            rv = expat_parse(&xml_parser, buff, (int) br, (br < BUF_SIZE) ? -1 : 0);
             if (rv != xml_e_ok) {
                 break;
             }
@@ -213,7 +203,7 @@ xml_rv_t xml_parse_from_file(const char *path, xml_node_t **parse_result_root) {
         close(fd);
     }
 
-    xml_parser_dealloc(&xml_parser);
+    expat_destroy(&xml_parser);
 
     return rv;
 }

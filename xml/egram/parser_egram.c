@@ -52,7 +52,7 @@ static void charDatahandler (xml_parser_t *parser, const char *s, int len) {
 
     int non_space = 0;
     int i = 0;
-    do {
+    while ((non_space == 0) && (i < len)) {
         switch (s[i]) {
             case '\n':
             case '\r':
@@ -65,10 +65,9 @@ static void charDatahandler (xml_parser_t *parser, const char *s, int len) {
         }
 
         i++;
-    } while((non_space == 0) && (i < len));
+    };
 
     if (non_space > 0) {
-
         if (parser->current_parent->data == NULL) {
             char *d = xml_alloc(len + 1);
             if (d != NULL) {

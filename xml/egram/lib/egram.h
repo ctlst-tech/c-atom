@@ -6,7 +6,7 @@ typedef enum {
     TT_CONST,
     TT_ALPHANUM,
     TT_WHITESPACE,
-    TT_ANY,
+    TT_ANY_BUT,
     TT_CUSTOM,
 } token_type_t;
 
@@ -69,6 +69,7 @@ typedef struct {
 
 
 #define DEFINE_CONSTANT_STR_TOKEN(lit__) {.type=TT_CONST, .literal=(lit__), .literal_size=(sizeof(lit__)-1)}
+#define DEFINE_ANY_BUT_TOKEN(lit__) {.type=TT_ANY_BUT, .literal=(lit__), .literal_size=(sizeof(lit__)-1)}
 #define DEFINE_CUSTOM_TOKEN(h__) {.type=TT_CUSTOM, .literal=NULL, .literal_size=0, .custom_handler=h__ }
 
 
@@ -94,6 +95,7 @@ typedef struct {
 #define TOKEN(name__, t__) DEFINE_TERMINAL(name__, &(t__), 0, 0, NULL)
 #define TOKEN___H(name__, t__, h__) DEFINE_TERMINAL(name__, &(t__), 0, 0, h__)
 #define TOKEN__OH(name__, t__, h__) DEFINE_TERMINAL(name__, &(t__), 0, 1, h__)
+#define TOKEN_MOH(name__, t__, h__) DEFINE_TERMINAL(name__, &(t__), 1, 1, h__)
 #define TOKEN_MO_(name__, t__) DEFINE_TERMINAL(name__, &(t__), 1, 1, NULL)
 #define TOKEN_M__(name__, t__) DEFINE_TERMINAL(name__, &(t__), 1, 0, NULL)
 #define TOKEN__O_(name__, t__) DEFINE_TERMINAL(name__, &(t__), 0, 1, NULL)
