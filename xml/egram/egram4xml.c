@@ -330,7 +330,7 @@ gsymbol_t *header_pack[] = {
 gsymbol_t rule_xml_document[] = {
         NONTERM__O_("XML Header", header_pack),
 //        NONTERM__O_("Comment", header_pack),
-        NONTERM_MO_("Root Tag", tag_pack),
+        NONTERM__O_("Root Tag", tag_pack),
         END
 };
 

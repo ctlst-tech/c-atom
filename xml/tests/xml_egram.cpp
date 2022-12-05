@@ -361,6 +361,7 @@ bool file_to_str(const char *path, std::string &content) {
     content = "";
 
     while((rv = read(fd, buf, BUF_SIZE)) > 0) {
+        buf[rv] = 0;
         content += std::string(buf);
     }
 

@@ -57,7 +57,7 @@ void print_token_info(token_t *t) {
         case TT_ALPHANUM: tt="TT_ALPHANUM"; break;
         case TT_WHITESPACE: tt="TT_WHITESPACE"; break;
         case TT_CUSTOM: tt="TT_CUSTOM"; break;
-        case TT_ANY_BUT: tt="TT_ANY_BUT"; break;
+        case TT_ANY_BUT: tt="TT_ANY_BUT"; tn = t->literal; break;
         default: tt="UNDEFINED"; break;
     }
     printf("%s \"%s\"", tt, tn);
@@ -79,9 +79,7 @@ void reset () {
     printf("\033[0m");
 }
 
-
 void print_match_or_miss(rule_rv_t status) {
-    const char *sts = status == r_match ? "" : "";
     if (status == r_match) {
 //        green();
         printf("MATCH");
@@ -91,7 +89,6 @@ void print_match_or_miss(rule_rv_t status) {
         printf("MISS");
 //        reset();
     }
-
 }
 
 static void dbg_msg(gsymbol_t *symbol, const char *curr_input, rule_rv_t status, int note_entrance, unsigned indent) {
@@ -127,8 +124,6 @@ static rule_rv_t process_line(egram_parsing_context_t *cntx, gsymbol_t *upper_ru
     gsymbol_t *symb = upper_rule;
     rule_rv_t rrv = r_more;
 
-//    dbg_msg(symb, input, rrv, 1, depth);
-
     while ((len > 0) && !IS_END(*symb)) {
         parsed_bytes = 0;
         switch (symb->type) {
@@ -163,14 +158,14 @@ static rule_rv_t process_line(egram_parsing_context_t *cntx, gsymbol_t *upper_ru
 
                 for (int j = 0; symb->elems[j] != NULL; j++) {
                     print_indent(depth);
-                    printf("% 2d %02d/%02d of %s: ", i, j+1, rn, symb->name);
+                    printf("% 2d %02d/%02d of \"%s\": ", i, j+1, rn, symb->name);
                     print_input_head(input);
                     printf("\n");
                     rrv = process_line(cntx, symb->elems[j], input, len, &parsed_bytes, depth + 1);
                     print_indent(depth);
                     printf("% 2d %02d/%02d ", i, j+1, rn);
                     print_match_or_miss(rrv);
-                    printf(" %s \n", symb->name);
+                    printf(" \"%s\" \n", symb->name);
                     if (rrv == r_match) {
                         break;
                         // TODO hanged rule set (stack?)
@@ -231,3 +226,5 @@ static rule_rv_t process_line(egram_parsing_context_t *cntx, gsymbol_t *upper_ru
 rule_rv_t egram_process(egram_parsing_context_t *cntx, gsymbol_t  *symbol, const char *input, unsigned len, unsigned *processed) {
     return process_line(cntx, symbol, input, len, processed, 0);
 }
+
+
