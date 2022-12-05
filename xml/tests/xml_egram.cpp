@@ -6,10 +6,12 @@
 #include <utility>
 #include <fcntl.h>
 #include <unistd.h>
+#include <chrono>
 
 #include "../xml.h"
 
 extern "C" xml_rv_t xml_egram_parse_from_str(const char *str, xml_node_t **parse_result_root);
+
 
 class Base {
 
@@ -375,7 +377,7 @@ TEST_CASE("XML by EGRAM Normal") {
 }
 
 bool file_to_str(const char *path, std::string &content) {
-    #define BUF_SIZE 256
+    #define BUF_SIZE 4096
     char buf[BUF_SIZE + 1];
     int rv;
 
@@ -424,14 +426,27 @@ TEST_CASE("Real files as single string testing") {
         SECTION(f) {
             xml_node_t *expat_dom;
             xml_node_t *egram_dom;
+
+            auto expat_start = std::chrono::high_resolution_clock::now();
             xml_rv_t rv = expat_parse_from_file(f, &expat_dom);
+            auto expat_stop = std::chrono::high_resolution_clock::now();
             REQUIRE(rv == xml_e_ok);
+
             Node *expat_root_node = nodes_tree_from_dom(expat_dom);
             REQUIRE(expat_root_node != NULL);
+
+            auto egram_start = std::chrono::high_resolution_clock::now();
             rv = egram_parse_from_file_test(f, &egram_dom);
+            auto egram_stop = std::chrono::high_resolution_clock::now();
             REQUIRE(rv == xml_e_ok);
+
             bool match = expat_root_node->match_with(egram_dom);
             REQUIRE(match == true);
+
+            auto expat_duration = std::chrono::duration_cast<std::chrono::microseconds>(expat_stop - expat_start);
+            auto egram_duration = std::chrono::duration_cast<std::chrono::microseconds>(egram_stop - egram_start);
+
+            std::cout << "expat " << expat_duration.count() << " egram " << egram_duration.count() << " | file " << f << std::endl;
         }
     }
 }
