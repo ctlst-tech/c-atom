@@ -1,5 +1,5 @@
-#ifndef C_ATOM_EGRAM4XML_H
-#define C_ATOM_EGRAM4XML_H
+#ifndef C_ATOM_EGRAM_XML_H
+#define C_ATOM_EGRAM_XML_H
 
 #include "lib/egram.h"
 #include "../xml_priv.h"
@@ -25,4 +25,4 @@ void egram4xml_parser_setup(egram4xml_parser_t *parser,
 
 rule_rv_t egram4xml_parse_from_str(egram4xml_parser_t *parser, const char *input, unsigned len);
 
-#endif //C_ATOM_EGRAM4XML_H
+#endif //C_ATOM_EGRAM_XML_H

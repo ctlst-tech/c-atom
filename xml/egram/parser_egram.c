@@ -7,7 +7,7 @@
 #include <errno.h>
 
 
-#include "egram4xml.h"
+#include "egram_xml.h"
 
 /*
  * TODO:
@@ -174,7 +174,7 @@ xml_rv_t egram_parse_from_file(const char *path, xml_node_t **parse_result_root)
             return xml_e_file_read;
     }
 
-    return xml_egram_parse_from_str(file_content, parse_result_root);
+    return xml_egram_parse_from_str((char *)file_content, parse_result_root);
 }
 
 xml_rv_t xml_parse_from_file(const char *path, xml_node_t **parse_result_root) {

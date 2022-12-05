@@ -3,7 +3,7 @@
 #include <string.h>
 #include <ctype.h>
 
-#include "egram4xml.h"
+#include "egram_xml.h"
 
 #define MAX_ATTRS 16
 #define MAX_TAG_BUFFER 512

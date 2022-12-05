@@ -1,6 +1,6 @@
 
 add_subdirectory(lib)
-add_library(xml-parser-egram-static STATIC egram4xml.c parser_egram.c)
+add_library(xml-parser-egram-static STATIC egram_xml.c parser_egram.c)
 target_link_libraries(xml-parser-egram-static PUBLIC egram-static)
 
 
