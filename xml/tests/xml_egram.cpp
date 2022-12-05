@@ -408,5 +408,4 @@ TEST_CASE("Real files as single string testing") {
             REQUIRE(match == true);
         }
     }
-    // try to match
 }

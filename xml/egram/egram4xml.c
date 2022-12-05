@@ -5,17 +5,17 @@
 
 #include "egram4xml.h"
 
-
 #define MAX_ATTRS 16
 #define MAX_TAG_BUFFER 256
-#define MAX_TAG_VALUE_BUFFER 512
+
+//#define EGRAM_XML_DEBUG 1
+#undef EGRAM_XML_DEBUG
 
 typedef struct {
     const char *tagname;
     unsigned attrs_num;
     attr_t attrs [MAX_ATTRS];
     char tag_buffer[MAX_TAG_BUFFER];
-//    char tag_value_buffer[MAX_TAG_VALUE_BUFFER];
     unsigned tag_buffer_offset;
 
     xml_parser_t *elements_data_handle;
@@ -56,11 +56,7 @@ const char *set_tag_name(void *context, const char* value, unsigned len) {
 
 const char *concat_tag_value(void *context, const char* value, unsigned len) {
     xml_parse_context_t *c = (xml_parse_context_t *) context;
-#define MIN(a,b) ((a)>(b) ? (b) : (a))
-    // TODO handle value overflow
-//    unsigned to_append = MIN(MAX_TAG_VALUE_BUFFER - strlen(c->tag_value_buffer), len);
-//    strncat(c->tag_value_buffer, value, to_append);
-//    c->char_datahandler(c->elements_data_handle, c->tag_value_buffer, strlen(c->tag_value_buffer));
+    #define MIN(a,b) ((a)>(b) ? (b) : (a))
     c->char_datahandler(c->elements_data_handle, value, len); // TODO handle potential concatination on appending level
     return NULL;
 }
@@ -97,10 +93,13 @@ const char *do_tag_reset(void *context, const char* value, unsigned len) {
 
 const char *got_tag_open(void *context, const char* value, unsigned len) {
     xml_parse_context_t *c = (xml_parse_context_t *) context;
+
+    #ifdef EGRAM_XML_DEBUG
     printf("Got tag \"%s\" open with %d attrs:\n", c->tagname, c->attrs_num);
     for (unsigned i = 0; i < c->attrs_num; i++) {
         printf("    Attr: %s=\"%s\"\n", c->attrs[i].name, c->attrs[i].value);
     }
+    #endif
 
     c->attrs[c->attrs_num].value = NULL;
 
@@ -110,7 +109,9 @@ const char *got_tag_open(void *context, const char* value, unsigned len) {
 
 const char *got_tag_close(void *context, const char* value, unsigned len) {
     xml_parse_context_t *c = (xml_parse_context_t *) context;
+    #ifdef EGRAM_XML_DEBUG
     printf("Got tag \"%s\" close\n", c->tagname);
+    #endif
     c->end_element(c->elements_data_handle, c->tagname);
     return NULL;
 }

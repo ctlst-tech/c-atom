@@ -5,6 +5,8 @@
 
 #include "egram.h"
 
+//#define EGRAM_DEBUG 1
+#undef EGRAM_DEBUG
 
 token_t* tokenize(egram_parsing_context_t *cntx, const char *input, unsigned len, unsigned *processed);
 tokenize_rv_t read_token(token_context_t *context, token_t *t, const char *input, unsigned len, unsigned *processed);
@@ -14,6 +16,8 @@ void tokenize_reset_context(token_context_t *tc);
 void egram_reset_parser(egram_parsing_context_t *cntx) {
     tokenize_reset_context(&cntx->token_context);
 }
+
+#ifdef EGRAM_DEBUG
 
 static void print_indent(unsigned indent) {
     for (int i = 0; i < indent; i++) {
@@ -91,27 +95,7 @@ void print_match_or_miss(rule_rv_t status) {
     }
 }
 
-static void dbg_msg(gsymbol_t *symbol, const char *curr_input, rule_rv_t status, int note_entrance, unsigned indent) {
-
-    print_indent(indent);
-
-    if (!note_entrance) {
-        print_match_or_miss(status);
-    } else {
-        printf("Entering ");
-    }
-
-    if (symbol->type == GST_NONTERM) {
-        printf("Non-term symbol \"%s\" to \"", symbol->name);
-    } else {
-        printf("Term symbol %s of type ", symbol->name);
-        print_token_info(symbol);
-    }
-
-    print_input_head(curr_input);
-
-    printf("...\"\n");
-}
+#endif
 
 static rule_rv_t process_line(egram_parsing_context_t *cntx, gsymbol_t *upper_rule, const char *input, unsigned len, unsigned *processed, unsigned depth) {
     unsigned parsed_bytes;
@@ -129,43 +113,52 @@ static rule_rv_t process_line(egram_parsing_context_t *cntx, gsymbol_t *upper_ru
         switch (symb->type) {
             case GST_TERM:
                 ;
+                #ifdef EGRAM_DEBUG
                 print_indent(depth);
                 printf("% 2d Lookup token: ", i);
                 print_token_info(symb->t);
                 print_input_head(input);
                 printf("\n");
-//                token_t *curr_token = tokenize(cntx, input, len, &parsed_bytes);
-//                if (curr_token == symb->t) {
-//                    rrv = r_match;
-//                } else {
-//                    rrv = r_miss;
-//                }
+                #endif
+
                 tokenize_reset_context(&cntx->token_context);
                 tokenize_rv_t trv = read_token(&cntx->token_context, symb->t, input, len, &parsed_bytes);
                 rrv = trv == t_match ? r_match : r_miss;
 
+                #ifdef EGRAM_DEBUG
                 print_indent(depth);
                 printf("% 2d ", i);
                 print_match_or_miss(rrv);
                 printf("\n");
+                #endif
 
                 break;
 
             case GST_NONTERM:
                 ;
+                #ifdef EGRAM_DEBUG
                 unsigned rn;
                 for (rn = 0; symb->elems[rn] != NULL; rn++);
+                #endif
 
                 for (int j = 0; symb->elems[j] != NULL; j++) {
+
+                    #ifdef EGRAM_DEBUG
                     print_indent(depth);
                     printf("% 2d %02d/%02d of \"%s\": ", i, j+1, rn, symb->name);
                     print_input_head(input);
                     printf("\n");
+                    #endif
+
                     rrv = process_line(cntx, symb->elems[j], input, len, &parsed_bytes, depth + 1);
+
+                    #ifdef EGRAM_DEBUG
                     print_indent(depth);
                     printf("% 2d %02d/%02d ", i, j+1, rn);
                     print_match_or_miss(rrv);
                     printf(" \"%s\" \n", symb->name);
+                    #endif
+
                     if (rrv == r_match) {
                         break;
                         // TODO hanged rule set (stack?)
@@ -177,7 +170,6 @@ static rule_rv_t process_line(egram_parsing_context_t *cntx, gsymbol_t *upper_ru
             default:
                 return r_err;
         }
-//        dbg_msg(symb, input, rrv, 0, depth);
 
         if (rrv == r_match) {
             if (symb->h != NULL) {
@@ -185,13 +177,17 @@ static rule_rv_t process_line(egram_parsing_context_t *cntx, gsymbol_t *upper_ru
             }
             if (!symb->many) {
                 EAT_TERM();
+                #ifdef EGRAM_DEBUG
                 print_indent(depth); printf("% 2d SHIFT\n", i);
+                #endif
             } else {
                 many_symb_matches++;
             }
         } else if (symb->optional) {
             EAT_TERM();
+            #ifdef EGRAM_DEBUG
             print_indent(depth); printf("% 2d SHIFT OPTIONAL\n", i);
+            #endif
             continue; // start over for the next token
         } else {
             if (!symb->many) {
@@ -215,9 +211,13 @@ static rule_rv_t process_line(egram_parsing_context_t *cntx, gsymbol_t *upper_ru
             }
         }
         *processed = input - initial_input;
+        #ifdef EGRAM_DEBUG
         print_indent(depth); printf("% 2d LINE MATCH\n", i);
+        #endif
     } else {
+        #ifdef EGRAM_DEBUG
         print_indent(depth); printf("% 2d LINE DEADEND\n", i);
+        #endif
     }
 
     return rrv;
@@ -226,5 +226,3 @@ static rule_rv_t process_line(egram_parsing_context_t *cntx, gsymbol_t *upper_ru
 rule_rv_t egram_process(egram_parsing_context_t *cntx, gsymbol_t  *symbol, const char *input, unsigned len, unsigned *processed) {
     return process_line(cntx, symbol, input, len, processed, 0);
 }
-
-
