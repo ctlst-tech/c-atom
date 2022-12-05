@@ -162,7 +162,6 @@ token_t token_attr_value =        DEFINE_CUSTOM_TOKEN(attr_val);
 
 token_t whitespace = {.type = TT_WHITESPACE};
 token_t alphanum = {.type = TT_ALPHANUM};
-//token_t anychar = {.type = TT_ANY};
 
 token_t token_attr_equal =        DEFINE_CONSTANT_STR_TOKEN("=");
 token_t token_comment_begin =     DEFINE_CONSTANT_STR_TOKEN("<!--");
@@ -256,15 +255,7 @@ gsymbol_t recourse_tag_line[] = {
         END
 };
 
-//gsymbol_t value_line[] = {
-//        TOKEN_MOH("TagValue", anychar, set_tag_value), // TODO handle tag's value
-//        END
-//};
-
-
 gsymbol_t *content_pack[] = {
-//        comment_line,
-//        whitespace_line,
         tag_value_line,
         recourse_tag_line,
         tag_value_line,
@@ -273,12 +264,7 @@ gsymbol_t *content_pack[] = {
 
 gsymbol_t rule_xml_tag_end_full[] = {
         TOKEN___H(">", token_tag_end, got_tag_open),
-//        T_WHITESPACE_MO,
         NONTERM_MO_("Content", content_pack),
-//        T_WHITESPACE_MO,
-//        NONTERM_MO_(TAG_RECOURSE_LABEL_NAME, NULL),
-//        T_WHITESPACE_MO,
-//        T_WHITESPACE_MO,
         TOKEN("</", token_tag_closing_begin),
         TOKEN___H("TagName", alphanum, set_tag_name),
         TOKEN(">", token_tag_end),
@@ -322,15 +308,19 @@ gsymbol_t xml_header[] = {
         END
 };
 
-
 gsymbol_t *header_pack[] = {
         xml_header,
         NULL
 };
 
+gsymbol_t *comment_pack[] = {
+        comment_line,
+        NULL
+};
+
 gsymbol_t rule_xml_document[] = {
         NONTERM__O_("XML Header", header_pack),
-//        NONTERM__O_("Comment", header_pack),
+        NONTERM_MO_("Comment", comment_pack),
         NONTERM__O_("Root Tag", tag_pack),
         END
 };
@@ -363,7 +353,6 @@ void egram4xml_parser_init(egram4xml_parser_t *parser,
     xml_parse_state.end_element = end_element;
 
     gsymbol_t *to_recourse = find_symbol(recourse_tag_line, TAG_RECOURSE_LABEL_NAME);
-//    gsymbol_t *to_recourse = find_symbol(rule_xml_tag_end_full, TAG_RECOURSE_LABEL_NAME);
     to_recourse->elems = tag_pack; // link recurse // let it crash if not found
 
     memset(&parser->pc, 0, sizeof(parser->pc));

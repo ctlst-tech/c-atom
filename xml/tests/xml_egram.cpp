@@ -106,6 +106,14 @@ public:
         }
     }
 
+    void add_text_to_header(std::string s) {
+        if (parent == NULL) {
+            xml_header += s;
+        } else {
+            throw NULL;
+        }
+    }
+
     unsigned matchable_children_num() {
         unsigned rv = 0;
         for(auto n : children) {
@@ -301,7 +309,14 @@ TEST_CASE("XML by EGRAM Normal") {
 
     root_node.add_node(new Comment("random comment to break the parsing"));
 
-    SECTION("With comments") {
+    SECTION("With comment") {
+        parse_and_validate(root_node);
+    }
+
+    root_node.add_node(new Comment("random comment to break the parsing 2"));
+    root_node.add_node(new Comment("random comment to break the parsing 3"));
+
+    SECTION("With several comments") {
         parse_and_validate(root_node);
     }
 
@@ -346,6 +361,17 @@ TEST_CASE("XML by EGRAM Normal") {
         parse_and_validate(root_node);
     }
 
+    root_node.add_text_to_header("\n<!-- random comment -->\n");
+
+    SECTION("With comment after XML header") {
+        parse_and_validate(root_node);
+    }
+
+    root_node.add_text_to_header("\n\n\t\t<!-- random comment 2 -->\n\n");
+
+    SECTION("With another comment after XML header") {
+        parse_and_validate(root_node);
+    }
 }
 
 bool file_to_str(const char *path, std::string &content) {
