@@ -48,7 +48,6 @@ typedef struct xml_node {
 
 xml_rv_t xml_parse_from_file(const char *path, xml_node_t **parse_result_root);
 
-
 int xml_node_name_eq(xml_node_t *n, const char *name);
 
 xml_node_t *xml_node_find_child(xml_node_t *parent, char *name);

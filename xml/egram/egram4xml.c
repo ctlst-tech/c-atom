@@ -6,7 +6,7 @@
 #include "egram4xml.h"
 
 #define MAX_ATTRS 16
-#define MAX_TAG_BUFFER 256
+#define MAX_TAG_BUFFER 512
 
 //#define EGRAM_XML_DEBUG 1
 #undef EGRAM_XML_DEBUG
@@ -18,14 +18,14 @@ typedef struct {
     char tag_buffer[MAX_TAG_BUFFER];
     unsigned tag_buffer_offset;
 
-    xml_parser_t *elements_data_handle;
+    xml_dom_walker_state_t *elements_data_handle;
 
-    void (*start_element)(xml_parser_t *parser, const char *name, const attr_t *atts);
-    void (*char_datahandler) (xml_parser_t *parser, const char *s, int len);
-    void (*end_element)(xml_parser_t *parser, const char *name);
-} xml_parse_context_t;
+    void (*start_element)(xml_dom_walker_state_t *parser, const char *name, const attr_t *atts);
+    void (*char_datahandler) (xml_dom_walker_state_t *parser, const char *s, int len);
+    void (*end_element)(xml_dom_walker_state_t *parser, const char *name);
+} egram4xml_parse_state_t;
 
-void *allocate_buff(xml_parse_context_t *c, size_t size) {
+void *allocate_buff(egram4xml_parse_state_t *c, size_t size) {
     if (c->tag_buffer_offset + size > MAX_TAG_BUFFER){
         return NULL;
     }
@@ -34,7 +34,7 @@ void *allocate_buff(xml_parse_context_t *c, size_t size) {
     return origin;
 }
 
-const char *place_str(xml_parse_context_t *c, const char* s, unsigned len){
+const char *place_str(egram4xml_parse_state_t *c, const char* s, unsigned len){
     char *b = allocate_buff(c, len+1);
     if (b == NULL) {
         return NULL;
@@ -47,7 +47,7 @@ const char *place_str(xml_parse_context_t *c, const char* s, unsigned len){
 }
 
 const char *set_tag_name(void *context, const char* value, unsigned len) {
-    xml_parse_context_t *c = (xml_parse_context_t *) context;
+    egram4xml_parse_state_t *c = (egram4xml_parse_state_t *) context;
     const char *s = place_str(c, value, len);
     // TODO handle error
     c->tagname = s;
@@ -55,14 +55,14 @@ const char *set_tag_name(void *context, const char* value, unsigned len) {
 }
 
 const char *concat_tag_value(void *context, const char* value, unsigned len) {
-    xml_parse_context_t *c = (xml_parse_context_t *) context;
+    egram4xml_parse_state_t *c = (egram4xml_parse_state_t *) context;
     #define MIN(a,b) ((a)>(b) ? (b) : (a))
     c->char_datahandler(c->elements_data_handle, value, len); // TODO handle potential concatination on appending level
     return NULL;
 }
 
 const char *set_attr_name(void *context, const char* value, unsigned len) {
-    xml_parse_context_t *c = (xml_parse_context_t *) context;
+    egram4xml_parse_state_t *c = (egram4xml_parse_state_t *) context;
     const char *s = place_str(c, value, len);
     // TODO handle error
     c->attrs[c->attrs_num].name = s;
@@ -70,7 +70,7 @@ const char *set_attr_name(void *context, const char* value, unsigned len) {
 }
 
 const char *set_attr_value(void *context, const char* value, unsigned len) {
-    xml_parse_context_t *c = (xml_parse_context_t *) context;
+    egram4xml_parse_state_t *c = (egram4xml_parse_state_t *) context;
     const char *s = place_str(c, value, len);
     // TODO handle error
     c->attrs[c->attrs_num].value = s;
@@ -78,13 +78,13 @@ const char *set_attr_value(void *context, const char* value, unsigned len) {
 }
 
 const char *accept_attr(void *context, const char* value, unsigned len) {
-    xml_parse_context_t *c = (xml_parse_context_t *) context;
+    egram4xml_parse_state_t *c = (egram4xml_parse_state_t *) context;
     c->attrs_num++;
     return NULL;
 }
 
 const char *do_tag_reset(void *context, const char* value, unsigned len) {
-    xml_parse_context_t *c = (xml_parse_context_t *) context;
+    egram4xml_parse_state_t *c = (egram4xml_parse_state_t *) context;
     c->attrs_num = 0;
     c->tag_buffer_offset = 0;
 //    c->tag_value_buffer[0] = 0;
@@ -92,7 +92,7 @@ const char *do_tag_reset(void *context, const char* value, unsigned len) {
 }
 
 const char *got_tag_open(void *context, const char* value, unsigned len) {
-    xml_parse_context_t *c = (xml_parse_context_t *) context;
+    egram4xml_parse_state_t *c = (egram4xml_parse_state_t *) context;
 
     #ifdef EGRAM_XML_DEBUG
     printf("Got tag \"%s\" open with %d attrs:\n", c->tagname, c->attrs_num);
@@ -108,17 +108,11 @@ const char *got_tag_open(void *context, const char* value, unsigned len) {
 }
 
 const char *got_tag_close(void *context, const char* value, unsigned len) {
-    xml_parse_context_t *c = (xml_parse_context_t *) context;
+    egram4xml_parse_state_t *c = (egram4xml_parse_state_t *) context;
     #ifdef EGRAM_XML_DEBUG
     printf("Got tag \"%s\" close\n", c->tagname);
     #endif
     c->end_element(c->elements_data_handle, c->tagname);
-    return NULL;
-}
-
-const char *got_tag_empty(void *context, const char* value, unsigned len) {
-    got_tag_open(context, value, len);
-    got_tag_close(context, value, len);
     return NULL;
 }
 
@@ -208,15 +202,6 @@ gsymbol_t *attr_line_pack[] = {
         NULL
 };
 
-gsymbol_t whitespace_line_many[] = {
-        T_WHITESPACE_M_,
-        END
-};
-
-gsymbol_t aplhanum_line[] = {
-        TOKEN_M__("A-z0-9", alphanum),
-        END
-};
 
 gsymbol_t tag_value_line[] = {
         TOKEN_MOH("^&<", token_tag_value, concat_tag_value),
@@ -258,7 +243,6 @@ gsymbol_t recourse_tag_line[] = {
 gsymbol_t *content_pack[] = {
         tag_value_line,
         recourse_tag_line,
-        tag_value_line,
         NULL
 };
 
@@ -272,7 +256,6 @@ gsymbol_t rule_xml_tag_end_full[] = {
 };
 
 gsymbol_t rule_xml_tag_end_empty[] = {
-        T_WHITESPACE_MO,
         TOKEN("/>", token_tag_closing_end),
         END_WH(got_tag_open) // got_tag_close is called inside whole tag's rule below
 };
@@ -336,29 +319,46 @@ gsymbol_t *find_symbol(gsymbol_t *s, const char *name) {
     return NULL;
 }
 
+egram4xml_parser_t *egram4xml_parser_allocate() {
+    egram4xml_parse_state_t *parse_context = calloc(1, sizeof(*parse_context));
+    if (parse_context == NULL) {
+        return NULL;
+    }
+    egram4xml_parser_t *rv = calloc(1, sizeof(*rv));
+    if (rv == NULL) {
+        return NULL;
+    }
+
+    rv->pc.user_data = parse_context;
+
+    return rv;
+}
+
+
 void egram4xml_parser_init(egram4xml_parser_t *parser,
-                           xml_parser_t *data_handle,
-                           void (*start_element)(xml_parser_t *parser, const char *name, const attr_t *atts),
-                           void (*char_datahandler) (xml_parser_t *parser, const char *s, int len),
-                           void (*end_element)(xml_parser_t *parser, const char *name)
-                           ) {
+                           void (*start_element)(xml_dom_walker_state_t *, const char *, const attr_t *),
+                           void (*char_datahandler)(xml_dom_walker_state_t *, const char *, int),
+                           void (*end_element)(xml_dom_walker_state_t *, const char *)) {
 
-    static xml_parse_context_t xml_parse_state; // TODO make it thread safe?
+    egram4xml_parse_state_t *parse_state = (egram4xml_parse_state_t *)parser->pc.user_data;
 
-    memset(&xml_parse_state, 0, sizeof(xml_parse_state));
+    memset(parse_state, 0, sizeof(*parse_state));
 
-    xml_parse_state.elements_data_handle = data_handle;
-    xml_parse_state.start_element = start_element;
-    xml_parse_state.char_datahandler = char_datahandler;
-    xml_parse_state.end_element = end_element;
+    parse_state->start_element = start_element;
+    parse_state->char_datahandler = char_datahandler;
+    parse_state->end_element = end_element;
 
     gsymbol_t *to_recourse = find_symbol(recourse_tag_line, TAG_RECOURSE_LABEL_NAME);
     to_recourse->elems = tag_pack; // link recurse // let it crash if not found
 
-    memset(&parser->pc, 0, sizeof(parser->pc));
     egram_reset_parser(&parser->pc);
-    parser->pc.token_list = token_list;
-    parser->pc.user_data = &xml_parse_state;
+}
+
+void egram4xml_parser_setup(egram4xml_parser_t *parser,
+                           xml_dom_walker_state_t *data_handle) {
+    egram4xml_parse_state_t *parse_state = (egram4xml_parse_state_t *)parser->pc.user_data;
+    parse_state->elements_data_handle = data_handle;
+    egram_reset_parser(&parser->pc);
 }
 
 rule_rv_t egram4xml_parse_from_str(egram4xml_parser_t *parser, const char *input, unsigned len) {
@@ -366,38 +366,3 @@ rule_rv_t egram4xml_parse_from_str(egram4xml_parser_t *parser, const char *input
     rule_rv_t rv = egram_process(&parser->pc, rule_xml_document, input, len, &processed_bytes);
     return rv;
 }
-
-#ifdef XML_EGRAM_TEST
-
-int test_grammar() {
-
-
-    const char test_str[] ="<root_tag>"
-                           "<expected_interface name=\"TLM1\" dev_path=\"/dev/ttyS1\"/>\n"
-                           "\n"
-                           "<bus name=\"nav_bus\" eq_channel=\"1\" max_topics=\"128\"/>\n"
-                           "\n"
-                           "<bus name=\"control_bus\" eq_channel=\"1\" max_topics=\"128\">\n"
-                           "    <dir name=\"solution\"/>\n"
-                           "</bus>\n"
-                           "\n"
-                           "<bus name=\"gcu_bus\" eq_channel=\"0\" max_topics=\"256\">\n"
-                           "<event_queue buffer_size=\"4000\" size=\"16\"/>\n"
-                           "    <dir name=\"hk\" eq_channel=\"16\"/>\n"
-                           "    <dir name=\"nav\" eq_channel=\"16\"/>\n"
-                           "    <dir name=\"cont\" eq_channel=\"16\"/>\n"
-                           "</bus>"
-                           "</root_tag>\n";
-
-    return egram4xml_parse_from_str(test_str, sizeof(test_str));
-}
-
-
-int main(int argc, char *argv[]) {
-
-    test_grammar();
-
-    return 0;
-}
-
-#endif

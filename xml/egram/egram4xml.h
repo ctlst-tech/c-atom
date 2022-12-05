@@ -13,11 +13,15 @@ typedef struct {
     const char *value;
 } attr_t;
 
+egram4xml_parser_t *egram4xml_parser_allocate();
+
 void egram4xml_parser_init(egram4xml_parser_t *parser,
-                           xml_parser_t *data_handle,
-                           void (*start_element)(xml_parser_t *parser, const char *name, const attr_t *atts),
-                           void (*char_datahandler) (xml_parser_t *parser, const char *s, int len),
-                           void (*end_element)(xml_parser_t *parser, const char *name));
+                           void (*start_element)(xml_dom_walker_state_t *, const char *, const attr_t *),
+                           void (*char_datahandler)(xml_dom_walker_state_t *, const char *, int),
+                           void (*end_element)(xml_dom_walker_state_t *, const char *));
+
+void egram4xml_parser_setup(egram4xml_parser_t *parser,
+                            xml_dom_walker_state_t *data_handle);
 
 rule_rv_t egram4xml_parse_from_str(egram4xml_parser_t *parser, const char *input, unsigned len);
 

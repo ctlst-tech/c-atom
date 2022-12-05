@@ -276,7 +276,7 @@ public:
     }
 };
 
-void parse_and_validate(Node &tree) {
+void parse_and_check(Node &tree) {
     tree.print();
     std::string test_str = tree.render();
     xml_node_t *dom_rv;
@@ -293,39 +293,39 @@ TEST_CASE("XML by EGRAM Normal") {
 //        FAIL("Not implemented");
 //    }
     SECTION("Just root tag") {
-        parse_and_validate(root_node);
+        parse_and_check(root_node);
     }
 
     auto nn = root_node.add_node(new Node("node"));
 
     SECTION("Multiple nesting") {
-        parse_and_validate(root_node);
+        parse_and_check(root_node);
     }
 
     nn->add_attr(new Attr("attr1", "val1"))
         ->add_attr(new Attr("attr2", "val2"));
 
     SECTION("With attributes") {
-        parse_and_validate(root_node);
+        parse_and_check(root_node);
     }
 
     root_node.add_node(new Comment("random comment to break the parsing"));
 
     SECTION("With comment") {
-        parse_and_validate(root_node);
+        parse_and_check(root_node);
     }
 
     root_node.add_node(new Comment("random comment to break the parsing 2"));
     root_node.add_node(new Comment("random comment to break the parsing 3"));
 
     SECTION("With several comments") {
-        parse_and_validate(root_node);
+        parse_and_check(root_node);
     }
 
     root_node.add_node(new Node("after_comment_node"));
 
     SECTION("With nodes after comment") {
-        parse_and_validate(root_node);
+        parse_and_check(root_node);
     }
 
     for (auto i : {0, 10}) {
@@ -335,13 +335,13 @@ TEST_CASE("XML by EGRAM Normal") {
     }
 
     SECTION("Multiple nodes and attrs") {
-        parse_and_validate(root_node);
+        parse_and_check(root_node);
     }
 
     root_node.add_xml_header();
 
     SECTION("With doc header") {
-        parse_and_validate(root_node);
+        parse_and_check(root_node);
     }
 
     auto nnn = nn;
@@ -354,25 +354,25 @@ TEST_CASE("XML by EGRAM Normal") {
     }
 
     SECTION("Multiple nesting") {
-        parse_and_validate(root_node);
+        parse_and_check(root_node);
     }
 
     nn->value = ",.:{}_-=@#$%^*()";
 
     SECTION("With various chars in values") {
-        parse_and_validate(root_node);
+        parse_and_check(root_node);
     }
 
     root_node.add_text_to_header("\n<!-- random comment -->\n");
 
     SECTION("With comment after XML header") {
-        parse_and_validate(root_node);
+        parse_and_check(root_node);
     }
 
     root_node.add_text_to_header("\n\n\t\t<!-- random comment 2 -->\n\n");
 
     SECTION("With another comment after XML header") {
-        parse_and_validate(root_node);
+        parse_and_check(root_node);
     }
 }
 
@@ -393,6 +393,8 @@ bool file_to_str(const char *path, std::string &content) {
         content += std::string(buf);
     }
 
+    close(fd);
+
     return true;
 }
 
@@ -408,6 +410,8 @@ xml_rv_t egram_parse_from_file_test(const char *path, xml_node_t **parse_result_
 }
 
 extern "C" xml_rv_t expat_parse_from_file(const char *path, xml_node_t **parse_result_root);
+
+extern "C" xml_rv_t egram_parse_from_file(const char *path, xml_node_t **parse_result_root);
 
 TEST_CASE("Real files as single string testing") {
 
@@ -436,7 +440,8 @@ TEST_CASE("Real files as single string testing") {
             REQUIRE(expat_root_node != NULL);
 
             auto egram_start = std::chrono::high_resolution_clock::now();
-            rv = egram_parse_from_file_test(f, &egram_dom);
+//            rv = egram_parse_from_file_test(f, &egram_dom);
+            rv = egram_parse_from_file(f, &egram_dom);
             auto egram_stop = std::chrono::high_resolution_clock::now();
             REQUIRE(rv == xml_e_ok);
 

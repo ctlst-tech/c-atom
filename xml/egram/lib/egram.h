@@ -59,11 +59,15 @@ typedef struct gsybmbol {
 
 
 typedef struct {
-    gsymbol_t *current_rule;
     void *user_data;
+
+    gsymbol_t *current_rule;
+
     token_context_t token_context;
+
     token_t *hanged_token;
     int token_process_error;
+
     token_t **token_list;
 } egram_parsing_context_t;
 

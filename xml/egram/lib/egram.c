@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <string.h>
 
 
 #include "egram.h"
@@ -14,6 +15,8 @@ void tokenize_reset_context(token_context_t *tc);
 
 
 void egram_reset_parser(egram_parsing_context_t *cntx) {
+//    memset(cntx, 0, sizeof(*cntx));
+    // TODO do that properly, all members
     tokenize_reset_context(&cntx->token_context);
 }
 

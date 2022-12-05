@@ -8,7 +8,7 @@ typedef struct xml_parser {
     xml_node_t     *root;
     xml_node_t     *current_parent;
     const char     *src_file_path;
-} xml_parser_t;
+} xml_dom_walker_state_t;
 
 xml_node_t *new_node(const char *name);
 void node_add_attr(xml_node_t *n, xml_attr_t *a);

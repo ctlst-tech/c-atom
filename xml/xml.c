@@ -175,10 +175,11 @@ const char *xml_attr_value(xml_node_t *n, const char *name) {
 }
 
 
-xml_parser_t *xml_parser_alloc() {
-    return xml_alloc(sizeof(xml_parser_t));
+xml_dom_walker_state_t *xml_parser_alloc() {
+    return xml_alloc(sizeof(xml_dom_walker_state_t));
 }
-void xml_parser_dealloc(xml_parser_t *p) {
+
+void xml_parser_dealloc(xml_dom_walker_state_t *p) {
     xml_free(p);
 }
 

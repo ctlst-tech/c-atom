@@ -11,7 +11,7 @@
 static void XMLCALL
 startElement(void *userData, const char *name, const char **atts)
 {
-    xml_parser_t *parser = (xml_parser_t*) userData;
+    xml_dom_walker_state_t *parser = (xml_dom_walker_state_t*) userData;
 
     xml_node_t *nn = new_node(name);
 
@@ -41,7 +41,7 @@ startElement(void *userData, const char *name, const char **atts)
 static void XMLCALL
 charDatahandler (void *userData, const XML_Char *s, int len)
 {
-    xml_parser_t *parser = (xml_parser_t*) userData;
+    xml_dom_walker_state_t *parser = (xml_dom_walker_state_t*) userData;
 
     int non_space = 0;
     int i = 0;
@@ -82,13 +82,13 @@ charDatahandler (void *userData, const XML_Char *s, int len)
 }
 
 static void XMLCALL endElement(void *userData, const char *name) {
-    xml_parser_t *parser = (xml_parser_t*) userData;
+    xml_dom_walker_state_t *parser = (xml_dom_walker_state_t*) userData;
     parser->current_parent = parser->current_parent->parent;
     // TODO check closing tag?
 }
 
 
-static xml_rv_t expat_reset(xml_parser_t *xml_parser, int free_dom) {
+static xml_rv_t expat_reset(xml_dom_walker_state_t *xml_parser, int free_dom) {
     if (xml_parser == NULL)
         return xml_e_invarg;
 
@@ -112,7 +112,7 @@ static xml_rv_t expat_reset(xml_parser_t *xml_parser, int free_dom) {
     return xml_e_ok;
 }
 
-xml_rv_t expat_init(xml_parser_t *xml_parser) {
+xml_rv_t expat_init(xml_dom_walker_state_t *xml_parser) {
     if (xml_parser == NULL)
         return xml_e_invarg;
 
@@ -126,12 +126,12 @@ xml_rv_t expat_init(xml_parser_t *xml_parser) {
     return expat_reset(xml_parser, 0);
 }
 
-void expat_destroy(xml_parser_t *xml_parser) {
+void expat_destroy(xml_dom_walker_state_t *xml_parser) {
     XML_ParserFree(xml_parser->parser_data_handle);
 }
 
 
-static xml_rv_t expat_parse(xml_parser_t *xml_parser, const char *s, int len, int isFinal ) {
+static xml_rv_t expat_parse(xml_dom_walker_state_t *xml_parser, const char *s, int len, int isFinal ) {
 
 
     if (XML_Parse(xml_parser->parser_data_handle, s, len, isFinal ) == XML_STATUS_ERROR) {
@@ -144,7 +144,7 @@ static xml_rv_t expat_parse(xml_parser_t *xml_parser, const char *s, int len, in
     return xml_e_ok;
 }
 
-int expat_get_current_line(xml_parser_t *xml_parser) {
+int expat_get_current_line(xml_dom_walker_state_t *xml_parser) {
     return ( int ) XML_GetCurrentLineNumber(xml_parser->parser_data_handle);
 }
 
@@ -152,7 +152,7 @@ xml_rv_t expat_parse_from_file(const char *path, xml_node_t **parse_result_root)
     if (path == NULL)
         return xml_e_invarg;
 
-    xml_parser_t xml_parser;
+    xml_dom_walker_state_t xml_parser;
 
     xml_rv_t rv;
 

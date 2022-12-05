@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <errno.h>
 
 
 #include "egram4xml.h"
@@ -21,7 +24,7 @@
  */
 
 
-static void startElement(xml_parser_t *parser, const char *name, const attr_t *atts) {
+static void startElement(xml_dom_walker_state_t *parser, const char *name, const attr_t *atts) {
 
     xml_node_t *nn = new_node(name);
 
@@ -48,7 +51,7 @@ static void startElement(xml_parser_t *parser, const char *name, const attr_t *a
     } while (0);
 }
 
-static void charDatahandler (xml_parser_t *parser, const char *s, int len) {
+static void charDatahandler (xml_dom_walker_state_t *parser, const char *s, int len) {
 
     int non_space = 0;
     int i = 0;
@@ -88,22 +91,92 @@ static void charDatahandler (xml_parser_t *parser, const char *s, int len) {
     }
 }
 
-static void endElement(xml_parser_t *parser, const char *name) {
+static void endElement(xml_dom_walker_state_t *parser, const char *name) {
     parser->current_parent = parser->current_parent->parent;
 }
 
+xml_rv_t xml_egram_parser_init(void *dhandle, egram4xml_parser_t **parser_rv) {
+    static egram4xml_parser_t *parser = NULL;
+    // FIXME for now we have just one parser per app, i.e. not thread safe
+
+    if (parser == NULL) {
+        parser = egram4xml_parser_allocate();
+        if (parser != NULL) {
+            egram4xml_parser_init(parser, startElement, charDatahandler, endElement);
+        }
+    }
+
+    if (parser == NULL) {
+        return xml_e_nomem;
+    }
+
+    egram4xml_parser_setup(parser, dhandle);
+    *parser_rv = parser;
+
+    return xml_e_ok;
+}
 
 xml_rv_t xml_egram_parse_from_str(const char *str, xml_node_t **parse_result_root) {
 
-    static egram4xml_parser_t parser;
-    xml_parser_t dom_data;
+    egram4xml_parser_t *parser;
 
-    memset(&dom_data, 0, sizeof(dom_data));
+    xml_dom_walker_state_t dom_walker;
+    memset(&dom_walker, 0, sizeof(dom_walker));
 
-    egram4xml_parser_init(&parser, &dom_data, startElement, charDatahandler, endElement);
+    xml_rv_t rv = xml_egram_parser_init(&dom_walker, &parser);
+    if (rv != xml_e_ok) {
+        return rv;
+    }
 
-    rule_rv_t rv = egram4xml_parse_from_str(&parser, str, strlen(str));
-    *parse_result_root = dom_data.root;
+    rule_rv_t rrv = egram4xml_parse_from_str(parser, str, strlen(str));
+    *parse_result_root = dom_walker.root;
 
-    return rv == r_match ? xml_e_ok : xml_e_dom_parsing;
+    return rrv == r_match ? xml_e_ok : xml_e_dom_parsing;
+}
+
+#define MAX_XML_FILE_SIZE (1024*10)
+static uint8_t file_content[MAX_XML_FILE_SIZE];
+
+static int load_file(const char *path) {
+
+    int rv;
+    unsigned offset = 0;
+
+    int fd = open(path, O_RDONLY);
+    if (fd < 0) {
+        return errno;
+    }
+
+    while((rv = read(fd, &file_content[offset], 1024)) > 0) {
+        offset += rv;
+        if (offset > MAX_XML_FILE_SIZE) {
+            close(fd);
+            return ENOMEM;
+        }
+    }
+
+    return rv < 0 ? errno : 0;
+}
+
+xml_rv_t egram_parse_from_file(const char *path, xml_node_t **parse_result_root) {
+    int rv = load_file(path);
+    switch (rv) {
+        case 0:
+            break;
+
+        case ENOMEM:
+            return xml_e_nomem;
+
+        case ENOENT:
+            return xml_e_no_file;
+
+        default:
+            return xml_e_file_read;
+    }
+
+    return xml_egram_parse_from_str(file_content, parse_result_root);
+}
+
+xml_rv_t xml_parse_from_file(const char *path, xml_node_t **parse_result_root) {
+    return egram_parse_from_file(path, parse_result_root);
 }
