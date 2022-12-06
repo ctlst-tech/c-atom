@@ -1294,6 +1294,8 @@ class GeneratedFunction:
 
         fprint(close_file=True)
 
+    eswb_path = 'c-atom/eswb/src/lib/include/public'
+
     def generate_cmkelists(self, cmakelists_path, custom):
         fprint = new_file_write_call(cmakelists_path)
 
@@ -1316,9 +1318,9 @@ class GeneratedFunction:
         fprint()
         fprint(f'target_include_directories({self.cmakelists_lib_name} PRIVATE {self.generated_code_dir})')
         fprint(f'target_include_directories({self.cmakelists_lib_name} PRIVATE ../../../include)')
-        eswb_path = 'c-atom/eswb/src/lib/include/public'
+
         fprint(f'target_include_directories({self.cmakelists_lib_name} '
-               f'PRIVATE {os.path.relpath(eswb_path, start=self.spec.directory)})')
+               f'PRIVATE {os.path.relpath(self.eswb_path, start=self.spec.directory)})')
         fprint(f'target_include_directories({self.cmakelists_lib_name} PUBLIC ')
         for t in self.spec.get_dependency_types():
             fprint(f'    {os.path.relpath(t.directory, start=self.spec.directory)}')
