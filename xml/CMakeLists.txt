@@ -4,7 +4,7 @@ add_subdirectory(expat)
 add_subdirectory(egram)
 
 add_library(xml-static STATIC xml.c xml.h)
-target_link_libraries(xml-static PUBLIC xml-parser-expat-static)
+target_link_libraries(xml-static PUBLIC xml-parser-egram-static)
 
 add_executable(xml_test_egram
             tests/xml_egram.cpp
