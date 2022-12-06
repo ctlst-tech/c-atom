@@ -19,7 +19,7 @@ typedef struct {
 } swsys_task_handle_t;
 
 typedef struct {
-    const swsys_t *swsys;
+    swsys_t *swsys;
     eswb_topic_descr_t *clk_input_tds;
 } swsys_func_dhandle_t;
 
@@ -233,14 +233,16 @@ static fspec_rv_t swsys_call_init (void *dhandle, const function_spec_t *spec, c
 
 static fspec_rv_t swsys_call_init_inputs (void *dhandle, const func_conn_spec_t *conn_spec, eswb_topic_descr_t mounting_td) {
     swsys_func_dhandle_t *ssdh = (swsys_func_dhandle_t *)dhandle;
-    const swsys_t *swsys = ssdh->swsys;
+    swsys_t *swsys = ssdh->swsys;
 
     int err_cnt = 0;
     for (int i = 0; i < swsys->tasks_num; i++) {
+        swsys_task_t *task = &swsys->tasks[i];
+
         mounting_td = mounting_td; // TODO handle overall connectivity
 
-        if (swsys->tasks[i].clk_method == swsys_clk_inp_upd) {
-            eswb_rv_t erv = eswb_connect(swsys->tasks[i].clk_input_path,
+        if (task->clk_method == swsys_clk_inp_upd) {
+            eswb_rv_t erv = eswb_connect(task->clk_input_path,
                                          &ssdh->clk_input_tds[i]
             );
             if (erv != eswb_e_ok) {
@@ -249,13 +251,13 @@ static fspec_rv_t swsys_call_init_inputs (void *dhandle, const func_conn_spec_t 
             }
         }
 
-        fspec_rv_t rv = function_init_inputs(&swsys->tasks[i].func_handler,
-                                             swsys->tasks[i].func_call_dhandle,
-                                             swsys->tasks[i].conn_specs_in,
+        fspec_rv_t rv = function_init_inputs(&task->func_handler,
+                                             task->func_call_dhandle,
+                                             task->conn_specs_in,
                                              mounting_td);
         
         if (rv != fspec_rv_ok) {
-            dbg_msg_ec(rv, "function_init_inputs failed for task \"%s\"", swsys->tasks[i].name);
+            dbg_msg_ec(rv, "function_init_inputs failed for task \"%s\"", task->name);
             err_cnt++;
         }
     }
@@ -265,18 +267,20 @@ static fspec_rv_t swsys_call_init_inputs (void *dhandle, const func_conn_spec_t 
 
 static fspec_rv_t swsys_call_init_outputs (void *dhandle, const func_conn_spec_t *conn_spec, eswb_topic_descr_t mounting_td, const char *func_name) {
     swsys_func_dhandle_t *ssdh = (swsys_func_dhandle_t *)dhandle;
-    const swsys_t *swsys = ssdh->swsys;
+    swsys_t *swsys = ssdh->swsys;
 
     int err_cnt = 0;
     for (int i = 0; i < swsys->tasks_num; i++) {
+        swsys_task_t *task = &swsys->tasks[i];
+
         mounting_td = mounting_td; // TODO handle overall connectivity
         // TODO likely there will be outputs call init refactoring
-        fspec_rv_t rv = function_init_outputs(&swsys->tasks[i].func_handler,
-                                              swsys->tasks[i].func_call_dhandle,
-                                              swsys->tasks[i].conn_specs_out,
+        fspec_rv_t rv = function_init_outputs(&task->func_handler,
+                                              task->func_call_dhandle,
+                                              task->conn_specs_out,
                                               mounting_td, NULL);
         if (rv != fspec_rv_ok) {
-            dbg_msg_ec(rv, "function_init_outputs failed for %s task", swsys->tasks[i].name);
+            dbg_msg_ec(rv, "function_init_outputs failed for %s task", task->name);
             err_cnt++;
         }
     }
