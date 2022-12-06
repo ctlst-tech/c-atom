@@ -36,7 +36,7 @@ fspec_rv_t ebr_init_outputs(void *dhandle, const func_conn_spec_t *conn_spec, es
     }
 
     if (err_connect_cnt == 0) {
-        erv = eswb_bridge_connect_vector(ebr->bridge, ebr->dst_path);
+        erv = eswb_bridge_connect(ebr->bridge, 0, ebr->dst_path);
         if (erv != eswb_e_ok) {
             rv = fspec_rv_publish_err;
         }

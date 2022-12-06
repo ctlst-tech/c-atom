@@ -193,12 +193,12 @@ static fspec_rv_t bridge_the_flow(const func_conn_spec_t *src, const func_conn_s
             continue;
         }
 
-        erv = eswb_bridge_add_topic(br[i], src_mtd, src[i].value, NULL);
+        erv = eswb_bridge_add_topic(br[i], src_mtd, src[i].value, dst_path);
         if (erv != eswb_e_ok) {
-            dbg_msg("eswb_bridge_add_topic to \"%s\" failed: %s", src[i].value, eswb_strerror(erv));
+            dbg_msg("eswb_bridge_add_topic from \"%s\" failed: %s", src[i].value, eswb_strerror(erv));
             errs++;
         } else {
-            erv = eswb_bridge_connect_scalar(br[i], dst_mtd, dst_path);
+            erv = eswb_bridge_connect(br[i], dst_mtd, dst_path);
             if (erv != eswb_e_ok) {
                 dbg_msg("eswb_bridge_connect_scalar failed: %s", eswb_strerror(erv));
                 errs++;
