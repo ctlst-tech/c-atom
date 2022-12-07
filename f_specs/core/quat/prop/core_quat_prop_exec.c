@@ -7,7 +7,13 @@ void core_quat_prop_exec(
     const core_quat_prop_injection_t *injection
 )
 {
-    if (!state->inited || (i->optional_inputs_flags.reset && i->reset == TRUE)) {
+    if (i->optional_inputs_flags.reset) {
+        if (i->reset) {
+            state->inited = 0;
+        }
+    }
+
+    if (state->inited == FALSE) {
         o->q = i->q0;
         state->inited = 1;
     } else {
