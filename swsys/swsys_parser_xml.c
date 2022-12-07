@@ -196,32 +196,21 @@ static xml_rv_t load_service(xml_node_t *service_node, swsys_service_t *service)
     service->type = GET_ATTR_AND_PROCESS_ERR(xml_attr_str, service_node, "type", &err_num);
     service->priority = GET_ATTR_OPTIONAL(xml_attr_int, service_node, "priority", &err_num);
 
+    xml_rv_t rv;
 
-    xml_rv_t rv = func_load_params(service_node, &service->params);
-    if (rv != xml_e_ok) {
-        err_num++;
-    }
-
-    int resources_num = 0;
-
-    for (xml_node_t *n = service_node->first_child; n != NULL; n = n->next_sibling) {
-        if (!xml_node_name_eq(n, FUNC_XML_TAG_PARAM)) {
-            resources_num++;
-        }
-    }
+    int resources_num = xml_node_count_siblings(service_node->first_child, NULL);
 
     service->resources = swsys_alloc(sizeof(*service->resources) * (resources_num + 1));
     int i = 0;
 
     for (xml_node_t *n = service_node->first_child; n != NULL; n = n->next_sibling) {
-        if (!xml_node_name_eq(n, FUNC_XML_TAG_PARAM)) {
-            rv = load_service_resource(n, &service->resources[i]);
-            if (rv != xml_e_ok) {
-                err_num++;
-            }
-            i++;
+        rv = load_service_resource(n, &service->resources[i]);
+        if (rv != xml_e_ok) {
+            err_num++;
         }
+        i++;
     }
+    service->resources[i].name = NULL;
 
     return err_num > 0 ? xml_e_dom_process : xml_e_ok;
 }
@@ -266,6 +255,8 @@ swsys_rv_t swsys_load(const char *path, const char *swsys_root_dir, swsys_t *sys
             xrv = load_service(n, &sys->services[sys->services_num]);
             if (xrv == xml_e_ok) {
                 sys->services_num++;
+            } else {
+                xml_err("swsys service load error: %s", xml_strerror(xrv));
             }
         }
     }

@@ -20,6 +20,18 @@ static int count_ch_resources(const swsys_service_t *s) {
 
     return rv;
 }
+
+const char *resourse_value_attr(swsys_service_resource_t *resources, const char *resource_name) {
+    for(int i = 0; resources[i].name != NULL; i++) {
+        if (strcmp(resources[i].name, resource_name) == 0) {
+            return resources[i].params->value; // first tag value
+        }
+    }
+
+    return NULL;
+}
+
+
 static swsys_rv_t sdtl_service_load_channels(const swsys_service_t *s, sdtl_service_t *sdtl) {
 
     int i;
@@ -71,9 +83,9 @@ static swsys_rv_t sdtl_init_and_start(const swsys_service_t *s) {
     sdtl_service_t *sdtl_service;
     sdtl_media_serial_params_t ser_params;
     uint32_t mtu;
-    const char *br = fspec_find_param(s->params, "baudrate");
-    const char *ser_path = fspec_find_param(s->params, "ser_path");
-    const char *mtu_str = fspec_find_param(s->params, "mtu");
+    const char *br = resourse_value_attr(s->resources, "baudrate");
+    const char *ser_path = resourse_value_attr(s->resources, "serial_port");
+    const char *mtu_str = resourse_value_attr(s->resources, "mtu");
     if (br != NULL) {
         ser_params.baudrate = strtoul(br, NULL, 0);
     } else {
@@ -127,12 +139,12 @@ swsys_rv_t swsys_service_start(const swsys_service_t *s) {
     if (strcmp(s->type, "sdtl") == 0) {
         return sdtl_init_and_start(s);
     } else if (strcmp(s->type, "eqrb_sdtl") == 0) {
-        const char *sdtl_service_name = fspec_find_param(s->params, "service");
-        const char *sdtl_ch1_name = fspec_find_param(s->params, "channel_1");
-        const char *sdtl_ch2_name = fspec_find_param(s->params, "channel_2");
+        const char *sdtl_service_name = resourse_value_attr(s->resources, "sdtl_service");
+        const char *sdtl_ch1_name = resourse_value_attr(s->resources, "channel_1_name");
+        const char *sdtl_ch2_name = resourse_value_attr(s->resources, "channel_2_name");
         //const char *ch_mask_s = fspec_find_param(s->params, "ch_mask");
         //uint32_t ch_mask;
-        const char *bus2replicate = fspec_find_param(s->params, "bus");
+        const char *bus2replicate = resourse_value_attr(s->resources, "event_queue_source");
 
         if (sdtl_service_name == NULL || sdtl_ch1_name == NULL || bus2replicate == NULL) {
             return swsys_e_invargs;

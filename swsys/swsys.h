@@ -84,7 +84,6 @@ typedef struct {
     const char *type;
 
     swsys_priority_t priority;
-    func_param_t *params;
 
     swsys_service_resource_t *resources; // an additional info for service for listing other objects
 } swsys_service_t;
