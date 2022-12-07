@@ -37,12 +37,12 @@ void core_filter_mvng_av_exec(const core_filter_mvng_av_inputs_t *i, core_filter
             output[1] /= SELECTION_SIZE;
             output[2] /= SELECTION_SIZE;
         }
-        o->filed = FALSE;
+        o->filled = FALSE;
     } else {
         o->a1 = output[0];
         o->a2 = output[1];
         o->a3 = output[2];
-        o->filed = TRUE;
+        o->filled = TRUE;
     }
 }
 
