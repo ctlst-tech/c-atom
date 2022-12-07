@@ -2,9 +2,11 @@
 
 /*
  * FIXME very rough prototype dummy
+ *
+ * This is fake moving average, which is calculating average once at the moment of selection fill
  */
 
-#define SELECTION_SIZE 512
+#define SELECTION_SIZE 50
 static core_type_f64_t selection[SELECTION_SIZE][3];
 static core_type_f64_t output[3];
 static int counter = 0;
@@ -35,10 +37,12 @@ void core_filter_mvng_av_exec(const core_filter_mvng_av_inputs_t *i, core_filter
             output[1] /= SELECTION_SIZE;
             output[2] /= SELECTION_SIZE;
         }
+        o->filed = FALSE;
     } else {
         o->a1 = output[0];
         o->a2 = output[1];
         o->a3 = output[2];
+        o->filed = TRUE;
     }
 }
 

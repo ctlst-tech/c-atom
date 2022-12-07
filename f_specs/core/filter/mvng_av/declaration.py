@@ -40,6 +40,12 @@ Function(
             title='Average 3',
             value_type='core.type.f64'
         ),
+        Output(
+            name='filled',
+            title='Filled',
+            description='Is set to TRUE when selection is initually filled',
+            value_type='core.type.bool'
+        ),
     ],
 
     state=[
