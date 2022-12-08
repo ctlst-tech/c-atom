@@ -218,7 +218,7 @@ static fspec_rv_t swsys_call_init (void *dhandle, const function_spec_t *spec, c
                                    eswb_topic_descr_t mounting_td, const void *extension_handler) {
     swsys_func_dhandle_t *ssdh = (swsys_func_dhandle_t *)dhandle;
 
-    ssdh->swsys = (const swsys_t *) extension_handler;
+    ssdh->swsys = (swsys_t *) extension_handler;
     swsys_rv_t srv = swsys_init((swsys_t *)ssdh->swsys);
 
     if (srv == swsys_e_ok) {
