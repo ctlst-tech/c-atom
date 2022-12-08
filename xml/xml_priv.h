@@ -18,6 +18,5 @@ void node_add_child(xml_node_t *parent, xml_node_t *child);
 void* xml_alloc(size_t s);
 void xml_free(void *p);
 void* xml_realloc(void *ptr, size_t s);
-char* xml_strdup(const char *s);
 
 #endif //C_ATOM_XML_PRIV_H

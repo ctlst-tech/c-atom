@@ -68,13 +68,13 @@ const char *xml_attr_str(xml_node_t *n, const char *aname, xml_rv_t *err);
 
 int xml_attr_bool(xml_node_t *n, const char *aname, xml_rv_t *err);
 
-xml_rv_t xml_list_from_attr(const char *s, char ***token_list_rv);
+xml_rv_t xml_list_from_attr(const char *s, const char ***token_list_rv);
 
 int xml_list_from_attr_size(const char *s);
 
-char **xml_list_from_attr_alloc(int el_num);
+const char **xml_list_from_attr_alloc(int el_num);
 
-char *xml_strdup(const char *s);
+const char *xml_strdup(const char *s);
 
 #define xml_err(text, ...) fprintf(stderr, text "\n", ##__VA_ARGS__)
 

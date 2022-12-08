@@ -117,7 +117,7 @@ xml_rv_t func_xml_load_spec(xml_node_t* spec_node, function_spec_t *func_spec) {
     return err_cnt > 0 ? xml_e_dom_process : xml_e_ok;
 }
 
-static int parse_and_process_spec(char **aliases, const char *value, func_pair_t *spec) {
+static int parse_and_process_spec(const char **aliases, const char *value, func_pair_t *spec) {
 
     int i;
 
@@ -182,7 +182,7 @@ xml_rv_t func_load_connections(xml_node_t *conn_node, const char *tag, func_pair
     }
 
     func_conn_spec_t *s = func_alloc((spec_num + 1) * sizeof(func_conn_spec_t));
-    char **attr_list = xml_list_from_attr_alloc(max_aliases_list_len);
+    const char **attr_list = xml_list_from_attr_alloc(max_aliases_list_len);
 
     if (s == NULL) {
         return xml_e_nomem;

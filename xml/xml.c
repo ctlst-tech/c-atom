@@ -21,8 +21,49 @@ void* xml_realloc(void *ptr, size_t s) {
     return realloc(ptr, s);
 }
 
-char* xml_strdup(const char *s) {
-    return strdup(s);
+
+
+#define STR_LOOKUP_BATCH_SIZE 200
+/*
+ * FIXME not thread safe
+ * FIXME make it O(log N)
+ */
+
+//typedef struct str_lookup_batch {
+const char *strs_lookup_batch[STR_LOOKUP_BATCH_SIZE];
+unsigned strs_lookup_batch_size = 0;
+unsigned dyn_mem_saved = 0;
+
+const char *lookup_str(const char *s) {
+
+    for (unsigned i = 0; i < strs_lookup_batch_size; i++) {
+        if (strcmp(strs_lookup_batch[i], s) == 0) {
+            return strs_lookup_batch[i];
+        }
+    }
+
+    return NULL;
+}
+
+int add_to_lookup_table(const char *s) {
+    if (strs_lookup_batch_size >= STR_LOOKUP_BATCH_SIZE) {
+        return -1;
+    }
+
+    strs_lookup_batch[strs_lookup_batch_size] = s;
+    strs_lookup_batch_size++;
+    return 0;
+}
+
+const char* xml_strdup(const char *s) {
+    const char *rv = lookup_str(s);
+    if (rv == NULL) {
+        rv = strdup(s);
+        if (add_to_lookup_table(rv)) {
+            dyn_mem_saved += strlen(s);
+        }
+    }
+    return rv;
 }
 
 static int calc_commas(const char *s) {
@@ -37,7 +78,7 @@ static int calc_commas(const char *s) {
     return rv;
 }
 
-static int tokenize(char *s, char **token_list) {
+static int tokenize(char *s, const char **token_list) {
     char* context = NULL;
 #   define SEP ", "
     char* token = strtok_r(s, SEP, &context);
@@ -75,10 +116,8 @@ int xml_list_from_attr_size(const char *s) {
     return tokenize(str_tmp, NULL);
 }
 
-char **xml_list_from_attr_alloc(int el_num) {
-    char **rv = xml_alloc((el_num + 1) * sizeof(rv));
-
-    return rv;
+const char **xml_list_from_attr_alloc(int el_num) {
+    return xml_alloc((el_num + 1) * sizeof(const char **));
 }
 
 /**
@@ -87,7 +126,7 @@ char **xml_list_from_attr_alloc(int el_num) {
  * @param token_list_rv if value under this pointer is NULL, there will be allocation with aproproate size
  * @return
  */
-xml_rv_t xml_list_from_attr(const char *s, char ***token_list_rv) {
+xml_rv_t xml_list_from_attr(const char *s, const char ***token_list_rv) {
 
     int tokens_num = xml_list_from_attr_size(s);
     if (tokens_num <= 1) {
@@ -100,7 +139,7 @@ xml_rv_t xml_list_from_attr(const char *s, char ***token_list_rv) {
     }
     strncpy(str_tmp, s, sizeof(str_tmp));
 
-    char **token_list;
+    const char **token_list;
 
     if (*token_list_rv == NULL) {
         token_list = xml_list_from_attr_alloc(tokens_num);
