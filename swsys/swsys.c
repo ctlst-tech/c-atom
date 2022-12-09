@@ -316,6 +316,7 @@ static void catom_set_pthread_name(swsys_task_type_t tt, const char *tn) {
         case tsk_flow:  strcpy(tname, "flw-"); break;
         case tsk_fsm:   strcpy(tname, "fsm-"); break;
         case tsk_ibr:   strcpy(tname, "ibr-"); break;
+        case tsk_ebr:   strcpy(tname, "ebr-"); break;
         default:        strcpy(tname, "arb-"); break;
     }
 
