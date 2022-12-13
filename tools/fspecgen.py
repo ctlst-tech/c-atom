@@ -10,6 +10,16 @@ override_implementation = False
 
 src_files_dict = dict()
 
+catom_root_path = None  # 'c-atom/eswb/src/lib/include/public'
+
+
+def get_eswb_include_path():
+    return f'{catom_root_path}/eswb/src/lib/include/public'
+
+
+def get_function_h_include_path():
+    return f'{catom_root_path}/function'
+
 
 def create_generated_file(*, full_path: str, tag: str ):
     if tag != 'None':
@@ -1294,8 +1304,6 @@ class GeneratedFunction:
 
         fprint(close_file=True)
 
-    eswb_path = 'c-atom/eswb/src/lib/include/public'
-
     def generate_cmkelists(self, cmakelists_path, custom):
         fprint = new_file_write_call(cmakelists_path)
 
@@ -1317,10 +1325,15 @@ class GeneratedFunction:
         fprint(f'add_library({self.cmakelists_lib_name} STATIC ${{{self.cmakelists_src_define}}})')
         fprint()
         fprint(f'target_include_directories({self.cmakelists_lib_name} PRIVATE {self.generated_code_dir})')
-        fprint(f'target_include_directories({self.cmakelists_lib_name} PRIVATE ../../../include)')
 
-        fprint(f'target_include_directories({self.cmakelists_lib_name} '
-               f'PRIVATE {os.path.relpath(self.eswb_path, start=self.spec.directory)})')
+        eswb_include_path = get_eswb_include_path()
+        eswb_include_rel_path = os.path.relpath(eswb_include_path, start=self.spec.directory)
+
+        function_h_include_path = get_function_h_include_path()
+        function_h_include_path_rel = os.path.relpath(function_h_include_path, start=self.spec.directory)
+
+        fprint(f'target_include_directories({self.cmakelists_lib_name} PRIVATE {eswb_include_rel_path})')
+        fprint(f'target_include_directories({self.cmakelists_lib_name} PRIVATE {function_h_include_path_rel})')
         fprint(f'target_include_directories({self.cmakelists_lib_name} PUBLIC ')
         for t in self.spec.get_dependency_types():
             fprint(f'    {os.path.relpath(t.directory, start=self.spec.directory)}')
@@ -1621,6 +1634,16 @@ def init_parser():
 
     parser = argparse.ArgumentParser('c-atom artifacts generator tool')
 
+
+    parser.add_argument(
+        '--catom_path',
+        action='store',
+        default='c-atom/',
+        type=str,
+        help='Define path to c-atom submodule',
+    )
+
+
     parser.add_argument(
         '--code',
         help='Generate C code for f_specs',
@@ -1677,6 +1700,8 @@ if __name__ == "__main__":
 
     parser = init_parser()
     args = parser.parse_args(sys.argv[1:])
+
+    catom_root_path = args.catom_path
 
     pkgs = []
     for fspec_specifier in args.f_specs_dirs:
