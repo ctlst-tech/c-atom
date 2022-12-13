@@ -299,13 +299,13 @@ class Declarable:
                 self.pkg_rel_declaration_path = os.path.relpath(frame.filename, start=curr_pkg.root_path)
 
                 # self.directory = frame.filename[:-len(f'/{declaration_filename}')]
-                (self.directory, dummy) = os.path.split(frame.filename)
+                (self.directory, _) = os.path.split(frame.filename)
                 self.pkg_rel_directory = self.pkg_rel_declaration_path[:-len(f'/{declaration_filename}')]
 
                 module_path = re.sub(r'/', '.', re.sub(r'(\./)', '', self.directory))
 
                 if not module_path.endswith(self.name):
-                    raise Exception('Declaration name is not correspond filesystem hierarchy naming convention')
+                    raise Exception('Declaration does not correspond with filesystem hierarchy naming convention')
 
                 s = self.name.rsplit('.')
                 self.namespace = f'{s[0]}.{s[1]}'
