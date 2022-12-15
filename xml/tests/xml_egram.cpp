@@ -416,14 +416,14 @@ extern "C" xml_rv_t egram_parse_from_file(const char *path, xml_node_t **parse_r
 TEST_CASE("Real files as single string testing") {
 
     const char *files[] = {
-        "config/cube/flow_cont_angpos.xml",
-        "config/cube/flow_cont_angrate.xml",
-        "config/cube/flow_housekeeping.xml",
-        "config/cube/flow_nav_attitude_filter.xml",
-        "config/cube/flow_nav_attitude_prop.xml",
-        "config/cube/flow_nav_imu_alignment.xml",
-        "config/cube/flow_rc.xml",
-        "config/cube/swsys.xml",
+        "config/quad/flow_cont_angpos.xml",
+        "config/quad/flow_cont_angrate.xml",
+        "config/quad/flow_housekeeping.xml",
+        "config/quad/flow_nav_attitude_filter.xml",
+        "config/quad/flow_nav_attitude_prop.xml",
+        "config/quad/flow_nav_imu_alignment.xml",
+        "config/quad/flow_rc.xml",
+        "config/quad/swsys.xml",
     };
 
     for (auto f : files) {

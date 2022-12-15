@@ -110,7 +110,7 @@ def gen_code(c_fprint, xmls2inline, root_path):
 
 if __name__ == "__main__":
 
-    root_path = './config/cube'
+    root_path = './config/quad'
     c_code_output = 'xml_inline_cfgs.c'
 
     xmls2inline = collect_xmls(root_path)
