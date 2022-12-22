@@ -276,6 +276,7 @@ class Variable:
         self.name = name
         self.title = LocalizedString.make(title)
         self.value_type = ValueType.make(value_type)
+        self.description = description
         pass
 
 
@@ -470,6 +471,9 @@ class Type(Declarable):
 
     def get_c_type_name(self):
         return super().get_escaped_name() + '_t'
+
+    def __str__(self):
+        return self.name
 
 
 class Field:

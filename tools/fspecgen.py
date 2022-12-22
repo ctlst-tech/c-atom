@@ -303,6 +303,11 @@ class GeneratedFunction:
 
         sources_dir = self.spec.directory
 
+        self.file_declaration = \
+            SourceFile(f'declaration.py',
+                       title=f'Declaration for {self.function_name}',
+                       root_dir=sources_dir)
+
         # user defined (generated once)
         self.gen_file_exec_c = \
             SourceFile(f'{self.function_name}_exec.c',
@@ -1390,6 +1395,177 @@ class GeneratedFunction:
         if not self.spec.custom_cmakefile or not os.path.exists(cmakelists_path) or cmakefile_override_implementation:
             self.generate_cmkelists(cmakelists_path, self.spec.custom_cmakefile)
 
+    def generate_rst_doc(self, to_dir):
+        ref = self.function_name.replace('_', '-')
+
+        doc_file_path = f'{to_dir}/{ref}.txt'
+
+        fprint = new_file_write_call(doc_file_path)
+        # fprint = print
+
+        # reference
+
+        fprint(f'.. atomic-{ref}')
+
+        def header(val, char, *, section):
+            fprint()
+            header_underscore = char * len(val)
+            if not section:
+                fprint(f'{header_underscore}')
+            fprint(f'{val}')
+            fprint(f'{header_underscore}')
+            fprint()
+
+        header(self.spec.name, '=', section=False)
+
+        fprint()
+
+        # description
+        fprint(self.spec.description if self.spec.description else '')
+        if self.spec.description:
+            fprint()
+
+        def print_table(objects: List[object], column_keys: List[str], column_headers: List[str], column_widths: List[int]):
+            fprint(f'.. list-table::')
+            widths = ''
+            w = int (100 / len(column_keys))
+            for ck in column_widths:
+                widths += f'{ck} '
+            fprint(f'    :widths: {widths}')
+            fprint(f'    :header-rows: {1}')
+            fprint()
+
+            def print_row(elems):
+                for e in elems:
+                    asterix = '*' if e is elems[0] else ' '
+                    fprint(f'    {asterix} - {str(e)}')
+
+            headers = [c if c else column_keys[column_headers.index(c)] for c in column_headers]
+
+            print_row(headers)
+
+            for o in objects:
+                row = [o.__dict__[column_keys[i]] for i in range(0, len(column_keys))]
+                print_row(row)
+
+            fprint()
+            fprint()
+
+
+    # inputs table
+        header('Inputs', '-', section=True)
+        if self.spec.inputs:
+            print_table(self.spec.inputs,
+                        ['name', 'value_type',  'title',    'mandatory', 'description'],
+                        ['Name', 'Type',        'Title',    'Mandatory', 'Description'],
+                        [15,     15,            20,         10,           40],
+                        )
+        else:
+            fprint('Function has no inputs')
+
+        # outputs table
+        header('Outputs', '-', section=True)
+        if self.spec.outputs:
+            print_table(self.spec.outputs,
+                        ['name', 'value_type', 'title', 'description'],
+                        ['Name', 'Type',       'Title', 'Description'],
+                        [15,     15,            20,     50],
+                        )
+        else:
+            fprint('Function has no outputs')
+
+
+        # params table
+        header('Parameters', '-', section=True)
+        if self.spec.parameters:
+            print_table(self.spec.parameters,
+                        ['name', 'value_type', 'title', 'mandatory', 'default',       'description'],
+                        ['Name', 'Type',       'Title', 'Mandatory', 'Default value', 'Description'],
+                        [15,     15,            20,     10,          10,               30],
+                        )
+        else:
+            fprint('Function has no parameters')
+
+        # states table
+        header('State variables', '-', section=True)
+        if self.spec.state:
+            print_table(self.spec.state,
+                        ['name', 'value_type', 'title',  'description'],
+                        ['Name', 'Type',       'Title',  'Description'],
+                        [15,     15,            20,      50],
+                        )
+        else:
+            fprint('Function has no state variables')
+
+
+        # generate snippet
+        header('Usage XML code snippet', '-', section=True)
+
+        fprint(f'.. code-block:: xml')
+        fprint(f'    :caption: {self.function_name} snippet for FLOW configuration file')
+        fprint()
+        inv_name = self.spec.name.split('.')[-1]
+        fprint(f'    <f name="{inv_name}" by_spec="{self.spec.name}">')
+        n = 0
+        for i in self.spec.inputs:
+            n += 1
+            optional = '   <!-- optional -->' if not i.mandatory else ''
+            fprint(f'        <in alias="{i.name}">some_block_{n}/output</in>{optional}')
+
+        n = 0
+        for p in self.spec.parameters:
+            n += 1
+            optional = '   <!-- optional -->' if not p.mandatory else ''
+            fprint(f'        <param alias="{p.name}">0.0</param>{optional}')
+        fprint(f'    </f>')
+
+        # include artifacts
+        header('Function\'s artifacts', '-', section=True)
+
+        def print_files_tabs(file_tabs: List[SourceFile]):
+            fprint('.. tabs::')
+            fprint()
+
+            for ft in file_tabs:
+                if ft:
+                    fprint(f'    .. tab:: {ft.title}')
+                    fprint()
+
+                    def get_lang(sf: SourceFile):
+                        ext = sf.filename.split('.')[-1]
+                        if ext == 'c' or ext == 'h':
+                            return 'c'
+                        elif ext == 'py':
+                            return 'python'
+                        else:
+                            return ''
+
+                    lang = get_lang(ft)
+                    fprint(f'        .. code-block:: {lang}')
+                    fprint(f'            :caption: {ft.filename}')
+
+                    fprint()
+
+                    with open(ft.full_path(), 'r', encoding='utf-8') as stream:
+                            lines = stream.readlines()
+                            for l in lines:
+                                fprint(f'            {l}', end='')
+                    fprint()
+
+        print_files_tabs([
+                self.file_declaration,
+                self.gen_file_exec_c,
+                self.gen_file_compute_params_c,
+                self.gen_file_set_params_c,
+                self.gen_file_h,
+                self.gen_file_spec_c,
+                self.gen_file_interface_c
+            ])
+
+        return ref
+
+
+
 
 class FuncProcessor:
     def __init__(self, package: fspeclib.Package, context: List[fspeclib.Package], process_context=False):
@@ -1628,6 +1804,20 @@ class FuncProcessor:
         if gen_func_registry:
             self.generate_fspecs_registry_c(self.package.root_path)
 
+    def generate_docs(self, dir2docs):
+        doc_files_list = []
+
+        for f in self.generated_funcs_list:
+            fn = f.generate_rst_doc(dir2docs)
+            doc_files_list.append(fn)
+
+        atomics_doc_list = f'{dir2docs}/atomics-list.txt'
+
+        fprint = new_file_write_call(atomics_doc_list)
+
+        for f in doc_files_list:
+            fprint(f'\t/{f}')
+
 
 def init_parser():
     import argparse
@@ -1651,9 +1841,10 @@ def init_parser():
     )
 
     parser.add_argument(
-        '--md',
-        help='Generate markdown files for f_specs',
-        action='store_true'
+        '--doc',
+        action='store',
+        type=str,
+        help='Generate RST documentation for atomic functions to the designated dir',
     )
 
     parser.add_argument(
@@ -1773,3 +1964,7 @@ if __name__ == "__main__":
         for p in pkgs:
             print(f'SUBDIR={os.path.relpath(p.root_path, start=os.curdir)}')
             print(f'TARGET={p.cmake_target}')
+
+    if args.doc:
+        fp.generate_docs(args.doc)
+
