@@ -1811,12 +1811,24 @@ class FuncProcessor:
             fn = f.generate_rst_doc(dir2docs)
             doc_files_list.append(fn)
 
-        atomics_doc_list = f'{dir2docs}/atomics-list.txt'
+        atomics_doc_list = f'{dir2docs}/catom-atomic-catalog.txt'
 
         fprint = new_file_write_call(atomics_doc_list)
 
+        fprint('.. _catom-atomic-catalog:')
+        fprint()
+
+        fprint('========================')
+        fprint('Atomic functions catalog')
+        fprint('========================')
+        fprint()
+        fprint()
+        fprint('.. toctree::')
+        fprint('   :titlesonly:')
+        fprint()
+
         for f in doc_files_list:
-            fprint(f'\t/{f}')
+            fprint(f'   {f}')
 
 
 def init_parser():
