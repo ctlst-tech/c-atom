@@ -164,6 +164,27 @@ swsys_rv_t swsys_service_start(const swsys_service_t *s) {
         }
 
         return rv == eqrb_rv_ok ? swsys_e_ok : swsys_e_service_fail;
+    } else if (strcmp(s->type, "eqrb_file") == 0) {
+        const char *bus2replicate =
+            resourse_value_attr(s->resources, "event_queue_source");
+        const char *file_prefix =
+            resourse_value_attr(s->resources, "file_prefix");
+        const char *dst_dir = resourse_value_attr(s->resources, "dst_dir");
+
+        if (bus2replicate == NULL || file_prefix == NULL || dst_dir == NULL) {
+            return swsys_e_invargs;
+        }
+
+        const char *err_msg;
+        eqrb_rv_t rv = eqrb_file_server_start(s->name, file_prefix, dst_dir,
+                                              bus2replicate, &err_msg);
+
+        if (rv != eqrb_rv_ok) {
+            dbg_msg("eqrb_file_server_start for \"%s\" failed: %s", file_prefix,
+                    err_msg);
+        }
+
+        return rv == eqrb_rv_ok ? swsys_e_ok : swsys_e_service_fail;
     } else {
         return swsys_e_no_such_service;
     }
