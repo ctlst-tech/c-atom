@@ -3,7 +3,7 @@ project(c-atom)
 
 
 ##### before configuration call
-##### ./c-atom/tools/fspecgen.py --code --cmake --registry_c ./f_specs_reg.c --f_specs_dirs f_specs/ f_specs2/
+##### ./c-atom/tools/fspecgen.py --code --cmake --registry_c ./f_specs_reg.c --f_specs_dirs atomics/ f_specs2/
 #####
 
 #include(fspecs.cmake)
@@ -66,7 +66,7 @@ endif()
 
 target_include_directories(c-atom-static PUBLIC
         eswb/src/lib/include/public
-        f_specs
+        atomics
         function
         fsminst/fsmlib
         fsminst/fsmlib/clk

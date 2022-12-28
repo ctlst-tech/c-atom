@@ -293,12 +293,12 @@ class GeneratedFunction:
         self.cmake_src_list = []
         self.function_name = func.get_escaped_name()
 
-        self.cmakelists_src_define = f'FSPEC_{self.function_name.upper()}_SRC'
-        self.cmakelists_lib_name = f'fspec_{self.function_name.lower()}-static'
+        self.cmakelists_src_define = f'ATOMIC_{self.function_name.upper()}_SRC'
+        self.cmakelists_lib_name = f'atomic_{self.function_name.lower()}-static'
 
-        self.spec_name = f'fspec_{self.spec.get_prefix()}_spec'
-        self.handler_name = f'fspec_{self.spec.get_prefix()}_handler'
-        self.calls_struct_name = f'fspec_{self.spec.get_prefix()}_calls'
+        self.spec_name = f'atomic_{self.spec.get_prefix()}_spec'
+        self.handler_name = f'atomic_{self.spec.get_prefix()}_handler'
+        self.calls_struct_name = f'atomic_{self.spec.get_prefix()}_calls'
         self.generated_code_dir = 'g'
 
         sources_dir = self.spec.directory
@@ -1592,7 +1592,7 @@ class FuncProcessor:
                 f = GeneratedFunction(function, self)
                 self.generated_funcs_list.append(f)
 
-        self.fspec_registry_c_filename = f'{self.package.name}_registry.c'
+        self.atomics_registry_c_filename = f'{self.package.name}_registry.c'
 
     def find_type(self, alias):
         return fspeclib.find_type_in_context(alias, self.context)
@@ -1634,7 +1634,7 @@ class FuncProcessor:
     def generate_fspecs_registry_c(self, path):
         # Generate spec header
 
-        fprint = new_file_write_call(f'{path}/{self.fspec_registry_c_filename}')
+        fprint = new_file_write_call(f'{path}/{self.atomics_registry_c_filename}')
 
         fprint('/**')
         fprint(' *  Automatically-generated file. Do not edit!')
@@ -1762,23 +1762,23 @@ class FuncProcessor:
         for gf in self.generated_funcs_list:
             fprint(f'add_subdirectory({gf.spec.pkg_rel_directory})')
 
-        fspec_src_name = f'FSPEC_{self.package.name.upper()}_REGISTRY_SRC'
-        fspec_registry_target = f'fspec-{self.package.name.lower()}-registry'
+        atomics_src_name = f'ATOMICS_{self.package.name.upper()}_REGISTRY_SRC'
+        atomics_registry_target = f'atomics-{self.package.name.lower()}-registry'
 
         if has_registry:
-            fprint(f'set({fspec_src_name} ')
-            fprint(f'      {self.fspec_registry_c_filename}')
+            fprint(f'set({atomics_src_name} ')
+            fprint(f'      {self.atomics_registry_c_filename}')
             fprint('    )')
 
-        fspec_interface_target = f'fspec-{self.package.name.lower()}'
+        atomics_interface_target = f'atomics-{self.package.name.lower()}'
         fprint()
 
-        fprint(f'add_library({fspec_interface_target} INTERFACE)')
+        fprint(f'add_library({atomics_interface_target} INTERFACE)')
         fprint()
-        fprint(f'target_include_directories({fspec_interface_target} INTERFACE include)')
+        fprint(f'target_include_directories({atomics_interface_target} INTERFACE include)')
         fprint()
 
-        fprint(f'target_link_libraries({fspec_interface_target} INTERFACE')
+        fprint(f'target_link_libraries({atomics_interface_target} INTERFACE')
 
         for gf in self.generated_funcs_list:
             fprint(f'        {gf.cmakelists_lib_name}')
@@ -1789,11 +1789,11 @@ class FuncProcessor:
         if has_registry:
             fprint()
             fprint()
-            fprint(f'add_library({fspec_registry_target} STATIC ${{{fspec_src_name}}})')
-            fprint(f'target_include_directories({fspec_registry_target} PUBLIC include ../eswb/src/lib/include/public)')
-            fprint(f'target_link_libraries({fspec_registry_target} PUBLIC {fspec_interface_target} m)')
+            fprint(f'add_library({atomics_registry_target} STATIC ${{{atomics_src_name}}})')
+            fprint(f'target_include_directories({atomics_registry_target} PUBLIC include ../eswb/src/lib/include/public)')
+            fprint(f'target_link_libraries({atomics_registry_target} PUBLIC {atomics_interface_target} m)')
 
-        self.package.cmake_target = fspec_registry_target if has_registry else fspec_interface_target
+        self.package.cmake_target = atomics_registry_target if has_registry else atomics_interface_target
 
     def generate_code(self, gen_func_registry=True):
         for f in self.generated_funcs_list:
@@ -1848,7 +1848,7 @@ def init_parser():
 
     parser.add_argument(
         '--code',
-        help='Generate C code for f_specs',
+        help='Generate C code for atomics',
         action='store_true'
     )
 
@@ -1884,8 +1884,8 @@ def init_parser():
         action='store_true'
     )
 
-    parser.add_argument('--f_specs_dirs',
-                        help='specifies list of dirs of fspecs in a format pkg_name:pkg_root_path',
+    parser.add_argument('--atomics_dirs',
+                        help='specifies list of dirs of atomics functions in a format pkg_name:pkg_root_path',
                         nargs='+')
 
     return parser
@@ -1907,7 +1907,7 @@ if __name__ == "__main__":
     catom_root_path = args.catom_path
 
     pkgs = []
-    for fspec_specifier in args.f_specs_dirs:
+    for fspec_specifier in args.atomics_dirs:
 
         name = ''
         path = ''
@@ -1948,15 +1948,15 @@ if __name__ == "__main__":
     fp = FuncProcessor(pkgs[0], pkgs, True)
 
     if central_registry:
-        (path, fp.fspec_registry_c_filename) = os.path.split(args.registry_c)
+        (path, fp.atomics_registry_c_filename) = os.path.split(args.registry_c)
         fp.generate_fspecs_registry_c(path)
 
     if args.bbxml:
         fp.generate_bbxml(args.bbxml)
 
     if args.cmake:
-        fprint = new_file_write_call('./fspecs.cmake')
-        fprint('include_directories(c-atom/function)')
+        fprint = new_file_write_call('./atomics.cmake')
+        fprint(f'include_directories({args.catom_path}/function)')
 
         fprint()
 
@@ -1964,13 +1964,13 @@ if __name__ == "__main__":
             fprint(f'add_subdirectory({os.path.relpath(p.root_path, start=os.curdir)})')
 
         fprint()
-        fprint('set(FSPECS_LIBS')
+        fprint('set(ATOMICS_LIBS')
         for p in pkgs:
             fprint(f'    {p.cmake_target}')
         fprint(')')
         if central_registry:
             fprint()
-            fprint(f'set(FSPECS_REG {args.registry_c})')
+            fprint(f'set(ATOMICS_REG {args.registry_c})')
 
     if args.cmake_vars:
         for p in pkgs:
