@@ -172,6 +172,42 @@ class GPackage:
             fprint()
             fprint(f'#endif // {header_guard}')
 
+    def process_vectors(self):
+        for vector in self.package.vectors:
+            vector_name = vector.get_escaped_name()
+
+            header_filename = vector.get_common_h_filepath()
+            header_file = create_generated_file(full_path=header_filename, tag='structs')
+
+            def fprint(*args, **kwargs):
+                print(*args, **kwargs, file=header_file)
+
+            header_guard = f'fspec_{vector_name}_h'.upper()
+
+            fprint(f'#ifndef {header_guard}')
+            fprint(f'#define {header_guard}')
+            fprint()
+
+            fprint(f'#include <stdint.h>')
+            fprint()
+            fprint(f'#include "{vector.elem_type.get_common_h_filename()}"')
+            fprint()
+
+            fprint(f'/**')
+            fprint(f' * @brief {vector.title.en}')
+            if vector.description:
+                fprint(f' * {vector.description.en}')
+            fprint(f' */')
+            fprint(f'typedef struct {vector_name}{{')
+
+            fprint(f'    {vector.elem_type.get_c_type_name()}* vector;')
+            fprint(f'    uint32_t curr_len;')
+            fprint(f'    uint32_t max_len;')
+
+            fprint(f'}} {vector_name}_t;')
+
+            fprint()
+            fprint(f'#endif // {header_guard}')
 
 class GType:
     def __init__(self, *, typename: str):
@@ -282,6 +318,25 @@ class GeneratedFunction:
     def changed_param_bitfield_name(p_name: str):
         return f'changed_param_{p_name}'
 
+
+    # @staticmethod
+    # def vector_output_type_name(func: fspeclib.Function, o_name: str):
+    #     return f'{func.get_prefix()}_vector_output_{o_name}_t'
+
+    @staticmethod
+    def explicit_update_args_struct_type_name(funcname):
+        return f'{funcname}_outputs_update_flags_t'
+
+    @staticmethod
+    def output_update_flag_name(o_name: str):
+        return f'{o_name}_updated'
+
+    out_update_control_arg_name = 'out_update_cmd'
+
+    # @staticmethod
+    # def vector_len_name(o_name: str):
+    #     return f'{o_name}_len'
+
     def func_name_prefix(self):
         return self.spec.get_prefix()
 
@@ -302,6 +357,12 @@ class GeneratedFunction:
         self.generated_code_dir = 'g'
 
         sources_dir = self.spec.directory
+
+        self.outputs_are_updated_separately = func.explicitly_updated_outputs() or func.vector_outputs()
+
+        self.has_output_updating_arg = self.outputs_are_updated_separately
+
+        self.has_init_function = func.vector_inputs() or func.vector_state_vars() or func.vector_outputs()
 
         self.file_declaration = \
             SourceFile(f'declaration.py',
@@ -365,12 +426,14 @@ class GeneratedFunction:
         self.type_state = GType(typename=f'{func.get_prefix()}_state_t')
         self.type_injection = GType(typename=f'{func.get_prefix()}_injection_t')
         self.type_input_connect_spec = GType(typename='func_conn_spec_t')
+        self.type_func_spec = GType(typename='struct function_spec')
         self.type_void = GType(typename='void')
         self.type_char = GType(typename='char')
         self.type_int = GType(typename='int')
         self.type_function_spec = GType(typename='struct function_spec')
         self.type_eswb_topic_descr = GType(typename='eswb_topic_descr_t')
         self.type_optional_inputs_flags = GType(typename=self.optional_in_struct_typename(func.get_prefix()))
+        self.type_update_output_flags = GType(typename=self.explicit_update_args_struct_type_name(func.get_prefix()))
 
         if func.has_inputs():
             exec_func_args.append(GArgument(type=self.type_inputs, varname='i', ptr=True, const=True))
@@ -378,13 +441,23 @@ class GeneratedFunction:
                 pre_exec_init_func_args.append(GArgument(type=self.type_optional_inputs_flags, varname='input_flags', ptr=True, const=True))
 
         if func.has_outputs():
+            # if func.non_vector_outputs():
             exec_func_args.append(GArgument(type=self.type_outputs, varname='o', ptr=True))
+            # vo = func.vector_outputs()
+            # for v in vo:
+            #     vector_output_type = GType(typename=self.vector_output_type_name(func, v.name))
+            #     exec_func_args.append(GArgument(type=vector_output_type, varname=v.name, ptr=True))
+
         if func.has_parameters():
             a = GArgument(type=self.type_params, varname='p', ptr=True, const=True)
             exec_func_args.append(a)
             pre_exec_init_func_args.append(a)
         if func.has_state():
             a = GArgument(type=self.type_state, varname='state', ptr=True)
+            exec_func_args.append(a)
+            pre_exec_init_func_args.append(a)
+        if self.has_output_updating_arg:
+            a = GArgument(type=self.type_update_output_flags, varname=self.out_update_control_arg_name, ptr=True)
             exec_func_args.append(a)
             pre_exec_init_func_args.append(a)
         if func.has_injection():
@@ -403,33 +476,43 @@ class GeneratedFunction:
         # interface calls
         self.type_interface = GType(typename=f'{func.get_prefix()}_interface_t')
         mounting_td = GArgument(type=self.type_eswb_topic_descr, varname='mounting_td')
-        interface_calls_arg = GArgument(type=self.type_interface, varname='interface', ptr=True)
+        self.interface_arg = GArgument(type=self.type_interface, varname='iface', ptr=True)
         func_name_str = GArgument(type=self.type_char, varname='func_name', ptr=True, const=True)
         connect_spec = GArgument(type=self.type_input_connect_spec, varname='conn_spec', ptr=True, const=True)
 
+        spec = GArgument(type=self.type_func_spec, varname='spec', ptr=True, const=True)
+        inv_name_str = GArgument(type=self.type_char, varname='inv_name', ptr=True, const=True)
+        extenstion_handler_arg = GArgument(type=self.type_void, varname='extension_handler', ptr=True, const=True)
+        # typedef fspec_rv_t (*fspec_init_f)(void *interface, const struct function_spec *spec, const char *inv_name,
+        # eswb_topic_descr_t mounting_td, const void *extension_handler);
+
+        self.callable_interface_init = GCallableFunction(name=f'{self.func_name_prefix()}_interface_init',
+                                                    return_type='fspec_rv_t',
+                                                    arguments=[self.interface_arg])
+
         self.callable_interface_inputs_init = GCallableFunction(name=f'{self.func_name_prefix()}_interface_inputs_init',
                                                                 return_type='int',
-                                                                arguments=[interface_calls_arg,
+                                                                arguments=[self.interface_arg,
                                                                            connect_spec,
                                                                            mounting_td])
 
         self.callable_interface_inputs_update = GCallableFunction(name=f'{self.func_name_prefix()}_interface_inputs_update',
-                                                                  return_type='fspec_rv_t', arguments=[interface_calls_arg])
+                                                                  return_type='fspec_rv_t', arguments=[self.interface_arg])
 
         self.callable_interface_outputs_init = GCallableFunction(name=f'{self.func_name_prefix()}_interface_outputs_init',
                                                                  return_type='fspec_rv_t',
-                                                                 arguments=[interface_calls_arg, connect_spec, mounting_td, func_name_str])
+                                                                 arguments=[self.interface_arg, connect_spec, mounting_td, func_name_str])
 
         self.callable_interface_outputs_update = GCallableFunction(name=f'{self.func_name_prefix()}_interface_outputs_update',
-                                                                   return_type='fspec_rv_t', arguments=[interface_calls_arg])
+                                                                   return_type='fspec_rv_t', arguments=[self.interface_arg])
 
         self.callable_interface_pre_exec_init \
             = GCallableFunction(name=f'{self.func_name_prefix()}_interface_pre_exec_init',
                                 return_type='fspec_rv_t',
-                                arguments=[interface_calls_arg])
+                                arguments=[self.interface_arg])
 
         self.callable_interface_update = GCallableFunction(name=f'{self.func_name_prefix()}_interface_update',
-                                                           return_type='void', arguments=[interface_calls_arg])
+                                                           return_type='void', arguments=[self.interface_arg])
 
         # set params func
         self.type_func_param = GType(typename='func_param_t')
@@ -444,6 +527,14 @@ class GeneratedFunction:
 
         # func calls
         data_handle = GArgument(type=self.type_void, varname='dh', ptr=True)
+
+        self.callable_call_init = GCallableFunction(name=f'{self.func_name_prefix()}_call_init',
+                                                         return_type='fspec_rv_t',
+                                                         arguments=[data_handle,
+                                                                    spec,
+                                                                    inv_name_str,
+                                                                    mounting_td,
+                                                                    extenstion_handler_arg])
 
         # Note: these calls are forming function_calls_t which is part of function_handler_t
         self.callable_call_init_inputs = GCallableFunction(name=f'{self.func_name_prefix()}_call_init_inputs',
@@ -467,6 +558,8 @@ class GeneratedFunction:
                                                       return_type='fspec_rv_t',
                                                       arguments=[data_handle, params_pairs, initial_call_flag])
 
+
+
     @staticmethod
     def variable_type_str(value_type, *, force_f64=False):
         if force_f64:
@@ -486,7 +579,7 @@ class GeneratedFunction:
         fprint(f'typedef struct {func.get_prefix()}_params_{{')
         for parameter in func.parameters:
             value_type = parameter.value_type
-            if type(value_type) is not fspeclib.VectorOf:
+            if type(value_type) is not fspeclib.VectorTypeRef:
                 fprint(f'    {self.variable_type_str(value_type)} {parameter.name};  /// {parameter.title.en}')
         fprint(f'}} {func.get_prefix()}_params_t;')
         fprint()
@@ -510,6 +603,10 @@ class GeneratedFunction:
 
         return True
 
+    def resolve_typename(self, value_type):
+        vt = value_type.vector_type if isinstance(value_type, fspeclib.VectorTypeRef) else value_type
+        return vt
+
     def decl_inputs(self, func, fprint):
         has_optional_inputs = self.decl_optional_input_flags(func, fprint)
 
@@ -532,13 +629,31 @@ class GeneratedFunction:
         fprint(f'/**')
         fprint(f' * @brief Outputs of `{func.name}` function')
         fprint(f' */')
+        nvo = self.spec.non_vector_outputs()
+        vo = self.spec.vector_outputs()
+
         fprint(f'typedef struct {func.get_prefix()}_outputs_ {{')
-        for output in func.outputs:
-            value_type = output.value_type
-            fprint(f'    {self.variable_type_str(value_type)} {output.name}; /// {output.title.en}')
-            fprint()
+
+        def decl_out(out):
+            fprint(f'    {self.variable_type_str(self.resolve_typename(out.value_type))} {out.name}; /// {out.title.en}')
+
+        for output in nvo:
+            decl_out(output)
+
+        for output in vo:
+            decl_out(output)
+
         fprint(f'}} {func.get_prefix()}_outputs_t;')
         fprint()
+
+        # for v in vo:
+        #     typename = self.vector_output_type_name(self.spec, v.name)
+        #     fprint(f'typedef struct {typename[:-1]} {{')
+        #     fprint(f'    {v.value_type.elem_type.get_c_type_name()} *vector;')
+        #     fprint(f'    uint32_t curr_len;')
+        #     fprint(f'    uint32_t max_len;')
+        #     fprint(f'}} {typename};')
+        #     fprint()
 
     def decl_state(self, func, fprint):
         fprint(f'/**')
@@ -547,7 +662,11 @@ class GeneratedFunction:
         fprint(f'typedef struct {func.get_prefix()}_state_ {{')
         for variable in func.state:
             value_type = variable.value_type
-            fprint(f'    {self.variable_type_str(value_type)} {variable.name};  /// {variable.title.en}')
+            # if isinstance(value_type, fspeclib.VectorTypeRef):
+            #     t = self.vector_output_type_name(func, variable.name)
+            # else:
+            t = self.variable_type_str(self.resolve_typename(variable.value_type))
+            fprint(f'    {t} {variable.name};  /// {variable.title.en}')
         fprint(f'}} {func.get_prefix()}_state_t;')
         fprint()
 
@@ -580,7 +699,11 @@ class GeneratedFunction:
                     fprint(f'    eswb_topic_descr_t in_{input.name};')
 
             if func.has_outputs():
-                fprint(f'    eswb_topic_descr_t out_all;')
+                if self.outputs_are_updated_separately:
+                    for o in func.outputs:
+                        fprint(f'    eswb_topic_descr_t out_{o.name};')
+                else:
+                    fprint(f'    eswb_topic_descr_t out_all;')
 
             fprint(f'}} {self.function_name}_eswb_descriptors_t;')
             fprint()
@@ -595,6 +718,13 @@ class GeneratedFunction:
 
         if func.has_outputs():
             fprint(f'    {func.get_prefix()}_outputs_t o;')
+
+        # vo = func.vector_outputs()
+        # for v in vo:
+        #     fprint(f'    {self.vector_output_type_name(func, v.name)} {v.name};')
+
+        if self.has_output_updating_arg:
+            fprint(f'    {self.explicit_update_args_struct_type_name(func.get_prefix())} {self.out_update_control_arg_name};')
 
         if func.has_parameters():
             fprint(f'    {func.get_prefix()}_params_t p;')
@@ -624,13 +754,32 @@ class GeneratedFunction:
         fprint(f'}} {func.get_prefix()}_params_flags_t;')
         fprint()
 
+    def decl_explicit_out_update_flags(self, func, fprint):
+        fprint(f'/**')
+        fprint(f' * @brief Explicit update flags of `{func.name}` function')
+        fprint(f' */')
+        type_name = self.explicit_update_args_struct_type_name(func.get_prefix())
+        fprint(f'typedef struct {type_name[:-1]} {{')
+        for output in func.explicitly_updated_outputs():
+            fprint(f'    uint32_t {self.output_update_flag_name(output.name)}:1;')
+        # for output in func.vector_outputs():
+        #     fprint(f'    uint32_t {self.vector_len_name(output.name)};')
+
+        fprint(f'}} {type_name};')
+        fprint()
+
     def get_types_includes(self):
         dependency_types = self.spec.get_dependency_types()
         includes = []
         if len(dependency_types) > 0:
             for dependency_type in dependency_types:
-                if type(dependency_type) is not fspeclib.VectorOf:
-                    includes.append(dependency_type.get_common_h_filename())
+                if isinstance(dependency_type, fspeclib.VectorTypeRef):
+                    dt = dependency_type.vector_type
+                else:
+                    dt = dependency_type
+
+                includes.append(dt.get_common_h_filename())
+
             includes.sort()
 
         return includes
@@ -666,8 +815,6 @@ class GeneratedFunction:
                 fprint(f'#include "{include}"')
 
             fprint()
-            # fprint(f'#include "core_type_f64.h" // FIXME in generator eventually')  # FIXME when we will have type checking
-            # fprint()
 
         if f_spec.has_parameters():
             self.decl_params(f_spec, fprint)
@@ -686,6 +833,9 @@ class GeneratedFunction:
 
         if f_spec.has_parameters() or f_spec.has_state():
             self.decl_params_flags(f_spec, fprint)
+
+        if self.spec.explicitly_updated_outputs():
+            self.decl_explicit_out_update_flags(f_spec, fprint)
 
         self.decl_interface_structs(f_spec, fprint)
 
@@ -954,6 +1104,10 @@ class GeneratedFunction:
         fprint(f'}};')
         fprint()
 
+        if self.has_init_function:
+            fprint(f'{self.callable_call_init.prototype()}')
+            fprint()
+
         if self.spec.has_inputs():
             fprint(f'{self.callable_call_init_inputs.prototype()}')
             fprint()
@@ -984,7 +1138,8 @@ class GeneratedFunction:
 
         fprint(f'const function_calls_t {self.calls_struct_name} = {{')
         fprint(f'    .interface_handle_size = sizeof({self.type_interface.get_name()}),')
-        fprint(f'    .init = NULL,')
+        init_general_sym = self.callable_call_init.symbol() if self.has_init_function else 'NULL'
+        fprint(f'    .init = {init_general_sym},')
         init_in_sym = self.callable_call_init_inputs.symbol() if self.spec.has_inputs() else 'NULL'
         init_out_sym = self.callable_call_init_outputs.symbol() if self.spec.has_outputs() else 'NULL'
         fprint(f'    .init_inputs = {init_in_sym},')
@@ -1008,16 +1163,20 @@ class GeneratedFunction:
     def scalar_topic_typename(typename: str):
         if typename == 'core.type.f64':
             return 'tt_double'
-        # elif typename == 'core.type.f32':
-        #     return 'tt_float'
-        # elif typename == 'core.type.u32':
-        #     return 'tt_uint32'
-        # elif typename == 'core.type.i32':
-        #     return 'tt_int32'
-        # elif typename == 'core.type.u16':
-        #     return 'tt_uint16'
-        # elif typename == 'core.type.i16':
-        #     return 'tt_uint16'
+        elif typename == 'core.type.f32':
+            return 'tt_float'
+        elif typename == 'core.type.u32':
+            return 'tt_uint32'
+        elif typename == 'core.type.i32':
+            return 'tt_int32'
+        elif typename == 'core.type.u16':
+            return 'tt_uint16'
+        elif typename == 'core.type.i16':
+            return 'tt_uint16'
+        elif typename == 'core.type.u8':
+            return 'tt_uint8'
+        elif typename == 'core.type.i8':
+            return 'tt_uint8'
         elif typename == 'core.type.bool':
             return 'tt_int32'
         else:
@@ -1028,20 +1187,54 @@ class GeneratedFunction:
         f_func = self.spec
         fprint = new_file_write_call(interface_source_filename)
 
-        fprint('/**')
-        fprint(' *  Automatically-generated file. Do not edit!')
-        fprint(' */')
-        fprint()
 
-        fprint(f'#include "{self.function_name}.h"')
-        fprint()
+        def impl_general_init():
+            # typedef fspec_rv_t (*fspec_init_f)(void *interface, const struct function_spec *spec, const char *inv_name,
+            # eswb_topic_descr_t mounting_td, const void *extension_handler);
+            fprint(f'{self.callable_interface_init.declaration()}')
+            fprint(f'{{')
 
-        fprint(f'#include "error.h"')
-        fprint(f'#include <eswb/api.h>')
-        fprint(f'#include <eswb/topic_proclaiming_tree.h>')
-        fprint(f'#include <eswb/errors.h>')
+            if self.spec.has_parameters():
+                fprint(f'    {self.type_params.get_name()} *p = &{self.interface_arg.name}->p;')
+                fprint()
 
-        fprint()
+            def init_vector(iface_var_prefix, v: fspeclib.VectorTypeRef, v_name: str):
+                size = f'p->{v.size.param_name}' if isinstance(v.size, fspeclib.ParameterRef) else str(v.size)
+                vector_var = f'{self.interface_arg.name}->{iface_var_prefix}.{v_name}.vector'
+                fprint(f'    {vector_var} = function_alloc({size} * sizeof({self.variable_type_str(v.vector_type.elem_type)}));')
+                fprint(f'    if ({vector_var} == NULL) {{ return fspec_rv_no_memory; }}')
+                fprint(f'    {self.interface_arg.name}->{iface_var_prefix}.{v_name}.curr_len = 0;')
+                fprint(f'    {self.interface_arg.name}->{iface_var_prefix}.{v_name}.max_len = {size};')
+                fprint()
+                return vector_var
+
+            def init_v_in_container(cnt, prefix):
+                vvl = []
+                if cnt:
+                    for v in cnt:
+                        vv = init_vector(prefix, v.value_type, v.name)
+                        vvl.append(vv)
+
+                    fprint()
+
+                return vvl
+
+            vv1 = init_v_in_container(self.spec.vector_inputs(), 'i')
+            vv2 = init_v_in_container(self.spec.vector_state_vars(), 'state')
+            vv3 = init_v_in_container(self.spec.vector_outputs(), 'o')
+
+# fspec_rv_no_memory
+
+            vector_vars = [*vv1, *vv2, *vv3]
+
+            # fprint(f'    if (', end='')
+            # for vv in vector_vars:
+            #     ors = '' if vv is vector_vars[-1] else '&&'
+            #     fprint(f'        ({vv} !== NULL) {ors}')
+
+            fprint(f'    return fspec_rv_ok;')
+            fprint(f'}}')
+            fprint()
 
         def impl_inputs_init():
             fprint(f'{self.callable_interface_inputs_init.declaration()}')
@@ -1063,8 +1256,8 @@ class GeneratedFunction:
                 fprint(f'    // Connecting {mand} input \"{inp.name}\"')
                 fprint(f'    if ({topic_path(inp)} != NULL) {{')
                 if not inp.mandatory:
-                    fprint(f'        interface->i.{self.optional_input_bitfield_name(inp.name)} = 1;')
-                fprint(f'        rv = eswb_connect_nested(mounting_td, {topic_path(inp)}, &interface->eswb_descriptors.in_{inp.name});')
+                    fprint(f'        {self.interface_arg.name}->i.{self.optional_input_bitfield_name(inp.name)} = 1;')
+                fprint(f'        rv = eswb_connect_nested(mounting_td, {topic_path(inp)}, &{self.interface_arg.name}->eswb_descriptors.in_{inp.name});')
                 fprint(f'        if(rv != eswb_e_ok) {{')
                 fprint(f'            error("failed connect input \\"{inp.name}\\" to topic \\"%s\\": %s", {topic_path(inp)}, eswb_strerror(rv));')
                 fprint(f'            errcnt_no_topic++;')
@@ -1104,13 +1297,13 @@ class GeneratedFunction:
 
                 additional_bracket = False
                 if not input.mandatory:
-                    fprint(f'    if (interface->i.{self.optional_input_bitfield_name(input.name)}) {{')
+                    fprint(f'    if ({self.interface_arg.name}->i.{self.optional_input_bitfield_name(input.name)}) {{')
                     indent = '    '
                     additional_bracket = True
                 else:
                     indent = ''
 
-                fprint(f'{indent}    rv = {getter}(interface->eswb_descriptors.in_{input.name}, &interface->i.{input.name});')
+                fprint(f'{indent}    rv = {getter}({self.interface_arg.name}->eswb_descriptors.in_{input.name}, &{self.interface_arg.name}->i.{input.name});')
                 fprint(f'{indent}    if(rv != eswb_e_ok) {{')
                 fprint(f'{indent}        /*FIXME nothing to do yet*/')
                 fprint(f'{indent}    }}')
@@ -1122,12 +1315,9 @@ class GeneratedFunction:
             fprint(f'}}')
             fprint()
 
-        if f_func.has_inputs():
-            impl_inputs_init()
-            impl_inputs_update()
 
         def impl_outputs_init():
-            def declare_structure_elems(root_node_name: str, struct_type_name: str, outputs: List[fspeclib.Output], *, dry_run: bool):
+            def declare_struct_elems(root_node_name: str, struct_type_name: str, outputs: List[fspeclib.Output], *, dry_run: bool):
                 tree_elem_num = 0
                 for output in outputs:
                     structure_type = isinstance(output.value_type, fspeclib.Structure)
@@ -1143,7 +1333,7 @@ class GeneratedFunction:
                                f'{typename});')     # eswb type
 
                     if structure_type:
-                        tree_elem_num += declare_structure_elems(tree_sub_root,
+                        tree_elem_num += declare_struct_elems(tree_sub_root,
                                                                  output.value_type.get_c_type_name(),
                                                                  output.value_type.fields, dry_run=dry_run)  # FIXME not inheritance based prop
                         if not dry_run:
@@ -1151,77 +1341,208 @@ class GeneratedFunction:
 
                 return tree_elem_num
 
-            tree_elems = declare_structure_elems('', '', f_func.outputs, dry_run=True)
+            proclaim_as_struct = not self.outputs_are_updated_separately
+            root_topic_name = self.callable_interface_outputs_init.arguments[-1].get_symbol()
+            def do_proclaim_as_struct():
+                tree_elems = declare_struct_elems('', '', f_func.outputs, dry_run=True)
 
-            fprint(f'{self.callable_interface_outputs_init.declaration()}')
-            fprint(f'{{')
-            fprint(f'    TOPIC_TREE_CONTEXT_LOCAL_DEFINE(cntx, {tree_elems + 1});')
-            fprint(f'    {self.type_outputs.get_name()} out;')
-            fprint(f'    eswb_rv_t rv;')
-            # fprint(f'    topic_proclaiming_tree_t *topic;')
-            fprint()
-            root_node_varname = 'rt'
-            fprint(f'    topic_proclaiming_tree_t *{root_node_varname} = usr_topic_set_struct(cntx, out, '
-                   f'{self.callable_interface_outputs_init.arguments[-1].get_symbol()});')  # last argument
-            fprint()
+                fprint(f'{self.callable_interface_outputs_init.declaration()}')
+                fprint(f'{{')
+                fprint(f'    TOPIC_TREE_CONTEXT_LOCAL_DEFINE(cntx, {tree_elems + 1});')
 
-            declare_structure_elems(root_node_varname, self.type_outputs.get_name(), f_func.outputs, dry_run=False)
+                fprint(f'    {self.type_outputs.get_name()} out;')
 
-            fprint(f'    rv = eswb_proclaim_tree(mounting_td, {root_node_varname}, cntx->t_num, &interface->eswb_descriptors.out_all);')
-            fprint(f'    if (rv != eswb_e_ok) {{')
-            fprint(f'        return fspec_rv_publish_err;')
-            fprint(f'    }}')
-            fprint()
-            fprint(f'    return fspec_rv_ok;')
-            fprint(f'}}')
-            fprint()
+                fprint(f'    eswb_rv_t rv;')
+                # fprint(f'    topic_proclaiming_tree_t *topic;')
+                fprint()
+                root_node_varname = 'rt'
+
+                fprint(f'    topic_proclaiming_tree_t *{root_node_varname} = usr_topic_set_struct(cntx, out, '
+                       f'{root_topic_name});') # last argument
+
+                fprint()
+
+                declare_struct_elems(root_node_varname, self.type_outputs.get_name(), f_func.non_vector_outputs(), dry_run=False)
+
+                fprint(f'    rv = eswb_proclaim_tree(mounting_td, {root_node_varname}, cntx->t_num, &{self.interface_arg.name}->eswb_descriptors.out_all);')
+                fprint(f'    if (rv != eswb_e_ok) {{')
+                fprint(f'        return fspec_rv_publish_err;')
+                fprint(f'    }}')
+                fprint()
+
+                fprint(f'    return fspec_rv_ok;')
+                fprint(f'}}')
+                fprint()
+
+            def do_proclaim_as_dir():
+                def max_topics_num():
+                    rv = 2  # comes from vector type
+                    for o in self.spec.outputs:
+                        if isinstance(o.value_type, fspeclib.Structure):
+                            f = o.value_type.fields
+                            rv = f if f > rv else rv
+
+                    return rv
+
+                tree_elems = max_topics_num()
+
+                fprint('static eswb_rv_t proclaim_scalar_output(eswb_topic_descr_t parent_td, '
+                       'topic_tree_context_t *cntx, const char *topic_name, ' 
+                       'topic_data_type_t type, size_t data_size, eswb_topic_descr_t *new_td) {')
+                fprint('    topic_proclaiming_tree_t *bp = usr_topic_set_root(cntx, topic_name, type, data_size);')
+                fprint('    return eswb_proclaim_tree(parent_td, bp, 1, new_td);')
+                fprint('}')
+                fprint()
+
+                fprint(f'{self.callable_interface_outputs_init.declaration()}')
+                fprint(f'{{')
+                fprint(f'    TOPIC_TREE_CONTEXT_LOCAL_DEFINE(cntx, {tree_elems + 1});')
+
+                fprint(f'    eswb_rv_t rv;')
+                fprint(f'    eswb_topic_descr_t root_td;')
+
+                fprint()
+                root_node_varname = 'rt'
+                fprint(f'    topic_proclaiming_tree_t *{root_node_varname};')
+
+
+                # eswb_rv_t eswb_mkdir_nested(eswb_topic_descr_t parent_td, const char *dir_name, eswb_topic_descr_t *new_dir_td) {
+                fprint(f'    rv = eswb_mkdir_nested(mounting_td, {root_topic_name}, &root_td);')
+                fprint(f'    if (rv != eswb_e_ok) {{')
+                fprint(f'        return fspec_rv_publish_err;')
+                fprint(f'    }}')
+                fprint()
+
+                for o in self.spec.non_vector_outputs():
+                    fprint('    TOPIC_TREE_CONTEXT_LOCAL_RESET(cntx);')
+                    if isinstance(o.value_type, fspeclib.Structure):
+                        fprint(f'    {o.value_type.get_c_type_name()} ss_{o.name};')
+                        fprint(f'    topic_proclaiming_tree_t *{root_node_varname} = usr_topic_set_struct(cntx, ss_{o.name}, '
+                               f'{o.name});')
+
+                        fprint()
+
+                        declare_struct_elems(root_node_varname, self.type_outputs.get_name(), f_func.non_vector_outputs(), dry_run=False)
+
+                        fprint(f'    rv = eswb_proclaim_tree(mounting_td, {root_node_varname}, cntx->t_num, &{self.interface_arg.name}->eswb_descriptors.out_{o.name});')
+                        fprint(f'    if (rv != eswb_e_ok) {{')
+                        fprint(f'        return fspec_rv_publish_err;')
+                        fprint(f'    }}')
+                        fprint()
+                    else:
+                        fprint(f'    rv = proclaim_scalar_output(root_td, cntx, \"{o.name}\", '
+                               f'{self.scalar_topic_typename(o.value_type.name)}, sizeof({self.variable_type_str(o.value_type)}), '
+                               f'&{self.interface_arg.name}->eswb_descriptors.out_{o.name});')
+                        fprint(f'    if (rv != eswb_e_ok) {{')
+                        fprint(f'        return fspec_rv_publish_err;')
+                        fprint(f'    }}')
+                        fprint()
+
+                for vo in self.spec.vector_outputs():
+                    fprint('    TOPIC_TREE_CONTEXT_LOCAL_RESET(cntx);')
+                    # topic_proclaiming_tree_t *usr_topic_set_vector(topic_tree_context_t *context, const char *name, size_t vector_max_len,
+                    # topic_data_type_t elem_type, eswb_size_t elem_size);
+                    max_len_size = f'{self.interface_arg.name}->p.{vo.value_type.size.param.name}' if isinstance(vo.value_type.size, fspeclib.ParameterRef) else str(vo.value_type.size)
+                    fprint(f'    {root_node_varname} = usr_topic_set_vector(cntx, \"{vo.name}\", '
+                           f'{max_len_size}, '
+                           f'{self.scalar_topic_typename(vo.value_type.vector_type.elem_type.name)}, '
+                           f'sizeof({self.variable_type_str(vo.value_type.vector_type.elem_type)}));')
+                    fprint(f'    rv = eswb_proclaim_tree(mounting_td, {root_node_varname}, cntx->t_num, &{self.interface_arg.name}->eswb_descriptors.out_{vo.name});')
+                    fprint(f'    if (rv != eswb_e_ok) {{')
+                    fprint(f'        return fspec_rv_publish_err;')
+                    fprint(f'    }}')
+                    fprint()
+
+                fprint(f'    return fspec_rv_ok;')
+                fprint(f'}}')
+                fprint()
+
+            if proclaim_as_struct:
+                do_proclaim_as_struct()
+            else:
+                do_proclaim_as_dir()
 
         def impl_outputs_update():
 
             fprint(f'{self.callable_interface_outputs_update.declaration()}')
             fprint(f'{{')
-            fprint(f'    eswb_rv_t rv;')
+            fprint(f'    eswb_rv_t erv;')
+            fprint(f'    fspec_rv_t rv = fspec_rv_ok;')
+
+            def check_err(indent):
+                tabs = ' ' * 4 * indent
+                fprint(f'{tabs}if (erv != eswb_e_ok) {{')
+                fprint(f'{tabs}    rv = fspec_rv_update_err;')
+                fprint(f'{tabs}}}')
+
+            tab = '    '
+
+            def check_update_flag_open(o, indent):
+                fprint(f'{indent * tab}if ({self.interface_arg.name}->{self.out_update_control_arg_name}.{self.output_update_flag_name(o.name)}) {{')
+
+            def check_update_flag_close(o, indent):
+                fprint(f'{indent * tab}}}')
+
+            def update_statement(o: fspeclib.Output):
+                indent = 1
+                if o.explicit_update:
+                    check_update_flag_open(o, indent)
+                    indent = 2
+                if isinstance(o.value_type, fspeclib.VectorTypeRef):
+                    #  eswb_rv_t eswb_vector_write(eswb_topic_descr_t td, eswb_index_t pos, void *data, eswb_index_t len, uint32_t option_flags);
+                    fprint(f'{indent * tab}erv = eswb_vector_write({self.interface_arg.name}->eswb_descriptors.out_{o.name}, 0, {self.interface_arg.name}->o.{o.name}.vector, '
+                           f'{self.interface_arg.name}->o.{o.name}.curr_len, ESWB_VECTOR_WRITE_OPT_FLAG_DEFINE_END);')
+                else:
+                    fprint(f'{indent * tab}erv = eswb_update_topic({self.interface_arg.name}->eswb_descriptors.out_{o.name}, &{self.interface_arg.name}->o.{o.name});')
+
+                check_err(indent)
+                if o.explicit_update:
+                    indent = 1
+                    check_update_flag_close(o, indent)
+
+            if self.outputs_are_updated_separately:
+                for o in self.spec.outputs:
+                    update_statement(o)
+            else:
+                fprint()
+                fprint(f'    erv = eswb_update_topic({self.interface_arg.name}->eswb_descriptors.out_all, &{self.interface_arg.name}->o);')
+                check_err(1)
+
             fprint()
-            fprint(f'    rv = eswb_update_topic(interface->eswb_descriptors.out_all, &interface->o);')
-            fprint(f'    if (rv != eswb_e_ok) {{')
-            fprint(f'        return 1;')
-            fprint(f'    }}')
-            fprint()
-            fprint(f'    return 0;')
+            fprint(f'    return rv;')
             fprint(f'}}')
             fprint()
 
-        if f_func.has_outputs():
-            impl_outputs_init()
-            impl_outputs_update()
+
+        def timedelta_injection():
+            # update_curr_time = False
+            # update_curr_time = True
+            fprint(f'    if ({self.interface_arg.name}->prev_exec_time_inited) {{')
+            fprint(f'        function_getdeltatime(ft_monotonic, &{self.interface_arg.name}->prev_exec_time, dtp_update_prev, &{self.interface_arg.name}->injection.dt);')
+            fprint(f'    }} else {{')
+            fprint(f'        function_gettime(ft_monotonic, &{self.interface_arg.name}->prev_exec_time);')
+            fprint(f'        {self.interface_arg.name}->prev_exec_time_inited = -1;')
+            fprint(f'        {self.interface_arg.name}->injection.dt = 0;')
+            fprint(f'    }}')
+            fprint()
 
         def impl_interface_pre_exec_init():
             fprint(f'{self.callable_interface_pre_exec_init.declaration()}')
             fprint(f'{{')
 
-            # update_curr_time = False
             if f_func.has_injection():
                 if f_func.injection.timedelta:
-                    # update_curr_time = True
-                    fprint('    if (interface->prev_exec_time_inited) {')
-                    fprint('        function_getdeltatime(ft_monotonic, &interface->prev_exec_time, dtp_update_prev, &interface->injection.dt);')
-                    fprint('    } else {')
-                    fprint('        function_gettime(ft_monotonic, &interface->prev_exec_time);')
-                    fprint('        interface->prev_exec_time_inited = -1;')
-                    fprint('        interface->injection.dt = 0;')
-                    fprint('    }')
-                    fprint()
-
+                    timedelta_injection()
 
             arguments = []
             if f_func.has_optional_inputs():
-                arguments.append(f'&interface->i.{self.optional_in_struct_name()}')
+                arguments.append(f'&{self.interface_arg.name}->i.{self.optional_in_struct_name()}')
             if f_func.has_parameters():
-                arguments.append('&interface->p')
+                arguments.append(f'&{self.interface_arg.name}->p')
             if f_func.has_state():
-                arguments.append('&interface->state')
+                arguments.append(f'&{self.interface_arg.name}->state')
             if f_func.has_injection():
-                arguments.append('&interface->injection')
+                arguments.append(f'&{self.interface_arg.name}->injection')
             fprint(f'    return {self.callable_pre_exec_init.call(arguments)}')
 
             fprint(f'}}')
@@ -1232,80 +1553,111 @@ class GeneratedFunction:
             fprint(f'{{')
 
             if f_func.has_inputs():
-                fcall = self.callable_interface_inputs_update.call(['interface'])
+                fcall = self.callable_interface_inputs_update.call([f'{self.interface_arg.name}'])
                 fprint(f'    {fcall}')
 
             # update_curr_time = False
             if f_func.has_injection():
                 if f_func.injection.timedelta:
-                    # update_curr_time = True
-                    fprint('    if (interface->prev_exec_time_inited) {')
-                    fprint('        function_getdeltatime(ft_monotonic, &interface->prev_exec_time, dtp_update_prev, &interface->injection.dt);')
-                    fprint('    } else {')
-                    fprint('        function_gettime(ft_monotonic, &interface->prev_exec_time);')
-                    fprint('        interface->prev_exec_time_inited = -1;')
-                    fprint('        interface->injection.dt = 0;')
-                    fprint('    }')
-                    fprint()
+                    timedelta_injection()
+
+            if self.has_output_updating_arg:
+                fprint(f'    memset(&{self.interface_arg.name}->{self.out_update_control_arg_name}, 0, sizeof({self.interface_arg.name}->{self.out_update_control_arg_name}));')
 
             arguments = []
             if f_func.has_inputs():
-                arguments.append('&interface->i')
+                arguments.append(f'&{self.interface_arg.name}->i')
             if f_func.has_outputs():
-                arguments.append('&interface->o')
+                arguments.append(f'&{self.interface_arg.name}->o')
             if f_func.has_parameters():
-                arguments.append('&interface->p')
+                arguments.append(f'&{self.interface_arg.name}->p')
             if f_func.has_state():
-                arguments.append('&interface->state')
+                arguments.append(f'&{self.interface_arg.name}->state')
+            if self.has_output_updating_arg:
+                arguments.append(f'&{self.interface_arg.name}->{self.out_update_control_arg_name}')
             if f_func.has_injection():
-                arguments.append('&interface->injection')
+                arguments.append(f'&{self.interface_arg.name}->injection')
             fprint(f'    {self.callable_exec.call(arguments)}')
 
             if f_func.has_outputs():
-                fcall = self.callable_interface_outputs_update.call(['interface'])
+                fcall = self.callable_interface_outputs_update.call([f'{self.interface_arg.name}'])
                 fprint(f'    {fcall}')
 
             fprint(f'}}')
             fprint()
+
+        # fspec calls
+        ## init
+        def gen_wrapper(wrap, wrapped, insertion='', *, arg_list, do_ret=True):
+            fprint(f'{wrap.declaration()}')
+            fprint(f'{{')
+            #fprint(f'fspec_rv_t rv;')
+            if len(insertion) > 0:
+                fprint(f'{insertion}')
+            fprint(f'    {self.type_interface.get_name()} *{self.interface_arg.name} = ({self.type_interface.get_name()}*) dh;')
+            ret = 'return ' if do_ret else ''
+            fprint(f'    {ret}{wrapped.call(arg_list)}')
+            fprint(f'}}')
+            fprint()
+
+        # implement source file
+
+        fprint('/**')
+        fprint(' *  Automatically-generated file. Do not edit!')
+        fprint(' */')
+        fprint()
+
+        fprint(f'#include "{self.function_name}.h"')
+        fprint()
+
+        fprint(f'#include "error.h"')
+        fprint(f'#include <eswb/api.h>')
+        fprint(f'#include <eswb/topic_proclaiming_tree.h>')
+        fprint(f'#include <eswb/errors.h>')
+
+        fprint()
+
+        if self.has_init_function:
+            impl_general_init()
+
+        if f_func.has_inputs():
+            impl_inputs_init()
+            impl_inputs_update()
+
+        if f_func.has_outputs():
+            impl_outputs_init()
+            impl_outputs_update()
 
         if f_func.has_pre_exec_init_call:
             impl_interface_pre_exec_init()
 
         impl_interface_exec()
 
-        # fspec calls
-        ## init
-        def gen_wrapper(wrap, wrapped, do_ret=True, insertion='', arg_list=['interface']):
-            fprint(f'{wrap.declaration()}')
-            fprint(f'{{')
-            #fprint(f'fspec_rv_t rv;')
-            if len(insertion) > 0:
-                fprint(f'{insertion}')
-            fprint(f'    {self.type_interface.get_name()} *interface = ({self.type_interface.get_name()}*) dh;')
-            ret = 'return ' if do_ret else ''
-            fprint(f'    {ret}{wrapped.call(arg_list)}')
-            fprint(f'}}')
-            fprint()
+        if self.has_init_function:
+            gen_wrapper(self.callable_call_init, self.callable_interface_init,
+                        arg_list=[f'{self.interface_arg.name}'])
 
         if self.spec.has_parameters():
             gen_wrapper(self.callable_call_set_params, self.callable_set_params,
-                        arg_list=['&interface->p', self.callable_call_set_params.arguments[-2].name,
-                                  self.callable_call_set_params.arguments[-1].name]
-                        )
+                        arg_list=[f'&{self.interface_arg.name}->p', self.callable_call_set_params.arguments[-2].name,
+                                  self.callable_call_set_params.arguments[-1].name])
 
         if self.spec.has_inputs():
             gen_wrapper(self.callable_call_init_inputs, self.callable_interface_inputs_init,
-                        arg_list=['interface', 'conn_spec', 'mounting_td'])
+                        arg_list=[f'{self.interface_arg.name}', 'conn_spec', 'mounting_td'])
 
         if self.spec.has_outputs():
             gen_wrapper(self.callable_call_init_outputs, self.callable_interface_outputs_init,
-                        arg_list=['interface', 'conn_spec', 'mounting_td', 'func_name'])
+                        arg_list=[f'{self.interface_arg.name}', 'conn_spec', 'mounting_td', 'func_name'])
 
         if self.spec.has_pre_exec_init_call:
-            gen_wrapper(self.callable_call_pre_exec_init, self.callable_interface_pre_exec_init)
+            gen_wrapper(self.callable_call_pre_exec_init,
+                        self.callable_interface_pre_exec_init,
+                        arg_list=[f'{self.interface_arg.name}'])
 
         ## flow_update
-        gen_wrapper(self.callable_call_exec, self.callable_interface_update, do_ret=False)
+        gen_wrapper(self.callable_call_exec, self.callable_interface_update,
+                    arg_list=[f'{self.interface_arg.name}'], do_ret=False)
 
         fprint(close_file=True)
 
@@ -1341,7 +1693,8 @@ class GeneratedFunction:
         fprint(f'target_include_directories({self.cmakelists_lib_name} PRIVATE {function_h_include_path_rel})')
         fprint(f'target_include_directories({self.cmakelists_lib_name} PUBLIC ')
         for t in self.spec.get_dependency_types():
-            fprint(f'    {os.path.relpath(t.directory, start=self.spec.directory)}')
+            tt = t.vector_type if isinstance(t, fspeclib.VectorTypeRef) else t
+            fprint(f'    {os.path.relpath(tt.directory, start=self.spec.directory)}')
 
         # # FIXME (delete) when we will have different types check
         # dirty_fix_dir = os.path.relpath(self.spec.get_dependency_types()[-1].directory + '/../f64', start=self.spec.directory)
@@ -1939,6 +2292,7 @@ if __name__ == "__main__":
         gp.process_types()
         gp.process_constants()
         gp.process_structures()
+        gp.process_vectors()
 
         fp = FuncProcessor(p, pkgs)
 

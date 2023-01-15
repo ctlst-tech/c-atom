@@ -22,6 +22,7 @@ class Package:
     def __init__(self):
         self.constants = []
         self.structures: List[Structure] = []
+        self.vectors: List[Vector] = []
         self.types: List[Type] = []
         self.functions: List[Function] = []
         self.root_path = ''
@@ -37,6 +38,10 @@ class Package:
             if structure.name == type_name:
                 return structure
 
+        for vector in self.vectors:
+            if vector.name == type_name:
+                return vector
+
         return None
         #
 
@@ -49,21 +54,21 @@ class Package:
 
         for structure in self.structures:
             for field in structure.fields:
-                field.value_type = field.value_type.resolve(resolve_lambda)
+                field.value_type = field.value_type.resolve(None, resolve_lambda)
 
         # Resolve type reference in function
         for function in self.functions:
             for parameter in function.parameters:
-                parameter.value_type = parameter.value_type.resolve(resolve_lambda)
+                parameter.value_type = parameter.value_type.resolve(function, resolve_lambda)
 
             for inp in function.inputs:
-                inp.value_type = inp.value_type.resolve(resolve_lambda)
+                inp.value_type = inp.value_type.resolve(function, resolve_lambda)
 
             for output in function.outputs:
-                output.value_type = output.value_type.resolve(resolve_lambda)
+                output.value_type = output.value_type.resolve(function, resolve_lambda)
 
             for variable in function.state:
-                variable.value_type = variable.value_type.resolve(resolve_lambda)
+                variable.value_type = variable.value_type.resolve(function, resolve_lambda)
 
 
 curr_pkg = Package()
@@ -167,7 +172,7 @@ class ValueType(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def resolve(self, resolving_lambda):
+    def resolve(self, function, resolving_lambda):
         return NotImplemented
 
     @staticmethod
@@ -181,20 +186,9 @@ class TypeReference(ValueType):
         super().__init__()
         self.type_alias = type_alias
 
-    def resolve(self, resolving_lambda):
+    def resolve(self, function, resolving_lambda):
         return resolving_lambda(self.type_alias)
         # return pkg.resolve_type(self.type_alias)
-
-
-class VectorOf(ValueType):
-    def __init__(self, *,
-                 subtype: Union[str, ValueType]):
-        super().__init__()
-        self.subtype = ValueType.make(subtype)
-
-    def resolve(self, resolving_lambda):
-        self.subtype = self.subtype.resolve(resolving_lambda)
-        return self
 
 
 class Parameter:
@@ -239,6 +233,39 @@ class ComputedParameter(Parameter):
         self.computable = True
 
 
+class ParameterRef:
+    def __init__(self, param_name: str):
+        self.param_name = param_name
+        self.param: Parameter = None
+
+    def resolve(self, f):
+        for p in f.parameters:
+            if p.name == self.param_name:
+                self.param = p
+                return
+
+        raise Exception(f'Parameter reference {self.param_name} is not resolved for function {f.name}')
+
+
+class VectorTypeRef(ValueType):
+    def __init__(self, *,
+                 vector_type_name: Union[str, ValueType], size: Union[int, ParameterRef]):
+        super().__init__()
+        self.vector_type = ValueType.make(vector_type_name)
+        self.size = size  # if size is int - it is implicit size set
+
+    def resolve(self, function, resolving_lambda):
+        if not isinstance(self.vector_type, Type):
+            self.vector_type = self.vector_type.resolve(function, resolving_lambda)
+
+        if isinstance(self.size, ParameterRef):
+            self.size.resolve(function)
+
+        return self
+
+    def get_c_type_name(self):
+        self.vector_type.get_c_type_name()
+
 class Input:
     def __init__(self, *,
                  name: str,
@@ -260,11 +287,13 @@ class Output:
                  title: Union[str, LocalizedString],
                  description: Optional[Union[str, LocalizedString]] = None,
                  value_type: Union[str, ValueType],
+                 explicit_update=False,
                  unit: Optional[str] = None):
         self.name = name
         self.title = LocalizedString.make(title)
         self.description = description
         self.value_type = ValueType.make(value_type)
+        self.explicit_update = explicit_update
 
 
 class Variable:
@@ -320,7 +349,7 @@ class Declarable:
                 self.rel_directory = os.path.relpath(self.pkg_rel_directory)
 
     def get_escaped_name(self):
-        return re.sub(r'(\.)', '_', self.name)
+        return self.name.replace('.', '_')
 
     def get_common_h_filename(self):
         return f'{self.get_escaped_name()}.h'
@@ -384,6 +413,16 @@ class Function(Declarable):
         self.has_pre_exec_init_call = has_pre_exec_init_call
         self.generator = None
 
+        def check_container(cnt, cnt_name: str, expected_class):
+            for e in cnt:
+                if not isinstance(e, expected_class):
+                    raise Exception(f'Function {self.name} got \'{e.__class__.__name__}\' instead of \'{expected_class.__name__}\' in \'{cnt_name}\'')
+
+        check_container(self.inputs, 'inputs', Input)
+        check_container(self.outputs, 'outputs', Output)
+        check_container(self.state, 'state', Variable)
+        check_container(self.parameters, 'parameters', Parameter)
+
         if not dynamic:
             curr_pkg.functions.append(self)
 
@@ -401,6 +440,40 @@ class Function(Declarable):
             if not inp.mandatory:
                 return True
         return False
+
+    @staticmethod
+    def vector_var_in_container(cnt):
+        rv = []
+        for e in cnt:
+            if isinstance(e.value_type, VectorTypeRef):
+                rv.append(e)
+
+        return rv
+
+    def vector_inputs(self):
+        return self.vector_var_in_container(self.inputs)
+
+    def vector_outputs(self):
+        return self.vector_var_in_container(self.outputs)
+
+    def vector_state_vars(self):
+        return self.vector_var_in_container(self.state)
+
+    def non_vector_outputs(self):
+        rv = []
+        for o in self.outputs:
+            if not isinstance(o.value_type, VectorTypeRef):
+                rv.append(o)
+
+        return rv
+
+    def explicitly_updated_outputs(self):
+        rv = []
+        for o in self.outputs:
+            if o.explicit_update:
+                rv.append(o)
+
+        return rv
 
     def has_outputs(self):
         return len(self.outputs) > 0
@@ -443,12 +516,20 @@ class Function(Declarable):
         dependency_types = set()
 
         def collect_dependancies(dp, container):
+            def collect_struct_fields(dp, s: Structure):
+                d = s.get_dependency_types()
+                for j in d:
+                    dp.add(j)
+
             for e in container:
                 dp.add(e.value_type)
+
                 if isinstance(e.value_type, Structure):
-                    d = e.value_type.get_dependency_types()
-                    for j in d:
-                        dp.add(j)
+                    collect_struct_fields(dp, e.value_type)
+                elif isinstance(e.value_type, VectorTypeRef):
+                    dp.add(e.value_type.vector_type.elem_type)
+                    if isinstance(e.value_type.vector_type, Structure):
+                        collect_struct_fields(dp, e.value_type.vector_type)
 
         collect_dependancies(dependency_types, self.parameters)
         collect_dependancies(dependency_types, self.inputs)
@@ -511,6 +592,30 @@ class Structure(Declarable):
             dependency_types.remove(None)
 
         return list(dependency_types)
+
+
+class Vector(Declarable):
+    def __init__(self, *,
+                 name: str = '',
+                 elem_type: Union[str, ValueType],
+                 title: Union[str, LocalizedString],
+                 description: Optional[Union[str, LocalizedString]] = None):
+        if not name:
+            etn = elem_type.replace('.', '_')
+            name = f'vector_{etn}'
+
+        super().__init__(name=f'{name}', title=title, description=description)
+        self.elem_type = ValueType.make(elem_type)
+        curr_pkg.vectors.append(self)
+
+    def resolve(self, function, resolving_lambda):
+        if not isinstance(self.elem_type, Type):
+            self.elem_type = self.elem_type.resolve(function, resolving_lambda)
+
+        return self
+
+    def get_c_type_name(self):
+        return super().get_escaped_name() + '_t'
 
 
 def load(package_name: str, package_path: str):
