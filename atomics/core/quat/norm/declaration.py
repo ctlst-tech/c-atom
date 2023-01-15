@@ -16,7 +16,7 @@ Function(
     ],
 
     outputs=[
-        Input(
+        Output(
             name='q',
             title='Normalized quat',
             value_type='core.type.quat'

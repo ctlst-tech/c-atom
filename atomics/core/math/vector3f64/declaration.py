@@ -26,7 +26,7 @@ Function(
     ],
 
     outputs=[
-        Input(
+        Output(
             name='v',
             title='3d vector',
             value_type='core.type.v3f64'
