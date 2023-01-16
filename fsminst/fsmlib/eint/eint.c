@@ -301,6 +301,8 @@ int tests() {
 
 #include <time.h>
 
+#ifdef EINT_TEST
+
 int test_performance(const char *str2exec) {
     eint_instance_t inst;
     symbol_context_t context = {NULL};
@@ -336,3 +338,5 @@ int eint_test_all () {
 
     return 0;
 }
+
+#endif
