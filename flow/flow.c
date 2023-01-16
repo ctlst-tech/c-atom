@@ -25,6 +25,8 @@ typedef struct flow_interface {
     unsigned in_bridges_num;
 
     const char *flow_name;
+
+    int got_initial_param_set_call;
 } flow_interface_t;
 
 
@@ -66,6 +68,8 @@ static int check_connectivity(const char *flow_name, const char *inv_name, const
                                 (__func_invk)->name,                                                                                    \
                                 (__func_invk)->h->spec->name,                                                                           \
                                 __flow_name)
+
+fspec_rv_t flow_set_params(void *dhandle, const func_param_t *params, int initial_call);
 
 fspec_rv_t flow_init(void *iface, const function_spec_t *spec, const char *inv_name, eswb_topic_descr_t mounting_td, const void *extension_handler) {
     flow_interface_t *flow_dh = (flow_interface_t *)iface;
@@ -155,11 +159,26 @@ fspec_rv_t flow_init(void *iface, const function_spec_t *spec, const char *inv_n
 
     for (int i = 0; i < batch_size; i++) {
         flow_dh->function_handles_batch[i] = NULL;
-        frv = function_init(flow_dh->functions_batch[i].h, flow_dh->functions_batch[i].name, mounting_td,
-                            &flow_dh->function_handles_batch[i]);
+        frv = function_alloc_handle(flow_dh->functions_batch[i].h, &flow_dh->function_handles_batch[i]);
         if ((frv != fspec_rv_ok) && (frv != fspec_rv_not_supported)) { // it is ok not to have this callback
             flow_init_dbg_msg(frv, &flow_dh->functions_batch[i], flow_dh->flow_name);
+            dbg_msg_ec(frv, "function_alloc_handle() failed");
             err_cnt++;
+        }
+    }
+
+    // run params for invocations are able to use their resources at init
+    frv = flow_set_params(iface, NULL, 1); // initial call
+    if (frv != fspec_rv_ok) {
+        err_cnt++;
+    } else {
+        for (int i = 0; i < batch_size; i++) {
+            frv = function_init(flow_dh->functions_batch[i].h, flow_dh->functions_batch[i].name, mounting_td,
+                                flow_dh->function_handles_batch[i]);
+            if ((frv != fspec_rv_ok) && (frv != fspec_rv_not_supported)) { // it is ok not to have this callback
+                flow_init_dbg_msg(frv, &flow_dh->functions_batch[i], flow_dh->flow_name);
+                err_cnt++;
+            }
         }
     }
 
@@ -335,8 +354,7 @@ fspec_rv_t flow_set_params(void *dhandle, const func_param_t *params, int initia
     int errs = 0;
     fspec_rv_t frv;
 
-
-    if (initial_call) {
+    if (initial_call && (!flow_dh->got_initial_param_set_call)) {
         while (flow_dh->functions_batch[i].h != NULL) {
             frv = function_set_param(flow_dh->functions_batch[i].h, flow_dh->function_handles_batch[i],
                                      flow_dh->functions_batch[i].initial_params, initial_call);
@@ -347,9 +365,12 @@ fspec_rv_t flow_set_params(void *dhandle, const func_param_t *params, int initia
             }
             i++;
         }
+        flow_dh->got_initial_param_set_call = -1;
     } else {
         // func name supposed to be the first parameter in a array
-        return flow_set_invocation_params(flow_dh, params[0].value, &params[1]);
+        if (params != NULL) {
+            return flow_set_invocation_params(flow_dh, params[0].value, &params[1]);
+        }
     }
 
     return errs > 0 ? fspec_rv_inval_param : fspec_rv_ok;

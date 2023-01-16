@@ -73,16 +73,9 @@ fspec_rv_t function_alloc_handle(const function_handler_t *fh, void **dhandle) {
 }
 
 fspec_rv_t function_init(const function_handler_t *fh, const char *inv_name,
-                         eswb_topic_descr_t mounting_td, void **dhandle) {
-    if (*dhandle == NULL) {
-        fspec_rv_t rv = function_alloc_handle(fh, dhandle);
-        if (rv != fspec_rv_ok) {
-            return rv;
-        }
-    }
-
+                         eswb_topic_descr_t mounting_td, void *dhandle) {
     if (fh->calls->init != NULL) {
-        return fh->calls->init(*dhandle, fh->spec, inv_name, mounting_td, fh->extension_handler);
+        return fh->calls->init(dhandle, fh->spec, inv_name, mounting_td, fh->extension_handler);
     } else {
         return fspec_rv_not_supported;
     }

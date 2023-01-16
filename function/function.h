@@ -41,6 +41,7 @@ typedef enum fspec_rv {
     fspec_rv_no_topic,
     fspec_rv_no_path,
     fspec_rv_publish_err,
+    fspec_rv_update_err,
     // fspec_rv_subscr_err,
     fspec_rv_empty,
     fspec_rv_invarg,
@@ -147,8 +148,16 @@ int fspec_conn_arr_size(const connection_spec_t **conn_spec);
 const function_handler_t *fspec_find_handler(const char *spec_name);
 const function_flow_t *fspec_find_flow(const char *spec_name);
 
+/**
+ * function_* domain allocation call (wraps calloc)
+ * @param s size of data
+ * @return NULL if failed
+ */
+void *function_alloc(size_t s);
+fspec_rv_t function_alloc_handle(const function_handler_t *fh, void **dhandle);
+
 fspec_rv_t function_init(const function_handler_t *fh, const char *inv_name,
-                         eswb_topic_descr_t mounting_td, void **dhandle);
+                         eswb_topic_descr_t mounting_td, void *dhandle);
 fspec_rv_t function_init_inputs(const function_handler_t *fh, void *interface,
                                 const func_conn_spec_t *conn_spec, eswb_topic_descr_t mounting_td);
 fspec_rv_t function_init_outputs(const function_handler_t *fh, void *interface,
