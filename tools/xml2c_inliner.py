@@ -109,9 +109,30 @@ def gen_code(c_fprint, xmls2inline, root_path):
 
 
 if __name__ == "__main__":
+    import argparse
 
-    root_path = './config/quad'
-    c_code_output = 'xml_inline_cfgs.c'
+    parser = argparse.ArgumentParser('ESWB monitor tool')
+
+    parser.add_argument(
+        '--cfg_path',
+        action='store',
+        type=str,
+        help='path to XML configurations catalog',
+    )
+
+    parser.add_argument(
+        '--out',
+        action='store',
+        default='xml_inline_cfgs.c',
+        type=str,
+        help='Output C file to store inline XML',
+
+    )
+
+    args = parser.parse_args(sys.argv[1:])
+
+    root_path = args.cfg_path
+    c_code_output = args.out
 
     xmls2inline = collect_xmls(root_path)
 
@@ -123,4 +144,3 @@ if __name__ == "__main__":
     files_num = gen_code(c_fprint, xmls2inline, root_path)
 
     print(f'{files_num} XML files is written to {c_code_output}')
-

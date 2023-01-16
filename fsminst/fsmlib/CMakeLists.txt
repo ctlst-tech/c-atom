@@ -53,6 +53,6 @@ set(FSM_INC_DIRS
         )
 
 target_include_directories(fsm-static PUBLIC ${FSM_INC_DIRS})
-#target_include_directories(fsminst-static PUBLIC ${FSM_INC_DIRS} ../f_specs/include)
+#target_include_directories(fsminst-static PUBLIC ${FSM_INC_DIRS} ../atomics/include)
 
 

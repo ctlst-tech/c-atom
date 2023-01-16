@@ -293,15 +293,20 @@ class GeneratedFunction:
         self.cmake_src_list = []
         self.function_name = func.get_escaped_name()
 
-        self.cmakelists_src_define = f'FSPEC_{self.function_name.upper()}_SRC'
-        self.cmakelists_lib_name = f'fspec_{self.function_name.lower()}-static'
+        self.cmakelists_src_define = f'ATOMIC_{self.function_name.upper()}_SRC'
+        self.cmakelists_lib_name = f'atomic_{self.function_name.lower()}-static'
 
-        self.spec_name = f'fspec_{self.spec.get_prefix()}_spec'
-        self.handler_name = f'fspec_{self.spec.get_prefix()}_handler'
-        self.calls_struct_name = f'fspec_{self.spec.get_prefix()}_calls'
+        self.spec_name = f'atomic_{self.spec.get_prefix()}_spec'
+        self.handler_name = f'atomic_{self.spec.get_prefix()}_handler'
+        self.calls_struct_name = f'atomic_{self.spec.get_prefix()}_calls'
         self.generated_code_dir = 'g'
 
         sources_dir = self.spec.directory
+
+        self.file_declaration = \
+            SourceFile(f'declaration.py',
+                       title=f'Declaration for {self.function_name}',
+                       root_dir=sources_dir)
 
         # user defined (generated once)
         self.gen_file_exec_c = \
@@ -1390,6 +1395,177 @@ class GeneratedFunction:
         if not self.spec.custom_cmakefile or not os.path.exists(cmakelists_path) or cmakefile_override_implementation:
             self.generate_cmkelists(cmakelists_path, self.spec.custom_cmakefile)
 
+    def generate_rst_doc(self, to_dir):
+        ref = self.function_name.replace('_', '-')
+
+        doc_file_path = f'{to_dir}/{ref}.txt'
+
+        fprint = new_file_write_call(doc_file_path)
+        # fprint = print
+
+        # reference
+
+        fprint(f'.. atomic-{ref}')
+
+        def header(val, char, *, section):
+            fprint()
+            header_underscore = char * len(val)
+            if not section:
+                fprint(f'{header_underscore}')
+            fprint(f'{val}')
+            fprint(f'{header_underscore}')
+            fprint()
+
+        header(self.spec.name, '=', section=False)
+
+        fprint()
+
+        # description
+        fprint(self.spec.description if self.spec.description else '')
+        if self.spec.description:
+            fprint()
+
+        def print_table(objects: List[object], column_keys: List[str], column_headers: List[str], column_widths: List[int]):
+            fprint(f'.. list-table::')
+            widths = ''
+            w = int (100 / len(column_keys))
+            for ck in column_widths:
+                widths += f'{ck} '
+            fprint(f'    :widths: {widths}')
+            fprint(f'    :header-rows: {1}')
+            fprint()
+
+            def print_row(elems):
+                for e in elems:
+                    asterix = '*' if e is elems[0] else ' '
+                    fprint(f'    {asterix} - {str(e)}')
+
+            headers = [c if c else column_keys[column_headers.index(c)] for c in column_headers]
+
+            print_row(headers)
+
+            for o in objects:
+                row = [o.__dict__[column_keys[i]] for i in range(0, len(column_keys))]
+                print_row(row)
+
+            fprint()
+            fprint()
+
+
+    # inputs table
+        header('Inputs', '-', section=True)
+        if self.spec.inputs:
+            print_table(self.spec.inputs,
+                        ['name', 'value_type',  'title',    'mandatory', 'description'],
+                        ['Name', 'Type',        'Title',    'Mandatory', 'Description'],
+                        [15,     15,            20,         10,           40],
+                        )
+        else:
+            fprint('Function has no inputs')
+
+        # outputs table
+        header('Outputs', '-', section=True)
+        if self.spec.outputs:
+            print_table(self.spec.outputs,
+                        ['name', 'value_type', 'title', 'description'],
+                        ['Name', 'Type',       'Title', 'Description'],
+                        [15,     15,            20,     50],
+                        )
+        else:
+            fprint('Function has no outputs')
+
+
+        # params table
+        header('Parameters', '-', section=True)
+        if self.spec.parameters:
+            print_table(self.spec.parameters,
+                        ['name', 'value_type', 'title', 'mandatory', 'default',       'description'],
+                        ['Name', 'Type',       'Title', 'Mandatory', 'Default value', 'Description'],
+                        [15,     15,            20,     10,          10,               30],
+                        )
+        else:
+            fprint('Function has no parameters')
+
+        # states table
+        header('State variables', '-', section=True)
+        if self.spec.state:
+            print_table(self.spec.state,
+                        ['name', 'value_type', 'title',  'description'],
+                        ['Name', 'Type',       'Title',  'Description'],
+                        [15,     15,            20,      50],
+                        )
+        else:
+            fprint('Function has no state variables')
+
+
+        # generate snippet
+        header('Usage XML code snippet', '-', section=True)
+
+        fprint(f'.. code-block:: xml')
+        fprint(f'    :caption: {self.function_name} snippet for FLOW configuration file')
+        fprint()
+        inv_name = self.spec.name.split('.')[-1]
+        fprint(f'    <f name="{inv_name}" by_spec="{self.spec.name}">')
+        n = 0
+        for i in self.spec.inputs:
+            n += 1
+            optional = '   <!-- optional -->' if not i.mandatory else ''
+            fprint(f'        <in alias="{i.name}">some_block_{n}/output</in>{optional}')
+
+        n = 0
+        for p in self.spec.parameters:
+            n += 1
+            optional = '   <!-- optional -->' if not p.mandatory else ''
+            fprint(f'        <param alias="{p.name}">0.0</param>{optional}')
+        fprint(f'    </f>')
+
+        # include artifacts
+        header('Function\'s artifacts', '-', section=True)
+
+        def print_files_tabs(file_tabs: List[SourceFile]):
+            fprint('.. tabs::')
+            fprint()
+
+            for ft in file_tabs:
+                if ft:
+                    fprint(f'    .. tab:: {ft.title}')
+                    fprint()
+
+                    def get_lang(sf: SourceFile):
+                        ext = sf.filename.split('.')[-1]
+                        if ext == 'c' or ext == 'h':
+                            return 'c'
+                        elif ext == 'py':
+                            return 'python'
+                        else:
+                            return ''
+
+                    lang = get_lang(ft)
+                    fprint(f'        .. code-block:: {lang}')
+                    fprint(f'            :caption: {ft.filename}')
+
+                    fprint()
+
+                    with open(ft.full_path(), 'r', encoding='utf-8') as stream:
+                            lines = stream.readlines()
+                            for l in lines:
+                                fprint(f'            {l}', end='')
+                    fprint()
+
+        print_files_tabs([
+                self.file_declaration,
+                self.gen_file_exec_c,
+                self.gen_file_compute_params_c,
+                self.gen_file_set_params_c,
+                self.gen_file_h,
+                self.gen_file_spec_c,
+                self.gen_file_interface_c
+            ])
+
+        return ref
+
+
+
 
 class FuncProcessor:
     def __init__(self, package: fspeclib.Package, context: List[fspeclib.Package], process_context=False):
@@ -1416,7 +1592,7 @@ class FuncProcessor:
                 f = GeneratedFunction(function, self)
                 self.generated_funcs_list.append(f)
 
-        self.fspec_registry_c_filename = f'{self.package.name}_registry.c'
+        self.atomics_registry_c_filename = f'{self.package.name}_registry.c'
 
     def find_type(self, alias):
         return fspeclib.find_type_in_context(alias, self.context)
@@ -1458,7 +1634,7 @@ class FuncProcessor:
     def generate_fspecs_registry_c(self, path):
         # Generate spec header
 
-        fprint = new_file_write_call(f'{path}/{self.fspec_registry_c_filename}')
+        fprint = new_file_write_call(f'{path}/{self.atomics_registry_c_filename}')
 
         fprint('/**')
         fprint(' *  Automatically-generated file. Do not edit!')
@@ -1586,23 +1762,23 @@ class FuncProcessor:
         for gf in self.generated_funcs_list:
             fprint(f'add_subdirectory({gf.spec.pkg_rel_directory})')
 
-        fspec_src_name = f'FSPEC_{self.package.name.upper()}_REGISTRY_SRC'
-        fspec_registry_target = f'fspec-{self.package.name.lower()}-registry'
+        atomics_src_name = f'ATOMICS_{self.package.name.upper()}_REGISTRY_SRC'
+        atomics_registry_target = f'atomics-{self.package.name.lower()}-registry'
 
         if has_registry:
-            fprint(f'set({fspec_src_name} ')
-            fprint(f'      {self.fspec_registry_c_filename}')
+            fprint(f'set({atomics_src_name} ')
+            fprint(f'      {self.atomics_registry_c_filename}')
             fprint('    )')
 
-        fspec_interface_target = f'fspec-{self.package.name.lower()}'
+        atomics_interface_target = f'atomics-{self.package.name.lower()}'
         fprint()
 
-        fprint(f'add_library({fspec_interface_target} INTERFACE)')
+        fprint(f'add_library({atomics_interface_target} INTERFACE)')
         fprint()
-        fprint(f'target_include_directories({fspec_interface_target} INTERFACE include)')
+        fprint(f'target_include_directories({atomics_interface_target} INTERFACE include)')
         fprint()
 
-        fprint(f'target_link_libraries({fspec_interface_target} INTERFACE')
+        fprint(f'target_link_libraries({atomics_interface_target} INTERFACE')
 
         for gf in self.generated_funcs_list:
             fprint(f'        {gf.cmakelists_lib_name}')
@@ -1613,11 +1789,11 @@ class FuncProcessor:
         if has_registry:
             fprint()
             fprint()
-            fprint(f'add_library({fspec_registry_target} STATIC ${{{fspec_src_name}}})')
-            fprint(f'target_include_directories({fspec_registry_target} PUBLIC include ../eswb/src/lib/include/public)')
-            fprint(f'target_link_libraries({fspec_registry_target} PUBLIC {fspec_interface_target} m)')
+            fprint(f'add_library({atomics_registry_target} STATIC ${{{atomics_src_name}}})')
+            fprint(f'target_include_directories({atomics_registry_target} PUBLIC include ../eswb/src/lib/include/public)')
+            fprint(f'target_link_libraries({atomics_registry_target} PUBLIC {atomics_interface_target} m)')
 
-        self.package.cmake_target = fspec_registry_target if has_registry else fspec_interface_target
+        self.package.cmake_target = atomics_registry_target if has_registry else atomics_interface_target
 
     def generate_code(self, gen_func_registry=True):
         for f in self.generated_funcs_list:
@@ -1627,6 +1803,32 @@ class FuncProcessor:
         # self.generate_fspecs_header(self.package.root_path)
         if gen_func_registry:
             self.generate_fspecs_registry_c(self.package.root_path)
+
+    def generate_docs(self, dir2docs):
+        doc_files_list = []
+
+        for f in self.generated_funcs_list:
+            fn = f.generate_rst_doc(dir2docs)
+            doc_files_list.append(fn)
+
+        atomics_doc_list = f'{dir2docs}/catom-atomic-catalog.txt'
+
+        fprint = new_file_write_call(atomics_doc_list)
+
+        fprint('.. _catom-atomic-catalog:')
+        fprint()
+
+        fprint('========================')
+        fprint('Atomic functions catalog')
+        fprint('========================')
+        fprint()
+        fprint()
+        fprint('.. toctree::')
+        fprint('   :titlesonly:')
+        fprint()
+
+        for f in doc_files_list:
+            fprint(f'   {f}')
 
 
 def init_parser():
@@ -1646,14 +1848,15 @@ def init_parser():
 
     parser.add_argument(
         '--code',
-        help='Generate C code for f_specs',
+        help='Generate C code for atomics',
         action='store_true'
     )
 
     parser.add_argument(
-        '--md',
-        help='Generate markdown files for f_specs',
-        action='store_true'
+        '--doc',
+        action='store',
+        type=str,
+        help='Generate RST documentation for atomic functions to the designated dir',
     )
 
     parser.add_argument(
@@ -1681,8 +1884,8 @@ def init_parser():
         action='store_true'
     )
 
-    parser.add_argument('--f_specs_dirs',
-                        help='specifies list of dirs of fspecs in a format pkg_name:pkg_root_path',
+    parser.add_argument('--atomics_dirs',
+                        help='specifies list of dirs of atomics functions in a format pkg_name:pkg_root_path',
                         nargs='+')
 
     return parser
@@ -1704,7 +1907,7 @@ if __name__ == "__main__":
     catom_root_path = args.catom_path
 
     pkgs = []
-    for fspec_specifier in args.f_specs_dirs:
+    for fspec_specifier in args.atomics_dirs:
 
         name = ''
         path = ''
@@ -1745,15 +1948,15 @@ if __name__ == "__main__":
     fp = FuncProcessor(pkgs[0], pkgs, True)
 
     if central_registry:
-        (path, fp.fspec_registry_c_filename) = os.path.split(args.registry_c)
+        (path, fp.atomics_registry_c_filename) = os.path.split(args.registry_c)
         fp.generate_fspecs_registry_c(path)
 
     if args.bbxml:
         fp.generate_bbxml(args.bbxml)
 
     if args.cmake:
-        fprint = new_file_write_call('./fspecs.cmake')
-        fprint('include_directories(c-atom/function)')
+        fprint = new_file_write_call('./atomics.cmake')
+        fprint(f'include_directories({args.catom_path}/function)')
 
         fprint()
 
@@ -1761,15 +1964,19 @@ if __name__ == "__main__":
             fprint(f'add_subdirectory({os.path.relpath(p.root_path, start=os.curdir)})')
 
         fprint()
-        fprint('set(FSPECS_LIBS')
+        fprint('set(ATOMICS_LIBS')
         for p in pkgs:
             fprint(f'    {p.cmake_target}')
         fprint(')')
         if central_registry:
             fprint()
-            fprint(f'set(FSPECS_REG {args.registry_c})')
+            fprint(f'set(ATOMICS_REG {args.registry_c})')
 
     if args.cmake_vars:
         for p in pkgs:
             print(f'SUBDIR={os.path.relpath(p.root_path, start=os.curdir)}')
             print(f'TARGET={p.cmake_target}')
+
+    if args.doc:
+        fp.generate_docs(args.doc)
+
