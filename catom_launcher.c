@@ -1,7 +1,3 @@
-//
-// Created by goofy on 2/2/22.
-//
-
 #include <stdio.h>
 #include <limits.h>
 #include <unistd.h>

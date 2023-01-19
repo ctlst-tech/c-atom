@@ -86,6 +86,9 @@ target_link_libraries(c-atom-static PRIVATE
         )
 
 
+add_library(c-atom-launcher-static STATIC catom_launcher.c)
+target_link_libraries(c-atom-launcher-static PUBLIC c-atom-static)
+
 #set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wl,-Map=mock.map")
 #set(CMAKE_CXX_FLAGS_DEBUG "-g")
 #set(CMAKE_CXX_FLAGS_RELEASE "-O3")
