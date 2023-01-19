@@ -251,14 +251,14 @@ fspec_rv_t flow_load(const char *path, function_flow_t **flow_rv) {
 
         xml_node_t *link_outputs = xml_node_find_child(flow_xml_root, "link_outputs");
         if (link_outputs == NULL) {
-            xml_err("There in no output links section for %s", flow->spec.name);
-            err_num++;
+            xml_err("Warning: There in no output links section for %s", flow->spec.name);
+            // err_num++;
         } else {
 #       define LINK_TAG "link"
             xml_rv = func_load_connections(link_outputs, LINK_TAG, &flow->cfg.outputs_links);
             if (xml_rv != xml_e_ok) {
-                xml_err("Outputs links load failed for %s", path);
-                err_num++;
+                xml_err("Warning: Outputs links load failed for %s", path);
+                // err_num++;
             }
         }
 
