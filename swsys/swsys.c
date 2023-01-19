@@ -48,6 +48,7 @@ static swsys_rv_t task_load(swsys_task_t *t) {
             function_flow_t *ff = NULL;
             fspec_rv_t flow_rv = flow_load(t->config_path, &ff);
             if (flow_rv != fspec_rv_ok) {
+                dbg_msg("flow \'%s\' load error: %s", t->name, fspec_errmsg(flow_rv));
                 rv = swsys_e_loaderr;
             } else {
                 flow_get_handler(ff, &t->func_handler);
@@ -200,13 +201,20 @@ static swsys_rv_t swsys_init(swsys_t *sys) {
         rv = task_load(&sys->tasks[i]);
         if (rv == swsys_e_ok) {
             fspec_rv_t frv;
-            frv = function_init(&sys->tasks[i].func_handler, sys->tasks[i].name, 0, &sys->tasks[i].func_call_dhandle);
+            frv = function_alloc_handle(&sys->tasks[i].func_handler, &sys->tasks[i].func_call_dhandle);
             if (frv != fspec_rv_ok){
-                dbg_msg_ec(frv, "Task \"%s\" function_init error", sys->tasks[i].name);
+                dbg_msg_ec(frv, "Task \"%s\" function_alloc_handle error", sys->tasks[i].name);
                 err_num++;
+            } else {
+                frv = function_init(&sys->tasks[i].func_handler, sys->tasks[i].name, 0,
+                                    sys->tasks[i].func_call_dhandle);
+                if (frv != fspec_rv_ok) {
+                    dbg_msg_ec(frv, "Task \"%s\" function_init error", sys->tasks[i].name);
+                    err_num++;
+                }
             }
         } else {
-            dbg_msg("Task \"%s\" load error (%d)", sys->tasks[i].name, rv);
+            dbg_msg("Task \"%s\" load error (%s)", sys->tasks[i].name, swsys_strerror(rv));
             err_num++;
         }
     }
@@ -468,7 +476,13 @@ swsys_rv_t swsys_top_module_start(swsys_t *swsys) {
 
     swsys_func_dhandle_t *dhandle = NULL;
 
-    rv = function_init(&fh, NULL, 0, (void **) &dhandle);
+    rv = function_alloc_handle(&fh, &dhandle);
+    if (rv != fspec_rv_ok) {
+        dbg_msg_ec(rv, "function_alloc_handle failed");
+        return swsys_e_initerr;
+    }
+
+    rv = function_init(&fh, NULL, 0, dhandle);
     if (rv != fspec_rv_ok) {
         dbg_msg_ec(rv, "function_init failed");
         return swsys_e_initerr;

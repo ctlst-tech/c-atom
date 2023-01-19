@@ -60,7 +60,7 @@ typedef struct {
     swsys_priority_t priority;
     const char *config_path;
 
-    function_handler_t func_handler;
+    function_handler_t  func_handler;
     void *func_call_dhandle;
 
     func_param_t *params;
