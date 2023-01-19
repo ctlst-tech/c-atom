@@ -459,7 +459,6 @@ class GeneratedFunction:
         if self.has_output_updating_arg:
             a = GArgument(type=self.type_update_output_flags, varname=self.out_update_control_arg_name, ptr=True)
             exec_func_args.append(a)
-            pre_exec_init_func_args.append(a)
         if func.has_injection():
             a = GArgument(type=self.type_injection, varname='injection', ptr=True, const=True)
             exec_func_args.append(a)
