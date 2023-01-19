@@ -64,6 +64,8 @@ const char *xml_attr_value(xml_node_t *n, const char *name);
 
 int xml_attr_int(xml_node_t *n, const char *aname, xml_rv_t *err);
 
+double xml_attr_double(xml_node_t *n, const char *aname, xml_rv_t *err);
+
 const char *xml_attr_str(xml_node_t *n, const char *aname, xml_rv_t *err);
 
 int xml_attr_bool(xml_node_t *n, const char *aname, xml_rv_t *err);
@@ -88,7 +90,7 @@ const char *xml_strerror(xml_rv_t ec);
 #define GET_ATTR_AND_PROCESS_ERR_GENERIC(_func, _node, _attr_name, _opt, _err_cnt_ptr) \
         _func(_node, _attr_name, &___xml_rv_);                                     \
         if (!(_opt)) {                                                             \
-            ____cnt = xml_dom_process_attr_parser_err(_attr_name, _node, ___xml_rv_);     \
+            ____cnt += xml_dom_process_attr_parser_err(_attr_name, _node, ___xml_rv_);     \
             if ((_err_cnt_ptr) != NULL) {*(_err_cnt_ptr) = ____cnt;}               \
         }
 

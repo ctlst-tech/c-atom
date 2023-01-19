@@ -2,6 +2,8 @@
 
 #include <string.h>
 #include <stdint.h>
+#include <errno.h>
+#include <ctype.h>
 
 
 #include "xml.h"
@@ -285,6 +287,24 @@ int xml_node_child_is_unique(xml_node_t *n, char *name) {
 
 const char *xml_attr_value(xml_node_t *n, const char *name);
 
+int str_is_zero_num(const char *s) {
+    const char *c = s;
+    while(*c++ != 0) {
+        switch (*c) {
+            case '0':
+            case '+':
+            case '-':
+            case 'x':
+                break;
+
+            default:
+                return 0;
+        }
+    }
+
+    return 1;
+}
+
 int xml_attr_int(xml_node_t *n, const char *aname, xml_rv_t *err) {
     const char *v = xml_attr_value(n, aname);
     if (v == NULL) {
@@ -292,9 +312,9 @@ int xml_attr_int(xml_node_t *n, const char *aname, xml_rv_t *err) {
         return 0;
     }
 
-    int value;
-
-    if (sscanf(v,"%d", &value) < 1) {
+    int value = strtol(v, NULL, 0);
+    if (errno != 0
+        || (value == 0 && !str_is_zero_num(v))) {
         *err = xml_e_invattr;
         return 0;
     }
@@ -302,6 +322,26 @@ int xml_attr_int(xml_node_t *n, const char *aname, xml_rv_t *err) {
     *err = xml_e_ok;
     return value;
 }
+
+
+double xml_attr_double(xml_node_t *n, const char *aname, xml_rv_t *err) {
+    const char *v = xml_attr_value(n, aname);
+    if (v == NULL) {
+        *err = xml_e_noattr;
+        return 0;
+    }
+
+    double value = 0;
+
+    if (sscanf(v,"%lf", &value) < 1) {
+        *err = xml_e_invattr;
+        return 0;
+    }
+
+    *err = xml_e_ok;
+    return value;
+}
+
 
 const char *xml_attr_str(xml_node_t *n, const char *aname, xml_rv_t *err) {
     const char *value = xml_attr_value(n, aname);
