@@ -47,6 +47,7 @@ typedef enum fspec_rv {
     fspec_rv_invarg,
     fspec_rv_loaderr,
     fspec_rv_initerr,
+    fspec_rv_system_err,
 } fspec_rv_t;
 
 typedef struct func_pair {
