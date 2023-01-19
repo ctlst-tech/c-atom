@@ -368,7 +368,7 @@ fspec_rv_t flow_set_params(void *dhandle, const func_param_t *params, int initia
         flow_dh->got_initial_param_set_call = -1;
     } else {
         // func name supposed to be the first parameter in a array
-        if (params != NULL) {
+        if (params != NULL && params[0].value != NULL) {
             return flow_set_invocation_params(flow_dh, params[0].value, &params[1]);
         }
     }
