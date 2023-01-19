@@ -73,7 +73,7 @@ typedef struct field {
     const char *unit;
     const char *description;
 
-    double scaling;
+    double scale_factor;
 
     union {
         field_scalar_type_t scalar_type;
@@ -98,11 +98,30 @@ typedef struct field {
 typedef struct msg {
     const char *name;
     const char *description;
+
+    int32_t id; // if  <0 then - invalid
+
     int size;
     field_t *fields_list_head;
     //field_t *fields_list_tail;
 } msg_t;
 
+
+
+typedef struct frame {
+    const char *name;
+    const char *description;
+
+    msg_t *structure;
+
+    uint32_t payload_offset;
+
+    field_t *resolve_id;
+    field_t *resolve_len;
+
+    unsigned msg_num;
+    msg_t **msgs;
+} frame_t;
 
 typedef struct demrsh_handle {
     msg_t *format;
@@ -115,7 +134,6 @@ typedef struct demrsh_handle {
     void *head;
     void *body;
     void *tail;
-
 } demrsh_handle_t;
 
 int ibr_msg_fields_num(msg_t *m);
@@ -131,6 +149,9 @@ ibr_rv_t ibr_add_string(msg_t *d, const char *name, int size, int *offset, field
 ibr_rv_t ibr_add_array(msg_t *d, const char *name, int elem_size, int array_size, int *offset, field_t **r);
 
 ibr_rv_t ibr_field_scalar_add_scaling(field_t *f, double factor);
+
+struct conv_instr_queue;
+ibr_rv_t ibr_msg_to_functional_msg(msg_t *src, msg_t **dst_rv, struct conv_instr_queue *conv_queue);
 
 field_scalar_type_t ibr_scalar_typefromstr(const char *ts);
 topic_data_type_t ibr_eswb_field_type(field_type_t *ft);

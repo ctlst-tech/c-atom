@@ -22,6 +22,7 @@ typedef struct {
 typedef enum {
     mdt_function,
     mdt_function_bridge,
+    mdt_function_vector,
     mdt_udp
 } irb_media_driver_type_t;
 
@@ -33,17 +34,33 @@ typedef struct {
 } irb_media_setup_t;
 
 typedef struct {
+
+} irb_msg_record_t;
+
+
+typedef struct msg_record {
+    uint32_t id;
+    msg_t *src_msg;
+
+    msg_t *dst_msg;
+
+    conv_instr_queue_t conv_queue;
+    int descr; // connection descriptor
+} msg_record_t;
+
+typedef struct {
     const char *name;
 
     irb_media_setup_t src;
     irb_media_setup_t dst;
 
-    msg_t *dst_msg;
-    msg_t *src_msg;
+    frame_t *frame;
 
-    conv_instr_queue_t conv_instrs;
+    unsigned msgs_num;
+    msg_record_t *msgs_setup;
 
     pthread_t tid;
+
 } irb_process_setup_t;
 
 

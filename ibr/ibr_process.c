@@ -210,7 +210,7 @@ static eswb_rv_t proclaim_msg(msg_t *m, const char *dst_path, eswb_topic_descr_t
                             n->name,
                             eswb_data_type,
                             n->offset,
-                            n->size, TOPIC_FLAG_MAPPED_TO_PARENT);
+                            n->size, TOPIC_PROCLAIMING_FLAG_MAPPED_TO_PARENT);
     }
 
     rv = eswb_proclaim_tree_by_path(path, rt, cntx->t_num, td);
@@ -265,6 +265,63 @@ const irb_media_driver_t drv_eswb_media_driver = {
         .send = drv_eswb_send,
         .recv = drv_eswb_recv,
 };
+
+
+ibr_rv_t drv_eswb_vector_connect(const char *path, int *td) {
+    eswb_rv_t erv;
+    ibr_rv_t rv;
+    erv = eswb_connect(path, td);
+    if (erv == eswb_e_ok) {
+        uint32_t dummy;
+        eswb_index_t br;
+        // check that this is vector
+        erv = eswb_vector_read(*td, dummy, 0, 4, &br);
+        if (erv == eswb_e_ok) {
+            rv = ibr_ok;
+        } else {
+            rv = ibr_media_err;
+        }
+    } else {
+        rv = ibr_nomedia;
+    }
+    return rv;
+}
+
+ibr_rv_t drv_eswb_vector_disconnect(int td) {
+    eswb_rv_t rv;
+    rv = eswb_disconnect (td);
+    return rv == eswb_e_ok ? ibr_ok : ibr_media_err;
+}
+
+ibr_rv_t drv_eswb_vector_send(int td, void *d, int *bts) {
+    eswb_rv_t rv;
+    rv = eswb_vector_write(td, 0, d, *bts, ESWB_VECTOR_WRITE_OPT_FLAG_DEFINE_END);
+    if (rv == eswb_e_ok) {
+        *bts = *bts;
+    }
+    return rv == eswb_e_ok ? ibr_ok : ibr_media_err;
+}
+
+ibr_rv_t drv_eswb_vector_recv(int td, void *d, int *btr) {
+    eswb_rv_t rv;
+    eswb_index_t br;
+    rv = eswb_vector_get_update(td, 0, d, *btr, &br);
+    if (rv == eswb_e_ok) {
+        *btr = br;
+    }
+    return rv == eswb_e_ok ? ibr_ok : ibr_media_err;
+}
+
+
+const irb_media_driver_t drv_eswb_vector_media_driver = {
+        .proclaim = NULL,
+        .connect = drv_eswb_vector_connect,
+        .disconnect = drv_eswb_vector_disconnect,
+        .send = drv_eswb_vector_send,
+        .recv = drv_eswb_vector_recv,
+};
+
+
 
 #define MAX_BRIDGES 5
 static int bridges_num = 0;
@@ -394,6 +451,7 @@ const irb_media_driver_t *ibr_get_driver (irb_media_driver_type_t mdt) {
     switch (mdt) {
         case mdt_function:              return &drv_eswb_media_driver;
         case mdt_function_bridge:       return &drv_eswb_bridge_media_driver;
+        case mdt_function_vector:       return &drv_eswb_vector_media_driver;
 #       ifndef CATOM_NO_SOCKET
         case mdt_udp:                   return &drv_udp_media_driver;
 #       endif
@@ -413,6 +471,8 @@ ibr_rv_t ibr_decode_addr(const char *addr, irb_media_driver_type_t *mdt, const c
         *mdt = mdt_function;
     } else if (strcmp(drv_alias, "func_br") == 0) {
         *mdt = mdt_function_bridge;
+    } else if (strcmp(drv_alias, "func_vec") == 0) {
+        *mdt = mdt_function_vector;
     } else if (strcmp(drv_alias, "udp") == 0) {
         *mdt = mdt_udp;
     } else {
@@ -426,6 +486,7 @@ ibr_rv_t ibr_decode_addr(const char *addr, irb_media_driver_type_t *mdt, const c
 
 void ibr_set_pthread_name(const char *tn);
 
+/*
 static inline ibr_rv_t ibr_process (irb_process_setup_t *setup) {
     int msg_size = setup->dst_msg->size;
     const irb_media_driver_t *dev_src = setup->src.drv;
@@ -463,9 +524,76 @@ static inline ibr_rv_t ibr_process (irb_process_setup_t *setup) {
 
     return rv;
 }
+*/
+
+msg_record_t *resolve_message_record(irb_process_setup_t *s, uint32_t id) {
+
+    for (int i = 0; i < s->msgs_num; i++) {
+        if (s->msgs_setup[i].id == id) {
+            return &s->msgs_setup[i];
+        }
+    }
+
+    return NULL;
+}
+
+uint32_t resolve_scalar_int(field_t *f, void *frame_start) {
+    uint32_t rv = 0;
+    memcpy(&rv, frame_start + f->offset, f->size);
+    return rv;
+}
+
+static inline ibr_rv_t ibr_process_frame (irb_process_setup_t *setup) {
+    int msg_size = 512;
+
+    const irb_media_driver_t *dev_src = setup->src.drv;
+    const irb_media_driver_t *dev_dst = setup->dst.drv;
+
+    void *src_buf = ibr_alloc(msg_size);
+    void *dst_buf = ibr_alloc(msg_size);
+
+    int srcd = setup->src.descr;
+    int dstd = setup->dst.descr;
+
+    ibr_rv_t rv;
+
+    ibr_set_pthread_name(setup->name);
+
+    while(1) {
+        int br = msg_size;
+        rv = dev_src->recv(srcd, src_buf, &br);
+        if (rv == ibr_ok) {
+
+            uint32_t resolved_id = resolve_scalar_int(setup->frame->resolve_id, src_buf);
+            uint32_t resolved_len = resolve_scalar_int(setup->frame->resolve_len, src_buf);
+
+            msg_record_t *m = resolve_message_record(setup, resolved_id);
+            if (m->src_msg->size != resolved_len) {
+                // TODO check max
+                continue;
+            }
+
+            if (m != NULL) {
+
+                int bw = conv_exec(&m->conv_queue, m->src_msg, m->src_msg->size,
+                                   m->dst_msg, m->src_msg->size);
+
+                rv = dev_dst->send(dstd, dst_buf, &bw);
+                if (rv != ibr_ok) {
+                    // TODO ?
+                    break;
+                }
+            }
+        }
+    }
+
+    return rv;
+}
+
+
 
 void *ibr_process_thread (void *setup) {
-    ibr_process((irb_process_setup_t *) setup);
+    ibr_process_frame((irb_process_setup_t *) setup);
     return NULL;
 }
 

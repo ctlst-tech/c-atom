@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "ibr_msg.h"
 #include "ibr_convert.h"
+#include "ibr_private.h"
 
 #include "xml.h"
 #include "function_xml.h"
@@ -70,6 +71,7 @@ static xml_rv_t load_field_scalar(xml_node_t *field_node, int *offset, msg_t *to
 
     const char *name = GET_ATTR_AND_PROCESS_ERR(xml_attr_str, field_node, "name", &err_cnt);
     const char *type_str = GET_ATTR_AND_PROCESS_ERR(xml_attr_str, field_node, "type", &err_cnt);
+    double scale = GET_ATTR_OPTIONAL(xml_attr_double, field_node, "scale", &err_cnt);
 
     field_t *f;
     field_scalar_type_t type = ibr_scalar_typefromstr(type_str);
@@ -81,6 +83,9 @@ static xml_rv_t load_field_scalar(xml_node_t *field_node, int *offset, msg_t *to
         if (rv != ibr_ok) {
             xml_err("ibr_add_scalar error (%d). Not a scalar?", rv);
             err_cnt++;
+        }
+        if (scale) {
+            ibr_field_scalar_add_scaling(f, scale);
         }
     }
 
@@ -98,6 +103,97 @@ static xml_rv_t load_field_scalar(xml_node_t *field_node, int *offset, msg_t *to
     return err_cnt > 0 ? xml_e_dom_process : xml_e_ok;
 }
 
+static xml_rv_t load_payload_messages_lut(frame_t *frame, protocol_t *protocol, xml_node_t *payload_node) {
+    GET_ATTR_INIT();
+    int err_num;
+
+    for (xml_node_t *n = payload_node->first_child; n != NULL; n = n->next_sibling) {
+        if (xml_node_name_eq(n, "m")) {
+            const char *msg_name = GET_ATTR_AND_PROCESS_ERR(xml_attr_str, payload_node, "name", &err_num);
+            if (msg_name != NULL) {
+                msg_t *m = ibr_protocol_find_msg(protocol, msg_name);
+                if (m != NULL) {
+                    if (m->id > 0) {
+                        frame->msgs[frame->msg_num] = m;
+                        frame->msg_num++;
+                    } else {
+                        xml_err("\"id\" is not set for message %s referred by %s frame", m->name, frame->name);
+                        err_num++;
+                    }
+                } else {
+                    xml_err("No message \"%s\" cannot be found in protocol\"%s\"", msg_name, protocol->name);
+                    err_num++;
+                }
+            } else {
+                xml_err("No message name inside \"payload\" tag of frame \"%s\"", frame->name);
+                err_num++;
+            }
+        }
+    }
+
+    return err_num > 0 ? xml_e_dom_process : xml_e_ok;
+}
+
+static xml_rv_t load_frame(protocol_t *protocol, xml_node_t *frame_node, frame_t **frame_rv) {
+
+    xml_rv_t xrv;
+    int err_num;
+    int offset = 0;
+
+    frame_t *frame = ibr_alloc(sizeof(*frame));
+    if (frame == NULL) {
+        return xml_e_nomem;
+    }
+
+    frame->structure = ibr_alloc(sizeof(*frame->structure));
+    if (frame->structure == NULL) {
+        return xml_e_nomem;
+    }
+
+    // load fields
+    GET_ATTR_INIT();
+    frame->name = GET_ATTR_AND_PROCESS_ERR(xml_attr_str, frame_node, "name", &err_num);
+
+    for (xml_node_t *n = frame_node->first_child; n != NULL; n = n->next_sibling) {
+        if (xml_node_name_eq(n, "fs") || xml_node_name_eq(n, "field_scalar") ) {
+            xrv = load_field_scalar(n, &offset, frame->structure);
+            if (xrv != xml_e_ok) {
+                err_num++;
+            }
+        }
+    }
+
+    xml_node_t *payload_node = xml_node_find_child(frame_node, "payload");
+    if (payload_node != NULL) {
+        frame->payload_offset = offset;
+        const char *length_field = GET_ATTR_OPTIONAL(xml_attr_str, frame_node, "size_field", &err_num);
+        const char *id_field = GET_ATTR_OPTIONAL(xml_attr_str, frame_node, "msg_id", &err_num);
+
+        unsigned messages_num = xml_node_count_siblings(payload_node, "m");
+
+        if (messages_num > 0) {
+            frame->msgs = ibr_alloc(messages_num * sizeof(*frame->msgs));
+            frame->msg_num = 0;
+
+            if (frame->msgs == NULL) {
+                return xml_e_nomem;
+            }
+
+            xrv = load_payload_messages_lut(frame, protocol, payload_node);
+            if (xrv != xml_e_ok) {
+                err_num++;
+            }
+        }
+    } else {
+        xml_err("No payload is defined for frame %s", frame->name == NULL ? "N/A" : frame->name);
+        err_num++;
+    }
+
+    // load payload
+
+    return err_num > 0 ? xml_e_dom_process : xml_e_ok;
+}
+
 static xml_rv_t load_msg(xml_node_t *msg_node, msg_t **msg_rv) {
 
     xml_rv_t xrv;
@@ -111,6 +207,20 @@ static xml_rv_t load_msg(xml_node_t *msg_node, msg_t **msg_rv) {
     GET_ATTR_INIT();
 
     msg->name = GET_ATTR_AND_PROCESS_ERR(xml_attr_str, msg_node, "name", &err_num);
+
+    msg->id = xml_attr_int(msg_node, "id", &xrv);
+    switch (xrv) {
+        case xml_e_ok:
+            break;
+
+        default:
+        case xml_e_invattr:
+            xml_err("id attr parsing error for src_msg %s", msg->name == NULL ? "N/A" : msg->name);
+            break;
+
+        case xml_e_noattr:
+            msg->id = -1;
+    }
 
     int offset = 0;
 
@@ -143,7 +253,7 @@ static xml_rv_t load_protocol(xml_node_t *protocol_node, protocol_t *protocol) {
 
     protocol->name = GET_ATTR_AND_PROCESS_ERR(xml_attr_str, protocol_node, "name", &err_cnt);
 
-    int msg_cnt = xml_node_count_siblings(protocol_node->first_child, "msg");
+    int msg_cnt = xml_node_count_siblings(protocol_node->first_child, "src_msg");
     if (msg_cnt < 1) {
         xml_err("Not a single message is presented for \"%s\"", protocol->name == NULL ? "N/A" : protocol->name);
         err_cnt++;
@@ -156,7 +266,7 @@ static xml_rv_t load_protocol(xml_node_t *protocol_node, protocol_t *protocol) {
         int i = 0;
 
         for (xml_node_t *n = protocol_node->first_child; n != NULL; n = n->next_sibling) {
-            if (xml_node_name_eq(n, "msg")) {
+            if (xml_node_name_eq(n, "src_msg")) {
                 xrv = load_msg(n, &protocol->msgs[i]);
                 if (xrv != xml_e_ok) {
                     err_cnt++;
@@ -165,6 +275,14 @@ static xml_rv_t load_protocol(xml_node_t *protocol_node, protocol_t *protocol) {
             }
         }
         protocol->msgs[i] = NULL;
+    }
+
+    xml_node_t *frame_node = xml_node_find_child(protocol_node, "frame");
+    if (frame_node != NULL) {
+        xrv = load_frame(protocol, frame_node, &protocol->frame);
+        if (xrv != xml_e_ok) {
+            err_cnt++;
+        }
     }
 
     return err_cnt > 0 ? xml_e_dom_process : xml_e_ok;
@@ -178,14 +296,22 @@ xml_rv_t load_process(xml_node_t *process_node, const ibr_cfg_t *ibr, process_cf
     GET_ATTR_INIT();
 
     process->name = GET_ATTR_AND_PROCESS_ERR(xml_attr_str, process_node, "name", &err_cnt);
-    process->msg = GET_ATTR_AND_PROCESS_ERR(xml_attr_str, process_node, "msg", &err_cnt);
+    process->msg = GET_ATTR_OPTIONAL(xml_attr_str, process_node, "src_msg", &err_cnt);
+    process->frame = GET_ATTR_OPTIONAL(xml_attr_str, process_node, "frame", &err_cnt);
     process->src = GET_ATTR_AND_PROCESS_ERR(xml_attr_str, process_node, "src", &err_cnt);
     process->dst = GET_ATTR_AND_PROCESS_ERR(xml_attr_str, process_node, "dst", &err_cnt);
 
-//    if (process->msg == NULL) {
-//        xml_err("Message \"%s\" does not specified in IBR \"%s\"", msg, ibr->spec.name != NULL ? ibr->spec.name : "N/A");
+    if ((process->msg == NULL) && (process->frame == NULL)) {
+        xml_err("Either \"src_msg\" or \"frame\" must be specified for IBR \"%s\"", ibr->spec.name != NULL ? ibr->spec.name : "N/A");
+        err_cnt++;
+    }
+
+//    if (process->src_msg == NULL) {
+//        xml_err("Message \"%s\" does not specified in IBR \"%s\"", src_msg, ibr->spec.name != NULL ? ibr->spec.name : "N/A");
 //        err_cnt++;
 //    }
+
+    // TODO resolve everything here?
 
     return err_cnt > 0 ? xml_e_dom_process : xml_e_ok;
 }

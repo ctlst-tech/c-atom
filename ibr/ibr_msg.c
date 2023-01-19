@@ -2,12 +2,13 @@
 #include <stdio.h>
 #include <string.h>
 #include "ibr_msg.h"
+#include "ibr_convert.h"
 
 field_t *ibr_alloc_field() {
     return calloc(1, sizeof(field_t));
 }
 
-msg_t *ibr_alloc_data() {
+msg_t *ibr_alloc_msg() {
     return calloc(1, sizeof(msg_t));
 }
 
@@ -121,7 +122,7 @@ ibr_rv_t ibr_add_string(msg_t *d, const char *name, int size, int *offset, field
 
 ibr_rv_t ibr_add_bitfield(msg_t *d, const char *name, int size_in_bytes, int *offset, field_t **r) {
 
-    msg_t *new_d = ibr_alloc_data();
+    msg_t *new_d = ibr_alloc_msg();
     if (d == NULL) {
         return ibr_nomem;
     }
@@ -179,7 +180,7 @@ ibr_rv_t ibr_bitfield_add_element_enum(field_t *f, const char *name, int size_in
 ibr_rv_t ibr_field_scalar_add_scaling(field_t *f, double factor) {
 
     f->flags |= (factor != 0.0 && factor != 1.0) ? IBR_FIELD_FLAG_HAS_SCALE_CONV : 0;
-    f->scaling = factor;
+    f->scale_factor = factor;
 
     return ibr_ok;
 }
@@ -188,6 +189,95 @@ ibr_rv_t ibr_field_annotate(field_t *f, const char *unit, const char *descriptio
 
     f->unit = unit;
     f->description = description;
+
+    return ibr_ok;
+}
+
+
+static ibr_rv_t copy_nested_bitfields(msg_t *src, field_t *dst_f) {
+
+    int offset_int_bits = 0;
+    field_t *new_f;
+    ibr_rv_t rv;
+
+    for (field_t *f = src->fields_list_head; f != NULL; f = f->next) {
+        switch (f->cls) {
+            case fc_flag:
+                rv = ibr_bitfield_add_element_flag(dst_f, f->name, &offset_int_bits, &new_f);
+                break;
+
+            case fc_enum:
+                rv = ibr_bitfield_add_element_enum(dst_f, f->name, f->size, &offset_int_bits, &new_f);
+                break;
+
+            default:
+                rv = ibr_not_sup;
+                break;
+        }
+
+        if (rv != ibr_ok) {
+            return rv;
+        }
+    }
+
+    return ibr_ok;
+}
+
+ibr_rv_t ibr_msg_to_functional_msg(msg_t *src, msg_t **dst_rv, conv_instr_queue_t *conv_queue) {
+
+    msg_t *dst = ibr_alloc_msg();
+    ibr_rv_t rv;
+    int offset = 0;
+    field_t *new_f;
+    field_scalar_type_t dst_ft;
+    field_scalar_type_t src_ft;
+
+    for (field_t *f = src->fields_list_head; f != NULL; f = f->next) {
+        switch (f->cls) {
+            case fc_scalar:
+                ;
+                // if we have scale factor, then represent destination field as 'double'
+                src_ft = dst_ft = f->nested.scalar_type;
+                if (f->flags & IBR_FIELD_FLAG_HAS_SCALE_CONV) {
+                    dst_ft = ft_double;
+                }
+
+                rv = ibr_add_scalar(dst, f->name, dst_ft, &offset, &f);
+
+                break;
+
+            case fc_bitfield:
+                // just copy
+                rv = ibr_add_bitfield(dst, f->name, f->size, &offset, &new_f);
+                if (rv == ibr_ok) {
+                    rv = copy_nested_bitfields(f->nested.bitfield_list, new_f);
+                }
+
+                switch (f->size) {
+                    case 1: src_ft = dst_ft = ft_uint8; break;
+                    case 2: src_ft = dst_ft = ft_uint16; break;
+                    case 4: src_ft = dst_ft = ft_uint32; break;
+                    case 8: src_ft = dst_ft = ft_uint64; break;
+                    default:
+                        rv = ibr_invarg;
+                }
+                break;
+
+            default:
+                rv = ibr_not_sup;
+                break;
+        }
+        if (rv != ibr_ok) {
+            return rv;
+        }
+
+        rv = conv_instr_queue_add(conv_queue, src_ft, dst_ft);
+        if (rv != ibr_ok) {
+            return rv;
+        }
+    }
+
+    *dst_rv = dst;
 
     return ibr_ok;
 }
@@ -278,7 +368,7 @@ void print_field(field_t *f, int nesting) {
             tb(nesting);
             printf ("Scalar %s %s %.3f\n", scalar_type_caption(f->nested.scalar_type),
                                                     f->flags & IBR_FIELD_FLAG_HAS_SCALE_CONV ? "scaled" : "",
-                                                    f->flags & IBR_FIELD_FLAG_HAS_SCALE_CONV ? f->scaling : 1.0);
+                                                    f->flags & IBR_FIELD_FLAG_HAS_SCALE_CONV ? f->scale_factor : 1.0);
             break;
 
         case fc_bitfield:

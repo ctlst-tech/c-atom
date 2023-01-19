@@ -15,18 +15,22 @@ typedef enum {
     ibr_media_err,
     ibr_nomatched,
     ibr_processerr,
+    ibr_not_sup,
 } ibr_rv_t;
 
 typedef struct msg msg_t;
+typedef struct frame frame_t;
 
 typedef struct protocol {
     const char *name;
+    frame_t *frame;
     msg_t **msgs;
 } protocol_t;
 
 typedef struct {
     const char  *name;
     const char  *msg;
+    const char  *frame;
     const char  *src;
     const char  *dst;
 } process_cfg_t;
@@ -38,7 +42,6 @@ typedef struct {
     process_cfg_t   *processes;
     int             processes_num;
 } ibr_cfg_t;
-
 
 ibr_rv_t ibr_cfg_load(const char *path, ibr_cfg_t **ibr_cfg_rv);
 void ibr_get_handler(ibr_cfg_t *ibr_cfg, function_handler_t *fh);
