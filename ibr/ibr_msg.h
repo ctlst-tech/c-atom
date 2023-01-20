@@ -137,6 +137,9 @@ typedef struct demrsh_handle {
 } demrsh_handle_t;
 
 int ibr_msg_fields_num(msg_t *m);
+field_t *ibr_msg_field_find(msg_t *m, const char *name);
+
+field_scalar_type_t ibr_get_equivalent_type_for_bitfield_size(unsigned s);
 
 ibr_rv_t ibr_add_scalar(msg_t *d, const char *name, field_scalar_type_t type, int *offset, field_t **r);
 ibr_rv_t ibr_add_bitfield(msg_t *d, const char *name, int size_in_bytes, int *offset, field_t **r);

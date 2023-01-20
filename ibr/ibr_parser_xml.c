@@ -103,13 +103,34 @@ static xml_rv_t load_field_scalar(xml_node_t *field_node, int *offset, msg_t *to
     return err_cnt > 0 ? xml_e_dom_process : xml_e_ok;
 }
 
+
+static xml_rv_t load_field_bitfield(xml_node_t *field_node, int *offset, msg_t *to_msg) {
+    int err_cnt;
+    GET_ATTR_INIT();
+
+    const char *name = GET_ATTR_AND_PROCESS_ERR(xml_attr_str, field_node, "name", &err_cnt);
+    int size = GET_ATTR_AND_PROCESS_ERR(xml_attr_int, field_node, "size", &err_cnt);
+
+    field_t *f;
+
+    ibr_rv_t rv = ibr_add_bitfield(to_msg, name, size, offset, &f);
+    if (rv != ibr_ok) {
+        xml_err("ibr_add_scalar error (%d). Not a scalar?", rv);
+        err_cnt++;
+    }
+
+    // TODO parse nested fields
+
+    return err_cnt > 0 ? xml_e_dom_process : xml_e_ok;
+}
+
 static xml_rv_t load_payload_messages_lut(frame_t *frame, protocol_t *protocol, xml_node_t *payload_node) {
     GET_ATTR_INIT();
     int err_num;
 
     for (xml_node_t *n = payload_node->first_child; n != NULL; n = n->next_sibling) {
         if (xml_node_name_eq(n, "m")) {
-            const char *msg_name = GET_ATTR_AND_PROCESS_ERR(xml_attr_str, payload_node, "name", &err_num);
+            const char *msg_name = GET_ATTR_AND_PROCESS_ERR(xml_attr_str, n, "name", &err_num);
             if (msg_name != NULL) {
                 msg_t *m = ibr_protocol_find_msg(protocol, msg_name);
                 if (m != NULL) {
@@ -166,10 +187,10 @@ static xml_rv_t load_frame(protocol_t *protocol, xml_node_t *frame_node, frame_t
     xml_node_t *payload_node = xml_node_find_child(frame_node, "payload");
     if (payload_node != NULL) {
         frame->payload_offset = offset;
-        const char *length_field = GET_ATTR_OPTIONAL(xml_attr_str, frame_node, "size_field", &err_num);
-        const char *id_field = GET_ATTR_OPTIONAL(xml_attr_str, frame_node, "msg_id", &err_num);
+        const char *length_field = GET_ATTR_OPTIONAL(xml_attr_str, payload_node, "size_field", &err_num);
+        const char *id_field = GET_ATTR_OPTIONAL(xml_attr_str, payload_node, "resolve_field", &err_num);
 
-        unsigned messages_num = xml_node_count_siblings(payload_node, "m");
+        unsigned messages_num = xml_node_count_children(payload_node, "m");
 
         if (messages_num > 0) {
             frame->msgs = ibr_alloc(messages_num * sizeof(*frame->msgs));
@@ -183,13 +204,26 @@ static xml_rv_t load_frame(protocol_t *protocol, xml_node_t *frame_node, frame_t
             if (xrv != xml_e_ok) {
                 err_num++;
             }
+
+            frame->payload_offset = frame->structure->size;
+
+            frame->resolve_len = ibr_msg_field_find(frame->structure, length_field);
+            if (length_field != NULL && frame->resolve_len == NULL) {
+                xml_err("No field \"%s\" found for len resolve of frame %s", length_field, frame->name == NULL ? "N/A" : frame->name);
+                err_num++;
+            }
+            frame->resolve_id = ibr_msg_field_find(frame->structure, id_field);
+            if (id_field != NULL && frame->resolve_id == NULL) {
+                xml_err("No field \"%s\" found for id resolve of frame %s", id_field, frame->name == NULL ? "N/A" : frame->name);
+                err_num++;
+            }
         }
     } else {
         xml_err("No payload is defined for frame %s", frame->name == NULL ? "N/A" : frame->name);
         err_num++;
     }
 
-    // load payload
+    *frame_rv = frame;
 
     return err_num > 0 ? xml_e_dom_process : xml_e_ok;
 }
@@ -232,6 +266,11 @@ static xml_rv_t load_msg(xml_node_t *msg_node, msg_t **msg_rv) {
             }
         } else if (xml_node_name_eq(n, "fa") || xml_node_name_eq(n, "field_array") ) {
             xrv = load_field_array(n, &offset, msg);
+            if (xrv != xml_e_ok) {
+                err_num++;
+            }
+        } else if (xml_node_name_eq(n, "fbf") || xml_node_name_eq(n, "field_bitfield") ) {
+            xrv = load_field_bitfield(n, &offset, msg);
             if (xrv != xml_e_ok) {
                 err_num++;
             }

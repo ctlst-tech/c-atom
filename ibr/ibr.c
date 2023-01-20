@@ -175,7 +175,7 @@ fspec_rv_t ibr_init_outputs(void *dhandle, const func_conn_spec_t *conn_spec,
     irb_setup_t *ibr_setup = (irb_setup_t *) dhandle;
     int err_cnt = 0;
 
-    ibr_rv_t rv;
+    ibr_rv_t rv = ibr_noent;
 
     for (int i = 0; i < ibr_setup->processes_num; i++) {
         for (int j = 0; j < ibr_setup->process_setups[i].msgs_num; j++) {

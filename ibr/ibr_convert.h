@@ -38,7 +38,7 @@ typedef struct conv_rule {
     double b;
 } conv_rule_t;
 
-ibr_rv_t conv_instr_queue_add(conv_instr_queue_t *q, field_scalar_type_t st, field_scalar_type_t dt);
+ibr_rv_t conv_instr_queue_add(conv_instr_queue_t *q, field_scalar_type_t st, field_scalar_type_t dt, double scale);
 
 ibr_rv_t conv_instr_queue_init(conv_instr_queue_t *q);
 ibr_rv_t conv_exec(conv_instr_queue_t *q, void *src, int ss, void *dst, int ds);

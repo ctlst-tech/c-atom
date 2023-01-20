@@ -16,6 +16,8 @@ enum_variant_t *ibr_alloc_enum_variant() {
     return calloc(1, sizeof(enum_variant_t));
 }
 
+
+
 int ibr_msg_fields_num(msg_t *m) {
     int rv = 0;
 
@@ -27,6 +29,20 @@ int ibr_msg_fields_num(msg_t *m) {
 
     return rv;
 }
+
+
+field_t *ibr_msg_field_find(msg_t *m, const char *name) {
+
+    for (field_t *n = m->fields_list_head; n != NULL; n = n->next) {
+        if (strcmp(n->name, name) == 0) {
+            return n;
+        }
+    }
+
+    return NULL;
+}
+
+
 
 ibr_rv_t ibr_add_field(msg_t *d, const char *name, field_class_t cls, field_flags_t flags, int size,
                        int *offset, field_t **r) { //const char *unit, const char *description
@@ -87,6 +103,29 @@ int ibr_get_scalar_size(field_scalar_type_t t) {
         default:
             return 0;
     }
+}
+
+field_scalar_type_t ibr_get_equivalent_type_for_bitfield_size(unsigned s) {
+    field_scalar_type_t rv;
+
+    switch (s) {
+        case 1:
+            rv = ft_uint8;
+            break;
+        case 2:
+            rv = ft_uint16;
+            break;
+        case 4:
+            rv = ft_uint32;
+            break;
+        case 8:
+            rv = ft_uint64;
+            break;
+        default:
+            rv = ft_invalid;
+    }
+
+    return rv;
 }
 
 ibr_rv_t ibr_add_scalar(msg_t *d, const char *name, field_scalar_type_t type, int *offset, field_t **r) {
@@ -226,11 +265,19 @@ static ibr_rv_t copy_nested_bitfields(msg_t *src, field_t *dst_f) {
 ibr_rv_t ibr_msg_to_functional_msg(msg_t *src, msg_t **dst_rv, conv_instr_queue_t *conv_queue) {
 
     msg_t *dst = ibr_alloc_msg();
+    if (dst == NULL) {
+        return ibr_nomem;
+    }
+
     ibr_rv_t rv;
     int offset = 0;
     field_t *new_f;
     field_scalar_type_t dst_ft;
     field_scalar_type_t src_ft;
+
+    dst->name = src->name;
+    dst->description = src->description;
+    dst->id = src->id;
 
     for (field_t *f = src->fields_list_head; f != NULL; f = f->next) {
         switch (f->cls) {
@@ -242,7 +289,7 @@ ibr_rv_t ibr_msg_to_functional_msg(msg_t *src, msg_t **dst_rv, conv_instr_queue_
                     dst_ft = ft_double;
                 }
 
-                rv = ibr_add_scalar(dst, f->name, dst_ft, &offset, &f);
+                rv = ibr_add_scalar(dst, f->name, dst_ft, &offset, &new_f);
 
                 break;
 
@@ -253,14 +300,7 @@ ibr_rv_t ibr_msg_to_functional_msg(msg_t *src, msg_t **dst_rv, conv_instr_queue_
                     rv = copy_nested_bitfields(f->nested.bitfield_list, new_f);
                 }
 
-                switch (f->size) {
-                    case 1: src_ft = dst_ft = ft_uint8; break;
-                    case 2: src_ft = dst_ft = ft_uint16; break;
-                    case 4: src_ft = dst_ft = ft_uint32; break;
-                    case 8: src_ft = dst_ft = ft_uint64; break;
-                    default:
-                        rv = ibr_invarg;
-                }
+                src_ft = dst_ft = ibr_get_equivalent_type_for_bitfield_size(f->size);
                 break;
 
             default:
@@ -271,7 +311,8 @@ ibr_rv_t ibr_msg_to_functional_msg(msg_t *src, msg_t **dst_rv, conv_instr_queue_
             return rv;
         }
 
-        rv = conv_instr_queue_add(conv_queue, src_ft, dst_ft);
+        rv = conv_instr_queue_add(conv_queue, src_ft, dst_ft,
+                                  f->flags & IBR_FIELD_FLAG_HAS_SCALE_CONV ? f->scale_factor : 0.0);
         if (rv != ibr_ok) {
             return rv;
         }

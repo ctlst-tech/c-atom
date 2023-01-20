@@ -123,10 +123,15 @@ const irb_media_driver_t drv_udp_media_driver = {
 #endif
 
 topic_data_type_t ibr_eswb_field_type(field_type_t *ft) {
+    field_scalar_type_t st = ft->st;
 
     switch (ft->cls) {
+        case fc_bitfield:
+            st = ibr_get_equivalent_type_for_bitfield_size(ft->size);
+            // fall through
+
         case fc_scalar:
-            switch (ft->st) {
+            switch (st) {
                 default:
                 case ft_invalid:    return tt_none;
                 case ft_float:      return tt_float;
@@ -187,7 +192,12 @@ static eswb_rv_t proclaim_msg(msg_t *m, const char *dst_path, eswb_topic_descr_t
 
     TOPIC_TREE_CONTEXT_LOCAL_DEFINE(cntx, fields_num + 1);
 
-    topic_proclaiming_tree_t *rt = usr_topic_set_root(cntx, struct_topic_name, tt_struct, m->size);
+    char *tn = strlen(struct_topic_name) == 0 ? m->name : struct_topic_name;
+
+    topic_proclaiming_tree_t *rt = usr_topic_set_root(cntx, tn, tt_struct, m->size);
+    if (rt == NULL) {
+        return eswb_e_invargs;
+    }
     eswb_size_t offset = 0;
 
     // prepare topic struct
@@ -199,6 +209,7 @@ static eswb_rv_t proclaim_msg(msg_t *m, const char *dst_path, eswb_topic_descr_t
         field_type_t ft;
         ft.cls = n->cls;
         ft.st = n->nested.scalar_type;
+        ft.size = n->size;
 
         topic_data_type_t eswb_data_type = ibr_eswb_field_type(&ft);
         if (eswb_data_type == tt_none) {
@@ -275,8 +286,8 @@ ibr_rv_t drv_eswb_vector_connect(const char *path, int *td) {
         uint32_t dummy;
         eswb_index_t br;
         // check that this is vector
-        erv = eswb_vector_read(*td, dummy, 0, 4, &br);
-        if (erv == eswb_e_ok) {
+        erv = eswb_vector_read(*td, 0, &dummy, 4, &br);
+        if (erv == eswb_e_ok || erv == eswb_e_vector_inv_index ) {
             rv = ibr_ok;
         } else {
             rv = ibr_media_err;
@@ -539,7 +550,28 @@ msg_record_t *resolve_message_record(irb_process_setup_t *s, uint32_t id) {
 
 uint32_t resolve_scalar_int(field_t *f, void *frame_start) {
     uint32_t rv = 0;
+
+//    void *var_start = frame_start + f->offset;
+//    // FIXME me: unaligned access
+//    switch (f->nested.scalar_type) {
+//        case ft_uint8:
+//            rv = *((uint8_t *)frame_start);
+//            break;
+//
+//        case ft_uint16:
+//            rv = *((uint16_t *)frame_start);
+//            break;
+//
+//        case ft_uint32:
+//            rv = *((uint32_t *)frame_start);
+//            break;
+//
+//        default:
+//            rv = UINT32_MAX;
+//    }
+
     memcpy(&rv, frame_start + f->offset, f->size);
+
     return rv;
 }
 
@@ -552,38 +584,46 @@ static inline ibr_rv_t ibr_process_frame (irb_process_setup_t *setup) {
     void *src_buf = ibr_alloc(msg_size);
     void *dst_buf = ibr_alloc(msg_size);
 
+    void *src_buf_payload = src_buf + setup->frame->payload_offset;
+
     int srcd = setup->src.descr;
-    int dstd = setup->dst.descr;
 
     ibr_rv_t rv;
 
     ibr_set_pthread_name(setup->name);
+
+
 
     while(1) {
         int br = msg_size;
         rv = dev_src->recv(srcd, src_buf, &br);
         if (rv == ibr_ok) {
 
+            // TODO frame fields are optional
             uint32_t resolved_id = resolve_scalar_int(setup->frame->resolve_id, src_buf);
             uint32_t resolved_len = resolve_scalar_int(setup->frame->resolve_len, src_buf);
 
             msg_record_t *m = resolve_message_record(setup, resolved_id);
+
+            if (m == NULL) {
+                continue;
+            }
             if (m->src_msg->size != resolved_len) {
-                // TODO check max
+                printf("%s | INVALID LEN | frame id=0x%02X expect len=%d got=%d (br=%d)\n", __func__, resolved_id, m->src_msg->size, resolved_len, br);
                 continue;
             }
 
-            if (m != NULL) {
+            printf("%s | resolved id=0x%02X len=%d\n", __func__, resolved_id, resolved_len);
 
-                int bw = conv_exec(&m->conv_queue, m->src_msg, m->src_msg->size,
-                                   m->dst_msg, m->src_msg->size);
+            int bw = conv_exec(&m->conv_queue, src_buf_payload, m->src_msg->size,
+                               dst_buf, m->src_msg->size);
 
-                rv = dev_dst->send(dstd, dst_buf, &bw);
-                if (rv != ibr_ok) {
-                    // TODO ?
-                    break;
-                }
+            rv = dev_dst->send(m->descr, dst_buf, &bw);
+            if (rv != ibr_ok) {
+                // TODO ?
+                break;
             }
+
         }
     }
 

@@ -107,7 +107,7 @@ static struct conv_operation *conv_rule_find(field_scalar_type_t st, field_scala
     return NULL;
 }
 
-static ibr_rv_t add_instr(conv_instr_queue_t *q, struct conv_operation *op) {
+static ibr_rv_t add_instr(conv_instr_queue_t *q, struct conv_operation *op, double scale) {
     if (q->instr_num >= MDM_CONV_MAX_INSTR) {
         return ibr_nomem;
     }
@@ -115,21 +115,24 @@ static ibr_rv_t add_instr(conv_instr_queue_t *q, struct conv_operation *op) {
     q->instrs[q->instr_num].h = op->h;
     q->instrs[q->instr_num].d_dst = op->d_dst;
     q->instrs[q->instr_num].d_src = op->d_src;
-
+    q->instrs[q->instr_num].scale = scale;
+    if (scale != 0.0) {
+        q->instrs[q->instr_num].pscale = &q->instrs[q->instr_num].scale;
+    }
     q->instr_num++;
 
     return ibr_ok;
 }
 
 
-ibr_rv_t conv_instr_queue_add(conv_instr_queue_t *q, field_scalar_type_t st, field_scalar_type_t dt) {
+ibr_rv_t conv_instr_queue_add(conv_instr_queue_t *q, field_scalar_type_t st, field_scalar_type_t dt, double scale) {
     struct conv_operation *opr = conv_rule_find(st, dt);
 
     if (opr == NULL) {
         return ibr_noent;
     }
 
-    return add_instr(q, opr);
+    return add_instr(q, opr, scale);
 }
 
 
@@ -151,7 +154,7 @@ unsigned conv_exec(conv_instr_queue_t *q, void *src, int ss, void *dst, int ds) 
 
     conv_instr_t *instr = q->instrs;
     for(unsigned i = 0; i < q->instr_num; i++) {
-        instr[i].h(src, dst, instr->pscale);
+        instr[i].h(src, dst, instr[i].pscale);
         src += instr[i].d_src;
         dst += instr[i].d_dst;
     }
