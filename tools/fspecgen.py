@@ -1446,7 +1446,7 @@ class GeneratedFunction:
                            f'{max_len_size}, '
                            f'{self.scalar_topic_typename(vo.value_type.vector_type.elem_type.name)}, '
                            f'sizeof({self.variable_type_str(vo.value_type.vector_type.elem_type)}));')
-                    fprint(f'    rv = eswb_proclaim_tree(mounting_td, {root_node_varname}, cntx->t_num, &{self.interface_arg.name}->eswb_descriptors.out_{vo.name});')
+                    fprint(f'    rv = eswb_proclaim_tree(root_td, {root_node_varname}, cntx->t_num, &{self.interface_arg.name}->eswb_descriptors.out_{vo.name});')
                     fprint(f'    if (rv != eswb_e_ok) {{')
                     fprint(f'        return fspec_rv_publish_err;')
                     fprint(f'    }}')
