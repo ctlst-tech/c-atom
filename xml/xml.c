@@ -267,6 +267,16 @@ int xml_node_count_siblings(xml_node_t *first_sibling, const char *name2cnt) {
     return rv;
 }
 
+/**
+ *
+ * @param parent
+ * @param name2cnt if NULL all sibling will be counted
+ * @return
+ */
+int xml_node_count_children(xml_node_t *parent, const char *name2cnt) {
+    return xml_node_count_siblings(parent->first_child, name2cnt);
+}
+
 int xml_node_count_attrs(xml_node_t *node) {
     int rv = 0;
 
