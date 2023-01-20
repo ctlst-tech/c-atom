@@ -447,6 +447,9 @@ static void swsys_call_exec (void *dhandle) {
             function_exec(&th->task->func_handler, th->task->func_call_dhandle);
         }
     }
+
+    // may happen if last task is executed once TODO make them executed in the beginning
+    while (1) { usleep(1000000); }
 }
 
 static const function_calls_t swsys_calls = {
