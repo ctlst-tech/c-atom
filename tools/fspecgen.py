@@ -234,10 +234,11 @@ class GArgument:
 
 
 class GCallableFunction:
-    def __init__(self, *, name: str, return_type: str, arguments: Optional[List[GArgument]]):
+    def __init__(self, *, name: str, static=False, return_type: str, arguments: Optional[List[GArgument]]):
         self.arguments = arguments
         self.name = name
         self.return_type = return_type
+        self.static = static
 
     def symbol(self):
         return self.name
@@ -255,7 +256,8 @@ class GCallableFunction:
         return f'{self.declaration()};'
 
     def declaration(self):
-        rv = f'{self.return_type} {self.name}('
+        stat = 'static' if self.static else ''
+        rv = f'{stat} {self.return_type} {self.name}('
         arg_eol = ' '
         arg_tab = ''
 
@@ -365,7 +367,8 @@ class GeneratedFunction:
 
         self.has_output_updating_arg = self.outputs_are_updated_separately
 
-        self.has_init_function = func.vector_inputs() or func.vector_state_vars() or func.vector_outputs() or func.str_parameters()
+        self.has_init_function = False
+        self.has_vector_allocate_func = func.vector_inputs() or func.vector_state_vars() or func.vector_outputs()
 
         self.file_declaration = \
             SourceFile(f'declaration.py',
@@ -560,7 +563,11 @@ class GeneratedFunction:
                                                       return_type='fspec_rv_t',
                                                       arguments=[data_handle, params_pairs, initial_call_flag])
 
-
+        self.callable_aux_alloc_vectors = GCallableFunction(name=f'{self.func_name_prefix()}_vectors_alloc',
+                                                            return_type='fspec_rv_t',
+                                                            static=True,
+                                                            arguments=[self.interface_arg],
+                                                            )
 
     @staticmethod
     def variable_type_str(value_type, *, force_f64=False):
@@ -1208,9 +1215,17 @@ class GeneratedFunction:
 
 
         def impl_general_init():
+            fprint(f'{self.callable_interface_init.declaration()}')
+            fprint(f'{{')
+
+            fprint(f'    return fspec_rv_ok;')
+            fprint(f'}}')
+            fprint()
+
+        def impl_vectors_allocate():
             # typedef fspec_rv_t (*fspec_init_f)(void *interface, const struct function_spec *spec, const char *inv_name,
             # eswb_topic_descr_t mounting_td, const void *extension_handler);
-            fprint(f'{self.callable_interface_init.declaration()}')
+            fprint(f'{self.callable_aux_alloc_vectors.declaration()}')
             fprint(f'{{')
 
             if self.spec.has_parameters():
@@ -1415,6 +1430,15 @@ class GeneratedFunction:
 
                 fprint(f'{self.callable_interface_outputs_init.declaration()}')
                 fprint(f'{{')
+                fprint()
+
+                if self.has_vector_allocate_func:
+                    fprint(f'    fspec_rv_t frv = {self.callable_aux_alloc_vectors.call([self.callable_interface_outputs_init.arguments[0].name])}')
+                    fprint(f'    if (frv != fspec_rv_ok) {{')
+                    fprint(f'        return frv;')
+                    fprint(f'    }}')
+                    fprint()
+
                 fprint(f'    TOPIC_TREE_CONTEXT_LOCAL_DEFINE(cntx, {tree_elems + 1});')
 
                 fprint(f'    eswb_rv_t rv;')
@@ -1638,6 +1662,9 @@ class GeneratedFunction:
 
         if self.has_init_function:
             impl_general_init()
+
+        if self.has_vector_allocate_func:
+            impl_vectors_allocate()
 
         if f_func.has_inputs():
             impl_inputs_init()
