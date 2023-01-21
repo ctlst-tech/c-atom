@@ -190,6 +190,11 @@ static xml_rv_t load_task(xml_node_t *task_node, const char *top_cfg_dir, swsys_
 
     err_num += load_task_clock_method(task_node, task);
 
+    rv = func_load_params(task_node, &task->params);
+    if (rv != xml_e_ok && rv != xml_e_dom_empty) {
+        err_num++;
+    }
+
     if (err_num == 0) {
 #   define TAG_CONNECT "connect"
         xml_node_t *conn = xml_node_find_child(task_node, TAG_CONNECT);

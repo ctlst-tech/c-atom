@@ -167,20 +167,20 @@ fspec_rv_t flow_init(void *iface, const function_spec_t *spec, const char *inv_n
         }
     }
 
-    // run params for invocations are able to use their resources at init
-    frv = flow_set_params(iface, NULL, 1); // initial call
-    if (frv != fspec_rv_ok) {
-        err_cnt++;
-    } else {
-        for (int i = 0; i < batch_size; i++) {
-            frv = function_init(flow_dh->functions_batch[i].h, flow_dh->functions_batch[i].name, mounting_td,
-                                flow_dh->function_handles_batch[i]);
-            if ((frv != fspec_rv_ok) && (frv != fspec_rv_not_supported)) { // it is ok not to have this callback
-                flow_init_dbg_msg(frv, &flow_dh->functions_batch[i], flow_dh->flow_name);
-                err_cnt++;
-            }
+//    // run params for invocations are able to use their resources at init
+//    frv = flow_set_params(iface, NULL, 1); // initial call
+//    if (frv != fspec_rv_ok) {
+//        err_cnt++;
+//    } else {
+    for (int i = 0; i < batch_size; i++) {
+        frv = function_init(flow_dh->functions_batch[i].h, flow_dh->functions_batch[i].name, mounting_td,
+                            flow_dh->function_handles_batch[i]);
+        if ((frv != fspec_rv_ok) && (frv != fspec_rv_not_supported)) { // it is ok not to have this callback
+            flow_init_dbg_msg(frv, &flow_dh->functions_batch[i], flow_dh->flow_name);
+            err_cnt++;
         }
     }
+//    }
 
     return err_cnt > 0 ? fspec_rv_initerr : fspec_rv_ok;
 }
@@ -347,6 +347,23 @@ fspec_rv_t flow_init_inputs(void *dhandle, const func_conn_spec_t *conn_spec, es
 fspec_rv_t flow_set_invocation_params(flow_interface_t *flow_dh, const char *inv_name, const func_param_t *param);
 fspec_rv_t flow_find_invocation(flow_interface_t *flow_dh, const char *inv_name, const function_inside_flow_t **inv, void **dhandle);
 
+static const char* check_and_resolve_params_reference(const func_param_t *flow_params, func_param_t *func_params) {
+    const char *param_ref;
+    for (int i = 0; func_params[i].alias != NULL; i++) {
+        if (func_params[i].value[0] == '$') {
+            param_ref = &func_params[i].value[1];
+            const char *val = fspec_find_param(flow_params, param_ref);
+            if (val == NULL) {
+                return param_ref;
+            } else {
+                func_params[i].value = val;
+            }
+        }
+    }
+
+    return NULL;
+}
+
 fspec_rv_t flow_set_params(void *dhandle, const func_param_t *params, int initial_call) {
     flow_interface_t *flow_dh = (flow_interface_t *) dhandle;
 
@@ -356,6 +373,13 @@ fspec_rv_t flow_set_params(void *dhandle, const func_param_t *params, int initia
 
     if (initial_call && (!flow_dh->got_initial_param_set_call)) {
         while (flow_dh->functions_batch[i].h != NULL) {
+            // resolve params inheritance
+            const char *failed_param = check_and_resolve_params_reference(params, (func_param_t *) flow_dh->functions_batch[i].initial_params);
+            if (failed_param != NULL) {
+                dbg_msg("Invalid param reference for \"%s\": \"%s\" (check param existence in flow)", flow_dh->functions_batch[i].name, failed_param);
+                errs++;
+            }
+
             frv = function_set_param(flow_dh->functions_batch[i].h, flow_dh->function_handles_batch[i],
                                      flow_dh->functions_batch[i].initial_params, initial_call);
 
