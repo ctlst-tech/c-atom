@@ -144,3 +144,4 @@ if __name__ == "__main__":
     files_num = gen_code(c_fprint, xmls2inline, root_path)
 
     print(f'{files_num} XML files is written to {c_code_output}')
+
