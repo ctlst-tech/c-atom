@@ -481,6 +481,9 @@ class Function(Declarable):
     def has_parameters(self):
         return len(self.parameters) > 0
 
+    def str_parameters(self):
+        return [p for p in self.parameters if p.value_type.name == 'core.type.str']
+
     def has_mandatory_parameters(self):
         return any(map(lambda p: p.mandatory, self.parameters)) > 0
 

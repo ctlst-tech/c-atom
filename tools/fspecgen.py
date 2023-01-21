@@ -333,6 +333,7 @@ class GeneratedFunction:
 
     out_update_control_arg_name = 'out_update_cmd'
 
+    define_param_str_max_len_name = 'FUNCTION_MAX_STR_PARAM_LEN'
     # @staticmethod
     # def vector_len_name(o_name: str):
     #     return f'{o_name}_len'
@@ -358,11 +359,13 @@ class GeneratedFunction:
 
         sources_dir = self.spec.directory
 
+        self.max_param_string_len_value = 64
+
         self.outputs_are_updated_separately = func.explicitly_updated_outputs() or func.vector_outputs()
 
         self.has_output_updating_arg = self.outputs_are_updated_separately
 
-        self.has_init_function = func.vector_inputs() or func.vector_state_vars() or func.vector_outputs()
+        self.has_init_function = func.vector_inputs() or func.vector_state_vars() or func.vector_outputs() or func.str_parameters()
 
         self.file_declaration = \
             SourceFile(f'declaration.py',
@@ -895,6 +898,7 @@ class GeneratedFunction:
 
             converter_func_name = ''
             not_supp = False
+            string = False
             if parameter.value_type.name == 'core.type.f64':
                 converter_func_name = 'conv_str_double'
             elif parameter.value_type.name == 'core.type.u64':
@@ -915,15 +919,31 @@ class GeneratedFunction:
                 converter_func_name = 'conv_str_int8'
             elif parameter.value_type.name == 'core.type.bool':
                 converter_func_name = 'conv_str_bool'
+            elif parameter.value_type.name == 'core.type.str':
+                string = True
             else:
                 converter_func_name = 'conv_str_not_supported'
                 not_supp = True
 
             if not_supp:
                 fprint(f'            #error not supported type ({parameter.value_type.name}) for parameter \"{parameter.name}\" parsing')
-            fprint(f'            if ((crv = {converter_func_name}({pps}[i].value, &p.{parameter.name})) == conv_rv_ok) {{')
-            fprint(f'                flags.{self.changed_param_bitfield_name(parameter.name)} = 1;', )
-            fprint(f'            }}')
+
+            if not string:
+                fprint(f'            if ((crv = {converter_func_name}({pps}[i].value, &p.{parameter.name})) == conv_rv_ok) {{')
+                fprint(f'                flags.{self.changed_param_bitfield_name(parameter.name)} = 1;', )
+                fprint(f'            }}')
+            else:
+                fprint(f'            // FIXME make support of array types')
+                fprint(f'            if (p.{parameter.name} == NULL && initial_call) {{ ')
+                fprint(f'                p.{parameter.name} = function_alloc({self.define_param_str_max_len_name} + 1);')
+                fprint(f'                if (p.{parameter.name} == NULL) {{ return fspec_rv_no_memory; }}')
+                fprint(f'            }}')
+                fprint(f'            if (strlen(p.{parameter.name}) < {self.define_param_str_max_len_name}) {{')
+                fprint(f'                strcpy(p.{parameter.name}, {pps}[i].value);')
+                fprint(f'                flags.{self.changed_param_bitfield_name(parameter.name)} = 1;', )
+                fprint(f'            }} else {{')
+                fprint(f'                crv = conv_rv_size;')
+                fprint(f'            }}')
             # params.Kp = atof(param_str[i].value);
             fprint('        }', end='', )
             pass
