@@ -157,11 +157,14 @@ fspec_rv_t flow_load(const char *path, function_flow_t **flow_rv) {
         return fspec_rv_invarg;
     }
 
-    function_flow_t *flow;
+    function_flow_t *flow = NULL;
 
     fspec_rv_t lookup_rv = flow_reg_find_by_path(path, &flow);
     if (lookup_rv != fspec_rv_not_exists) {
         // already have attempt to load, returning same error
+        if (flow != NULL) {
+            *flow_rv = flow;
+        }
         return lookup_rv;
     }
 
