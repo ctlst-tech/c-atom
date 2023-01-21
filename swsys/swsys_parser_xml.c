@@ -11,11 +11,52 @@ void *swsys_alloc(size_t s) {
     return calloc(1, s);
 }
 
-static xml_rv_t load_dir(xml_node_t *dir_node, swsys_bus_directory_t *dir) {
+static xml_rv_t load_dir_attrs(xml_node_t *dir_node, swsys_bus_directory_t *dir) {
     int err_num = 0;
     GET_ATTR_INIT();
     dir->path = GET_ATTR_AND_PROCESS_ERR(xml_attr_str, dir_node, "name", &err_num);
     dir->eq_channel = GET_ATTR_OPTIONAL(xml_attr_int, dir_node, "eq_channel", &err_num);
+
+    return err_num > 0 ? xml_e_dom_process : xml_e_ok;
+}
+
+static xml_rv_t load_dirs(xml_node_t *parent_node, swsys_bus_directory_t **dirs_rv) {
+
+    #define TAG_DIR "dir"
+
+    int err_num = 0;
+    swsys_bus_directory_t *dirs;
+
+    int dirs_num = xml_node_count_siblings(parent_node->first_child, TAG_DIR);
+    if (dirs_num > 0) {
+        dirs = swsys_alloc((dirs_num + 1) * sizeof(swsys_bus_directory_t));
+        if (dirs == NULL) {
+            return xml_e_nomem;
+        }
+
+        int i = 0;
+        for (xml_node_t *n = parent_node->first_child; n != NULL; n = n->next_sibling) {
+            if (xml_node_name_eq(n, TAG_DIR)) {
+                xml_rv_t xrv = load_dir_attrs(n, &dirs[i]);
+                if (xrv == xml_e_ok) {
+                    xrv = load_dirs(n, &dirs[i].dirs);
+                    if (xrv != xml_e_ok) {
+                        err_num++;
+                    }
+                    i++;
+                } else {
+                    err_num++;
+                }
+            }
+        }
+
+        *dirs_rv = dirs;
+        dirs[i].path = NULL;
+    } else {
+        dirs = NULL;
+    }
+
+
 
     return err_num > 0 ? xml_e_dom_process : xml_e_ok;
 }
@@ -31,7 +72,6 @@ static xml_rv_t load_bus(xml_node_t *bus_node, swsys_bus_t *bus) {
     bus->max_topics = GET_ATTR_AND_PROCESS_ERR(xml_attr_int, bus_node, "max_topics", &err_num);
     bus->eq_channel = GET_ATTR_OPTIONAL(xml_attr_int, bus_node, "eq_channel", &err_num);
 
-#define TAG_DIR "dir"
 #define TAG_EVENT_QUEUE "event_queue"
 
     xml_node_t *event_queue = xml_node_find_child(bus_node, TAG_EVENT_QUEUE);
@@ -40,27 +80,10 @@ static xml_rv_t load_bus(xml_node_t *bus_node, swsys_bus_t *bus) {
         bus->evq_buffer_size = GET_ATTR_AND_PROCESS_ERR(xml_attr_int, event_queue, "buffer_size", &err_num);
     }
 
-    int dirs_num = xml_node_count_siblings(bus_node->first_child, TAG_DIR);
-    if (dirs_num > 0) {
-        bus->dirs = swsys_alloc((dirs_num + 1) * sizeof(swsys_bus_directory_t));
-        if (bus->dirs == NULL) {
-            return xml_e_nomem;
-        }
-
-        int i = 0;
-        for (xml_node_t *n = bus_node->first_child; n != NULL; n = n->next_sibling) {
-            if (xml_node_name_eq(n, TAG_DIR)) {
-                xml_rv_t xrv = load_dir(n, &bus->dirs[i]);
-                if (xrv == xml_e_ok) {
-                    i++;
-                }
-            }
-        }
-        bus->dirs[i].path = NULL;
-    } else {
-        bus->dirs = NULL;
+    rv = load_dirs(bus_node, &bus->dirs);
+    if (rv != xml_e_ok) {
+        err_num++;
     }
-
 
     return err_num > 0 ? xml_e_dom_process : xml_e_ok;;
 }

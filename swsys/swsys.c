@@ -127,6 +127,43 @@ swsys_rv_t swsys_set_params(swsys_t *sys, const char *task_name, const char *cmd
     return swsys_e_notask;
 }
 
+
+static swsys_rv_t create_dirs(eswb_topic_descr_t bus_td, swsys_bus_directory_t *dirs, char *path) {
+    eswb_rv_t erv;
+    int err_num = 0;
+
+    // TODO check len exceeds ESWB_TOPIC_MAX_PATH_LEN
+    char *path_end = path + strlen(path);
+    strcpy(path_end, "/");
+    path_end++;
+
+    for (int i = 0; (dirs != NULL) && (dirs[i].path != NULL); i++) {
+        strcpy(path_end, dirs[i].path);
+
+        erv = eswb_mkdir(path, NULL);
+        if (erv != eswb_e_ok) {
+            dbg_msg("ESWB dir \"%s\" creation error: %s", path, eswb_strerror(erv));
+            err_num++;
+        } else {
+            if (dirs[i].eq_channel) {
+                erv = eswb_event_queue_order_topic(bus_td, path, dirs[i].eq_channel);
+                if (erv != eswb_e_ok) {
+                    dbg_msg("ESWB eswb_event_queue_order_topic error: %s", eswb_strerror(erv));
+                    err_num++;
+                }
+            }
+            if (dirs[i].dirs != NULL) {
+                swsys_rv_t rv = create_dirs(bus_td, dirs[i].dirs, path);
+                if (rv != swsys_e_ok) {
+                    err_num++;
+                }
+            }
+        }
+    }
+
+    return err_num > 0 ? swsys_e_loaderr : swsys_e_ok;
+}
+
 static swsys_rv_t swsys_init(swsys_t *sys) {
     int i;
     int err_num = 0;
@@ -173,25 +210,16 @@ static swsys_rv_t swsys_init(swsys_t *sys) {
             }
         }
 
-        if (sys->busses[i].dirs != NULL) {
-            for (int j = 0; sys->busses[i].dirs[j].path != NULL; j++) {
-                erv = eswb_path_compose(bus_type, sys->busses[i].name, sys->busses[i].dirs[j].path, path);
-                if (erv != eswb_e_ok) {
-                    return swsys_e_invargs;
-                }
-                erv = eswb_mkdir(path, NULL);
-                if (erv != eswb_e_ok) {
-                    dbg_msg("ESWB dir \"%s\" creation error: %s", path, eswb_strerror(erv));
+
+         if (sys->busses[i].dirs != NULL) {
+            erv = eswb_path_compose(bus_type, sys->busses[i].name, NULL, path);
+            if (erv != eswb_e_ok) {
+                dbg_msg("ESWB eswb_path_compose error: %s", eswb_strerror(erv));
+                err_num++;
+            } else {
+                rv = create_dirs(bus_td, sys->busses[i].dirs, path);
+                if (rv != swsys_e_ok) {
                     err_num++;
-                } else {
-                    if (sys->busses[i].dirs[j].eq_channel) {
-                        sprintf(path, "%s/%s", sys->busses[i].name, sys->busses[i].dirs[j].path);
-                        erv = eswb_event_queue_order_topic(bus_td, path, sys->busses[i].dirs[j].eq_channel);
-                        if (erv != eswb_e_ok) {
-                            dbg_msg("ESWB eswb_event_queue_order_topic error: %s", eswb_strerror(erv));
-                            err_num++;
-                        }
-                    }
                 }
             }
         }

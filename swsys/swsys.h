@@ -29,9 +29,10 @@ typedef enum {
     swsys_clk_ext_call, // ?? e.g. call from IRQ routine
 } swsys_task_clk_method_t;
 
-typedef struct {
+typedef struct swsys_bus_directory {
     const char *path;
     uint32_t eq_channel;
+    struct swsys_bus_directory *dirs;
 } swsys_bus_directory_t;
 
 typedef struct {
