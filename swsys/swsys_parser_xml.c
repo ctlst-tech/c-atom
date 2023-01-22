@@ -202,8 +202,16 @@ static xml_rv_t load_task(xml_node_t *task_node, const char *top_cfg_dir, swsys_
             xml_err("Ambitious connection specification for %s", task->name);
         }
 
-        func_load_inputs(conn, &task->conn_specs_in);
-        func_load_outputs(conn, &task->conn_specs_out);
+        rv = func_load_inputs(conn, &task->conn_specs_in);
+        if (rv != xml_e_ok && rv != xml_e_dom_empty) {
+            xml_err("Inputs specification error connection specification for %s: %s", task->name, xml_strerror(rv));
+            err_num++;
+        }
+        rv = func_load_outputs(conn, &task->conn_specs_out);
+        if (rv != xml_e_ok && rv != xml_e_dom_empty) {
+            xml_err("Output specification error connection specification for %s: %s", task->name, xml_strerror(rv));
+            err_num++;
+        }
     }
 
     return err_num > 0 ? xml_e_dom_process : xml_e_ok;
