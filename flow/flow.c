@@ -311,6 +311,11 @@ fspec_rv_t flow_init_inputs(void *dhandle, const func_conn_spec_t *conn_spec, es
         }
         inputs_bridging_spec[i].alias = NULL;
 
+        if (conn_spec == NULL) {
+            dbg_msg("Flow \"%s\" expects %d inputs, but got none", flow_dh->flow_name, i);
+            return fspec_rv_initerr;
+        }
+
         if (i > 0) {
             eswb_topic_descr_t inputs_dir_td;
             eswb_rv_t erv = eswb_mkdir_nested(flow_dh->root_td, "inputs", &inputs_dir_td);
