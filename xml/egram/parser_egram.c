@@ -139,11 +139,15 @@ static uint8_t file_content[MAX_XML_FILE_SIZE];
 
 static int load_file(const char *path) {
 
-    int rv;
+    int rv = -1;
     unsigned offset = 0;
 
     int fd = open(path, O_RDONLY);
     if (fd < 0) {
+        if (errno == 0) {
+            // happens in FreeRTOS
+            return ENOENT;
+        }
         return errno;
     }
 
