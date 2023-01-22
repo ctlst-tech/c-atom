@@ -1,6 +1,7 @@
 #ifndef C_ATOM_EGRAM_H
 #define C_ATOM_EGRAM_H
 
+#include <stdint.h>
 
 typedef enum {
     TT_CONST,
