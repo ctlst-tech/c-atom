@@ -223,8 +223,6 @@ xml_rv_t func_load_connections(xml_node_t *conn_node, const char *tag, func_pair
 
     // TODO check duplicates
 
-
-
     return (err_num > 0) ? xml_e_dom_process : xml_e_ok;
 }
 
