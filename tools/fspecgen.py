@@ -945,7 +945,7 @@ class GeneratedFunction:
                 fprint(f'                p.{parameter.name} = function_alloc({self.define_param_str_max_len_name} + 1);')
                 fprint(f'                if (p.{parameter.name} == NULL) {{ return fspec_rv_no_memory; }}')
                 fprint(f'            }}')
-                fprint(f'            if (strlen(p.{parameter.name}) < {self.define_param_str_max_len_name}) {{')
+                fprint(f'            if (strlen({pps}[i].value) < {self.define_param_str_max_len_name}) {{')
                 fprint(f'                strcpy(p.{parameter.name}, {pps}[i].value);')
                 fprint(f'                flags.{self.changed_param_bitfield_name(parameter.name)} = 1;', )
                 fprint(f'            }} else {{')
