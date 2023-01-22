@@ -164,6 +164,49 @@ swsys_rv_t swsys_service_start(const swsys_service_t *s) {
         }
 
         return rv == eqrb_rv_ok ? swsys_e_ok : swsys_e_service_fail;
+    } else if (strcmp(s->type, "eqrb_file_write") == 0) {
+        const char *bus2replicate =
+            resourse_value_attr(s->resources, "event_queue_source");
+        const char *file_prefix =
+            resourse_value_attr(s->resources, "file_prefix");
+        const char *dst_dir = resourse_value_attr(s->resources, "dst_dir");
+
+        if (bus2replicate == NULL || file_prefix == NULL || dst_dir == NULL) {
+            return swsys_e_invargs;
+        }
+
+        const char *err_msg;
+        eqrb_rv_t rv = 0;
+//        eqrb_rv_t rv = eqrb_file_server_start(s->name, file_prefix, dst_dir,
+//                                              bus2replicate, &err_msg);
+
+        if (rv != eqrb_rv_ok) {
+            dbg_msg("eqrb_file_server_start for \"%s\" failed: %s", s->name,
+                    err_msg);
+        }
+
+        return rv == eqrb_rv_ok ? swsys_e_ok : swsys_e_service_fail;
+    } else if (strcmp(s->type, "eqrb_file_read") == 0) {
+        const char *bus2replicate =
+            resourse_value_attr(s->resources, "event_queue_destination");
+        const char *file_name = resourse_value_attr(s->resources, "file_name");
+        const char *src_dir = resourse_value_attr(s->resources, "src_dir");
+
+        if (bus2replicate == NULL || file_name == NULL || src_dir == NULL) {
+            return swsys_e_invargs;
+        }
+
+        const char *err_msg;
+        eqrb_rv_t rv = 0;
+//        eqrb_rv_t rv = eqrb_file_client_connect(s->name, file_name, src_dir,
+//                                                bus2replicate, 1024, &err_msg);
+
+        if (rv != eqrb_rv_ok) {
+            dbg_msg("eqrb_file_client_connect for \"%s\" failed: %s", s->name,
+                    err_msg);
+        }
+
+        return rv == eqrb_rv_ok ? swsys_e_ok : swsys_e_service_fail;
     } else {
         return swsys_e_no_such_service;
     }
