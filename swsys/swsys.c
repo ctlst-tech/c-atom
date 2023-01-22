@@ -258,7 +258,7 @@ static fspec_rv_t swsys_call_init (void *dhandle, const function_spec_t *spec, c
     swsys_rv_t srv = swsys_init((swsys_t *)ssdh->swsys);
 
     if (srv == swsys_e_ok) {
-        ssdh->clk_input_tds = swsys_alloc(ssdh->swsys->tasks_num);
+        ssdh->clk_input_tds = swsys_alloc(ssdh->swsys->tasks_num * sizeof(*ssdh->clk_input_tds));
         if (ssdh->clk_input_tds == NULL) {
             return fspec_rv_no_memory;
         }
