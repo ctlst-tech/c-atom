@@ -349,6 +349,10 @@ fspec_rv_t flow_find_invocation(flow_interface_t *flow_dh, const char *inv_name,
 
 static const char* check_and_resolve_params_reference(const func_param_t *flow_params, func_param_t *func_params) {
     const char *param_ref;
+    if (flow_params == NULL || func_params == NULL) {
+        return NULL;
+    }
+
     for (int i = 0; func_params[i].alias != NULL; i++) {
         if (func_params[i].value[0] == '$') {
             param_ref = &func_params[i].value[1];
