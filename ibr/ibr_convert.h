@@ -21,7 +21,7 @@ typedef struct {
 
 typedef struct conv_instr_queue {
     conv_instr_t instrs [MDM_CONV_MAX_INSTR];
-    int instr_num;
+    unsigned instr_num;
 } conv_instr_queue_t;
 
 typedef struct conv_rule {
@@ -41,6 +41,6 @@ typedef struct conv_rule {
 ibr_rv_t conv_instr_queue_add(conv_instr_queue_t *q, field_scalar_type_t st, field_scalar_type_t dt, double scale);
 
 ibr_rv_t conv_instr_queue_init(conv_instr_queue_t *q);
-ibr_rv_t conv_exec(conv_instr_queue_t *q, void *src, int ss, void *dst, int ds);
+unsigned conv_exec(conv_instr_queue_t *q, void *src, int ss, void *dst, int ds);
 
 #endif //HW_BRIDGE_MDM_CONVERT_H
