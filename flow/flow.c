@@ -311,7 +311,7 @@ fspec_rv_t flow_init_inputs(void *dhandle, const func_conn_spec_t *conn_spec, es
         }
         inputs_bridging_spec[i].alias = NULL;
 
-        if (conn_spec == NULL) {
+        if (i > 0 && conn_spec == NULL) {
             dbg_msg("Flow \"%s\" expects %d inputs, but got none", flow_dh->flow_name, i);
             return fspec_rv_initerr;
         }
