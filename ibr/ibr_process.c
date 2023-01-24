@@ -1,13 +1,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <eswb/api.h>
-#include <eswb/bridge.h>
 
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <errno.h>
-#include <unistd.h>
+
 
 
 #include "ibr.h"
@@ -15,112 +10,6 @@
 #include "ibr_convert.h"
 
 void *ibr_alloc(size_t s);
-
-#ifndef CATOM_NO_SOCKET
-
-ibr_rv_t drv_udp_connect(const char *addr_str, int *md) {
-
-    // TODO parse path, get the idea what address we opening port, receive or send
-
-    int rc;
-
-    int sktd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sktd == -1) {
-        fprintf ( stderr, ". socket: %s", strerror ( errno ) );
-        return -1;
-    }
-
-    setsockopt(sktd, SOL_SOCKET, SO_REUSEPORT, &rc, sizeof( rc ) );
-    setsockopt(sktd, SOL_SOCKET, SO_REUSEADDR, &rc, sizeof( rc ) );
-
-    int server;
-    int port;
-    char host[50+1];
-    struct sockaddr_in addr;
-    socklen_t addrlen;
-
-    int rv = sscanf(addr_str, "%50[^:]:%d", host, &port);
-    if (rv < 2) {
-        return ibr_invarg;
-    }
-
-    if (strcmp(host, "*") == 0) {
-        server = -1;
-    } else {
-        server = 0;
-    }
-
-    memset(&addr,0,sizeof(addr));
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
-    addrlen = sizeof(addr);
-
-    if (server) {
-        addr.sin_addr.s_addr = INADDR_ANY;
-
-        if ( bind(sktd, (const struct sockaddr *)&addr, addrlen) < 0 ) {
-            return ibr_media_err;
-        }
-    } else {
-        inet_aton(host, &addr.sin_addr);
-
-        if (connect(sktd, (struct sockaddr *) &addr, addrlen) != 0) {
-            return ibr_media_err;
-        }
-    }
-
-    *md = sktd;
-
-    return ibr_ok;
-}
-
-ibr_rv_t drv_udp_disconnect(int sktd) {
-    int rv = close(sktd);
-
-    return rv ? ibr_media_err : ibr_ok;
-}
-
-ibr_rv_t drv_udp_send(int sktd, void *d, int *bts) {
-    int bs;
-
-    bs = (int) send(sktd, d, *bts, 0);
-
-    *bts = bs;
-
-    if (bs == -1) {
-        return ibr_media_err;
-    }
-
-    return ibr_ok;
-}
-
-ibr_rv_t drv_udp_recv(int sktd, void *d, int *btr) {
-    int br;
-
-    br = (int) recv(sktd, d, *btr, 0);
-
-    if (br == -1) {
-        return ibr_media_err;
-    } else if (br != *btr) {
-        // TODO allow no matching by a flag? Strings as a command may have a vary lng
-//        return ibr_nomatched;
-    }
-
-    *btr = br;
-
-    return ibr_ok;
-}
-
-
-const irb_media_driver_t drv_udp_media_driver = {
-    .proclaim = NULL,
-    .connect = drv_udp_connect,
-    .disconnect = drv_udp_disconnect,
-    .send = drv_udp_send,
-    .recv = drv_udp_recv,
-};
-
-#endif
 
 topic_data_type_t ibr_eswb_field_type(field_type_t *ft) {
     field_scalar_type_t st = ft->st;
@@ -151,321 +40,28 @@ topic_data_type_t ibr_eswb_field_type(field_type_t *ft) {
     }
 }
 
-field_type_t ibr_field_type_from_eswb(topic_data_type_t d) {
-    field_type_t rv;
-    switch (d) {
-        default:
-        case tt_none:       rv.cls = fc_scalar; rv.st = ft_invalid; break;
-        case tt_float:      rv.cls = fc_scalar; rv.st = ft_float; break;
-        case tt_double:     rv.cls = fc_scalar; rv.st = ft_double; break;
-        case tt_uint8:      rv.cls = fc_scalar; rv.st = ft_uint8; break;
-        case tt_int8:       rv.cls = fc_scalar; rv.st = ft_int8; break;
-        case tt_uint16:     rv.cls = fc_scalar; rv.st = ft_uint16; break;
-        case tt_int16:      rv.cls = fc_scalar; rv.st = ft_int16; break;
-        case tt_uint32:     rv.cls = fc_scalar; rv.st = ft_uint32; break;
-        case tt_int32:      rv.cls = fc_scalar; rv.st = ft_int32; break;
-        case tt_uint64:     rv.cls = fc_scalar; rv.st = ft_uint64; break;
-        case tt_int64:      rv.cls = fc_scalar; rv.st = ft_int64; break;
+const irb_media_driver_t irb_media_driver_eswb;
+const irb_media_driver_t irb_media_driver_eswb_bridge;
+const irb_media_driver_t irb_media_driver_eswb_vector;
+const irb_media_driver_t irb_media_driver_udp;
 
-        case tt_string:     rv.cls = fc_array; rv.st = ft_uint8; break;
-    }
-
-    return rv;
-}
-
-static eswb_rv_t proclaim_msg(msg_t *m, const char *dst_path, eswb_topic_descr_t *td) {
-
-    char path[ESWB_TOPIC_MAX_PATH_LEN + 1];
-    char struct_topic_name[ESWB_TOPIC_NAME_MAX_LEN + 1];
-
-    eswb_rv_t rv = eswb_path_split(dst_path, path, struct_topic_name);
-
-    if (rv != eswb_e_ok) {
-        return rv;
-    }
-
-    int fields_num = ibr_msg_fields_num(m);
-    if (fields_num == 0) {
-        dbg_msg("Message has no fields");
-        return eswb_e_invargs;
-    }
-
-    TOPIC_TREE_CONTEXT_LOCAL_DEFINE(cntx, fields_num + 1);
-
-    char *tn = strlen(struct_topic_name) == 0 ? m->name : struct_topic_name;
-
-    topic_proclaiming_tree_t *rt = usr_topic_set_root(cntx, tn, tt_struct, m->size);
-    if (rt == NULL) {
-        return eswb_e_invargs;
-    }
-    eswb_size_t offset = 0;
-
-    // prepare topic struct
-    for (field_t *n = m->fields_list_head; n != NULL; n = n->next) {
-//        if (n->cls != fc_scalar) {
-//            dbg_msg("Non scalar type is not supported for IBR");
-//            return eswb_e_invargs;
-//        }
-        field_type_t ft;
-        ft.cls = n->cls;
-        ft.st = n->nested.scalar_type;
-        ft.size = n->size;
-
-        topic_data_type_t eswb_data_type = ibr_eswb_field_type(&ft);
-        if (eswb_data_type == tt_none) {
-            dbg_msg("Non supported type (%d)", n->nested.scalar_type);
-            return eswb_e_invargs;
-        }
-
-        usr_topic_add_child(cntx, rt,
-                            n->name,
-                            eswb_data_type,
-                            n->offset,
-                            n->size, TOPIC_PROCLAIMING_FLAG_MAPPED_TO_PARENT);
-    }
-
-    rv = eswb_proclaim_tree_by_path(path, rt, cntx->t_num, td);
-    if (rv != eswb_e_ok) {
-        dbg_msg("Proclaiming error: %s", eswb_strerror(rv));
-    }
-
-    return rv;
-}
-
-ibr_rv_t drv_eswb_proclaim(const char *path, msg_t *src_msg, msg_t *dst_msg, int *td) {
-    eswb_rv_t rv;
-
-    rv = proclaim_msg(dst_msg, path, td);
-    if (rv != eswb_e_ok) {
-        dbg_msg("proclaim_msg failed: %s", eswb_strerror(rv));
-        return ibr_media_err;
-    }
-
-    return ibr_ok;
-}
-
-ibr_rv_t drv_eswb_connect(const char *path, int *td) {
-    eswb_rv_t rv;
-    rv = eswb_connect(path, td);
-    return rv == eswb_e_ok ? ibr_ok : ibr_nomedia;
-}
-
-ibr_rv_t drv_eswb_disconnect(int td) {
-    eswb_rv_t rv;
-    rv = eswb_disconnect (td);
-    return rv == eswb_e_ok ? ibr_ok : ibr_media_err;
-}
-
-ibr_rv_t drv_eswb_send(int td, void *d, int *bts) {
-    eswb_rv_t rv;
-    rv = eswb_update_topic(td, d);
-    return rv == eswb_e_ok ? ibr_ok : ibr_media_err;
-}
-
-ibr_rv_t drv_eswb_recv(int td, void *d, int *btr) {
-    eswb_rv_t rv;
-    rv = eswb_get_update(td, d);
-    return rv == eswb_e_ok ? ibr_ok : ibr_media_err;
-}
+const irb_media_driver_t irb_media_driver_file;
+const irb_media_driver_t irb_media_driver_sdtl;
+const irb_media_driver_t irb_media_driver_serial;
 
 
-const irb_media_driver_t drv_eswb_media_driver = {
-        .proclaim = drv_eswb_proclaim,
-        .connect = drv_eswb_connect,
-        .disconnect = drv_eswb_disconnect,
-        .send = drv_eswb_send,
-        .recv = drv_eswb_recv,
-};
-
-
-ibr_rv_t drv_eswb_vector_connect(const char *path, int *td) {
-    eswb_rv_t erv;
-    ibr_rv_t rv;
-    erv = eswb_connect(path, td);
-    if (erv == eswb_e_ok) {
-        uint32_t dummy;
-        eswb_index_t br;
-        // check that this is vector
-        erv = eswb_vector_read(*td, 0, &dummy, 4, &br);
-        if (erv == eswb_e_ok || erv == eswb_e_vector_inv_index ) {
-            rv = ibr_ok;
-        } else {
-            rv = ibr_media_err;
-        }
-    } else {
-        rv = ibr_nomedia;
-    }
-    return rv;
-}
-
-ibr_rv_t drv_eswb_vector_disconnect(int td) {
-    eswb_rv_t rv;
-    rv = eswb_disconnect (td);
-    return rv == eswb_e_ok ? ibr_ok : ibr_media_err;
-}
-
-ibr_rv_t drv_eswb_vector_send(int td, void *d, int *bts) {
-    eswb_rv_t rv;
-    rv = eswb_vector_write(td, 0, d, *bts, ESWB_VECTOR_WRITE_OPT_FLAG_DEFINE_END);
-    if (rv == eswb_e_ok) {
-        *bts = *bts;
-    }
-    return rv == eswb_e_ok ? ibr_ok : ibr_media_err;
-}
-
-ibr_rv_t drv_eswb_vector_recv(int td, void *d, int *btr) {
-    eswb_rv_t rv;
-    eswb_index_t br;
-    rv = eswb_vector_get_update(td, 0, d, *btr, &br);
-    if (rv == eswb_e_ok) {
-        *btr = br;
-    }
-    return rv == eswb_e_ok ? ibr_ok : ibr_media_err;
-}
-
-
-const irb_media_driver_t drv_eswb_vector_media_driver = {
-        .proclaim = NULL,
-        .connect = drv_eswb_vector_connect,
-        .disconnect = drv_eswb_vector_disconnect,
-        .send = drv_eswb_vector_send,
-        .recv = drv_eswb_vector_recv,
-};
-
-
-
-#define MAX_BRIDGES 5
-static int bridges_num = 0;
-static eswb_bridge_t *bridges[MAX_BRIDGES];
-
-static eswb_rv_t create_bridge(const char *path, msg_t *dst_msg, msg_t *src_msg, eswb_topic_descr_t *td) {
-
-
-    if (!bridges_num) {
-        memset(bridges, 0, sizeof(bridges));
-    }
-
-    char tpath [ESWB_TOPIC_MAX_PATH_LEN + 1];
-    strncpy(tpath, path, ESWB_TOPIC_MAX_PATH_LEN - 1);
-    strcat(tpath, "/");
-    size_t path_len = strlen(tpath);
-
-    if (bridges_num >= MAX_BRIDGES) {
-        return eswb_e_mem_data_na;
-    }
-
-    if (ibr_msg_fields_num(src_msg) != 0) {
-        return eswb_e_invargs;
-    }
-
-    eswb_bridge_t *br = NULL;
-    eswb_rv_t rv = eswb_bridge_create(src_msg->name,
-                                      ibr_msg_fields_num(dst_msg),
-                                      &br);
-    if (rv != eswb_e_ok) {
-        return rv;
-    }
-
-    int offset = 0;
-
-    for (field_t *f = dst_msg->fields_list_head; f != NULL; f = f->next) {
-        tpath[path_len] = 0;
-        strncat(tpath, f->name, ESWB_TOPIC_MAX_PATH_LEN - path_len);
-        ibr_rv_t irv;
-
-        rv = eswb_bridge_add_topic(br, 0, tpath, f->name);
-        if (rv == eswb_e_ok) {
-            field_type_t ft = ibr_field_type_from_eswb(br->topics[br->tds_num-1].type); // nasty: last added topic, from prev call
-            int field_size = (int) br->topics[br->tds_num-1].size;
-            switch (ft.cls) {
-                case fc_scalar:
-                    irv = ibr_add_scalar(src_msg, f->name,
-                                         ft.st,
-                                         &offset, NULL);
-                    break;
-
-                case fc_array:
-                    irv = ibr_add_array(src_msg, f->name,
-                                        ibr_get_scalar_size(ft.st), field_size,
-                                         &offset, NULL);
-                    break;
-
-                default:
-                    irv = ibr_invarg;
-                    break;
-            }
-        } else if (rv == eswb_e_no_topic) {
-            irv = ibr_add_dummy(src_msg, f->name, f->size, &offset, NULL);
-        } else {
-            return rv;
-        }
-
-        if (irv != ibr_ok) {
-            return eswb_e_invargs;
-        }
-    }
-
-    if (br->tds_num == 0) {
-        return eswb_e_no_topic;
-    }
-
-    *td = bridges_num;
-    bridges[bridges_num] = br;
-    bridges_num++;
-
-    return eswb_e_ok;
-}
-
-ibr_rv_t drv_eswb_bridge_proclaim(const char *path, msg_t *src_msg, msg_t *dst_msg, int *td) {
-    eswb_rv_t rv;
-
-    rv = create_bridge(path, dst_msg, src_msg, td);
-    if (rv != eswb_e_ok) {
-        dbg_msg("create_bridge failed: %s", eswb_strerror(rv));
-        return ibr_media_err;
-    }
-
-    return ibr_ok;
-}
-
-ibr_rv_t drv_eswb_bridge_disconnect(int td) {
-    eswb_rv_t rv = eswb_e_ok;
-    // TODO
-    return rv == eswb_e_ok ? ibr_ok : ibr_media_err;
-}
-
-ibr_rv_t drv_eswb_bridge_recv(int td, void *d, int *btr) {
-    eswb_rv_t rv;
-    eswb_bridge_t *br = bridges[td];
-
-    // clocking using last topic
-    rv = eswb_get_update(br->topics[br->tds_num-1].td, NULL);
-    if (rv == eswb_e_ok) {
-        rv = eswb_bridge_read(bridges[td], d);
-    }
-
-    *btr = (int)br->buffer2post_size;
-
-    return rv == eswb_e_ok ? ibr_ok : ibr_media_err;
-}
-
-
-const irb_media_driver_t drv_eswb_bridge_media_driver = {
-        .proclaim = drv_eswb_bridge_proclaim,
-        .connect = NULL,
-        .disconnect = drv_eswb_disconnect,
-        .send = NULL,
-        .recv = drv_eswb_bridge_recv,
-};
 
 const irb_media_driver_t *ibr_get_driver (irb_media_driver_type_t mdt) {
     switch (mdt) {
-        case mdt_function:              return &drv_eswb_media_driver;
-        case mdt_function_bridge:       return &drv_eswb_bridge_media_driver;
-        case mdt_function_vector:       return &drv_eswb_vector_media_driver;
+        case mdt_function:              return &irb_media_driver_eswb;
+        case mdt_function_bridge:       return &irb_media_driver_eswb_bridge;
+        case mdt_function_vector:       return &irb_media_driver_eswb_vector;
 #       ifndef CATOM_NO_SOCKET
-        case mdt_udp:                   return &drv_udp_media_driver;
+        case mdt_udp:                   return &irb_media_driver_udp;
 #       endif
+        case mdt_file:                  return &irb_media_driver_file;
+        case mdt_serial:                return &irb_media_driver_serial;
+        case mdt_sdtl:                  return &irb_media_driver_sdtl;
         default:                        return NULL;
     }
 }
@@ -486,6 +82,12 @@ ibr_rv_t ibr_decode_addr(const char *addr, irb_media_driver_type_t *mdt, const c
         *mdt = mdt_function_vector;
     } else if (strcmp(drv_alias, "udp") == 0) {
         *mdt = mdt_udp;
+    } else if (strcmp(drv_alias, "file") == 0) {
+        *mdt = mdt_file;
+    } else if (strcmp(drv_alias, "serial") == 0) {
+        *mdt = mdt_serial;
+    } else if (strcmp(drv_alias, "sdtl") == 0) {
+        *mdt = mdt_sdtl;
     } else {
         return ibr_invarg;
     }

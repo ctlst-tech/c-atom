@@ -23,6 +23,9 @@ typedef enum {
     mdt_function,
     mdt_function_bridge,
     mdt_function_vector,
+    mdt_file,
+    mdt_serial,
+    mdt_sdtl,
     mdt_udp
 } irb_media_driver_type_t;
 

@@ -51,6 +51,13 @@ set(CATOM_SRC
         ibr/ibr_process.h
         ibr/ibr_convert.c
         ibr/ibr_convert.h
+        ibr/drivers/udp.c
+        ibr/drivers/eswb.c
+        ibr/drivers/eswb_vector.c
+        ibr/drivers/eswb_bridge.c
+        ibr/drivers/sdtl.c
+        ibr/drivers/file.c
+        ibr/drivers/serial.c
         xml/xml.c
         xml/xml.h
         function/common_parser_xml.c
