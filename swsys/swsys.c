@@ -75,7 +75,7 @@ static swsys_rv_t task_load(swsys_task_t *t) {
             } else {
                 ibr_get_handler(ibr_cfg, &t->func_handler);
             }
-            t->exec_once = -1;
+//            t->exec_once = -1;
             break;
 
         case tsk_ebr:
@@ -477,7 +477,7 @@ static void swsys_call_exec (void *dhandle) {
     }
 
     // may happen if last task is executed once TODO make them executed in the beginning
-    while (1) { usleep(1000000); }
+//    while (1) { usleep(1000000); }
 }
 
 static const function_calls_t swsys_calls = {

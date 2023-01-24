@@ -29,6 +29,7 @@ typedef struct protocol {
 
 typedef struct {
     const char  *name;
+    const char  *type;
     const char  *msg;
     const char  *frame;
     const char  *src;
@@ -38,7 +39,7 @@ typedef struct {
 
 typedef struct {
     function_spec_t spec;
-    protocol_t      protocol;
+    protocol_t      *protocol;
     process_cfg_t   *processes;
     int             processes_num;
 } ibr_cfg_t;

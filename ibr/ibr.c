@@ -87,6 +87,15 @@ static ibr_rv_t setup_connections(ibr_cfg_t *ibr_cfg, process_cfg_t *proc_cfg, i
 //    return setup_connections(ibr_cfg, proc_cfg,setup, spec);
 //}
 
+ibr_process_type_t ibr_process_type_parse(const char *type_str) {
+    if (strcmp(type_str, "frame") == 0) {
+        return ibr_process_type_frame;
+    } else if (strcmp(type_str, "copy") == 0) {
+        return ibr_process_type_copy;
+    }
+    return ibr_process_type_invalid;
+}
+
 static ibr_rv_t ibr_process_frame_setup(ibr_cfg_t *ibr_cfg, const function_spec_t *spec,
                                         protocol_t *protocol,
                                         process_cfg_t *proc_cfg, irb_process_setup_t *setup) {
@@ -95,26 +104,44 @@ static ibr_rv_t ibr_process_frame_setup(ibr_cfg_t *ibr_cfg, const function_spec_
 
     setup->name = proc_cfg->name;
 
-    setup->frame = protocol->frame;
-
-    setup->msgs_num = protocol->frame->msg_num;
-    setup->msgs_setup = ibr_alloc(sizeof(*setup->msgs_setup) * setup->msgs_num);
-
-    if (setup->msgs_setup == NULL) {
-        return ibr_nomem;
+    setup->type = ibr_process_type_parse(proc_cfg->type);
+    if (setup->type == ibr_process_type_invalid) {
+        dbg_msg("Invalid IBR process type: %s", proc_cfg->type);
     }
 
-    for (int i = 0; i < setup->msgs_num; i++) {
-        setup->msgs_setup[i].src_msg = setup->frame->msgs[i];
-        setup->msgs_setup[i].id = setup->frame->msgs[i]->id;
+    switch (setup->type) {
+        case ibr_process_type_frame:
+            setup->frame = protocol->frame;
 
-        rv = ibr_msg_to_functional_msg(
-                setup->msgs_setup[i].src_msg,
-                &setup->msgs_setup[i].dst_msg,
-                &setup->msgs_setup[i].conv_queue);
-        if (rv != ibr_ok) {
-            return rv;
-        }
+            setup->msgs_num = protocol->frame->msg_num;
+            setup->msgs_setup = ibr_alloc(sizeof(*setup->msgs_setup) * setup->msgs_num);
+            if (setup->msgs_setup == NULL) {
+                return ibr_nomem;
+            }
+
+            for (int i = 0; i < setup->msgs_num; i++) {
+                setup->msgs_setup[i].src_msg = setup->frame->msgs[i];
+                setup->msgs_setup[i].id = setup->frame->msgs[i]->id;
+
+                rv = ibr_msg_to_functional_msg(
+                        setup->msgs_setup[i].src_msg,
+                        &setup->msgs_setup[i].dst_msg,
+                        &setup->msgs_setup[i].conv_queue);
+                if (rv != ibr_ok) {
+                    return rv;
+                }
+            }
+
+            break;
+
+        case ibr_process_type_copy:
+            setup->frame = NULL;
+            setup->msgs_num = 1;
+            setup->msgs_setup = ibr_alloc(sizeof(*setup->msgs_setup));
+            break;
+
+        default:
+            return ibr_invarg;
     }
 
     // TODO setup frame
@@ -137,7 +164,7 @@ fspec_rv_t ibr_init(void *dhandle, const function_spec_t *spec, const char *inv_
 
     for (int i = 0; i < ibr_cfg->processes_num; i++) {
         rv = ibr_process_frame_setup(ibr_cfg, spec,
-                                     &ibr_cfg->protocol,
+                                     ibr_cfg->protocol,
                                      &ibr_cfg->processes[i], &ibr_setup->process_setups[i]);
         if (rv != ibr_ok) {
             err_cnt++;
@@ -180,9 +207,9 @@ fspec_rv_t ibr_init_outputs(void *dhandle, const func_conn_spec_t *conn_spec,
     for (int i = 0; i < ibr_setup->processes_num; i++) {
         for (int j = 0; j < ibr_setup->process_setups[i].msgs_num; j++) {
             rv = connect_output(&ibr_setup->process_setups[i], conn_spec, &ibr_setup->process_setups[i].msgs_setup[j]);
-        }
-        if (rv != ibr_ok) {
-            err_cnt++;
+            if (rv != ibr_ok) {
+                err_cnt++;
+            }
         }
     }
 
@@ -259,12 +286,14 @@ void ibr_exec(void *dhandle) {
     int err_cnt = 0;
     ibr_rv_t rv;
 
-    for (int i = 0; i < ibr_setup->processes_num; i++) {
-        rv = ibr_process_start(&ibr_setup->process_setups[i]);
-        if (rv != ibr_ok) {
-            dbg_msg("ibr_process_start failed");
-        }
-    }
+    ibr_process_thread(ibr_setup->process_setups);
+
+//    for (int i = 0; i < ibr_setup->processes_num; i++) {
+//        rv = ibr_process_start(&ibr_setup->process_setups[i]);
+//        if (rv != ibr_ok) {
+//            dbg_msg("ibr_process_start failed");
+//        }
+//    }
 }
 
 

@@ -195,7 +195,6 @@ static inline ibr_rv_t ibr_process_frame (irb_process_setup_t *setup) {
     ibr_set_pthread_name(setup->name);
 
 
-
     while(1) {
         int br = msg_size;
         rv = dev_src->recv(srcd, src_buf, &br);
@@ -233,11 +232,58 @@ static inline ibr_rv_t ibr_process_frame (irb_process_setup_t *setup) {
 }
 
 
+static inline ibr_rv_t ibr_process_copy(irb_process_setup_t *setup) {
+    int msg_size = 512;
+
+    const irb_media_driver_t *dev_src = setup->src.drv;
+    const irb_media_driver_t *dev_dst = setup->dst.drv;
+
+    uint8_t *buf = ibr_alloc(msg_size);
+
+    int srcd = setup->src.descr;
+    int dstd = setup->dst.descr;
+
+    ibr_rv_t rv;
+
+    ibr_set_pthread_name(setup->name);
+
+    while(1) {
+        int br = msg_size;
+        rv = dev_src->recv(srcd, buf, &br);
+        if (rv == ibr_ok) {
+            printf("Copy cycle %d bytes: ", br);
+//            for (int i = 0; i < br; i++) printf("%02X ", buf[i]);
+            printf("\n");
+
+            rv = dev_dst->send(dstd, buf, &br);
+            if (rv != ibr_ok) {
+                // TODO ?
+                break;
+            }
+        }
+    }
+
+    return rv;
+}
+
 
 void *ibr_process_thread (void *setup) {
-    ibr_process_frame((irb_process_setup_t *) setup);
+    irb_process_setup_t *s = (irb_process_setup_t *) setup;
+    switch (s->type) {
+        case ibr_process_type_frame:
+            ibr_process_frame(s);
+            break;
+
+        case ibr_process_type_copy:
+            ibr_process_copy(s);
+            break;
+
+        default:
+            break;
+    }
     return NULL;
 }
+
 
 ibr_rv_t ibr_process_start (irb_process_setup_t *setup) {
     int rv = pthread_create(&setup->tid, NULL, ibr_process_thread, setup);

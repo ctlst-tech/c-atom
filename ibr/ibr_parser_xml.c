@@ -3,6 +3,7 @@
 #include "ibr_msg.h"
 #include "ibr_convert.h"
 #include "ibr_private.h"
+#include "ibr_process.h"
 
 #include "xml.h"
 #include "function_xml.h"
@@ -284,11 +285,16 @@ static xml_rv_t load_msg(xml_node_t *msg_node, msg_t **msg_rv) {
     return err_num > 0 ? xml_e_dom_process : xml_e_ok;
 }
 
-static xml_rv_t load_protocol(xml_node_t *protocol_node, protocol_t *protocol) {
+static xml_rv_t load_protocol(xml_node_t *protocol_node, protocol_t **protocol_rv) {
 
     GET_ATTR_INIT();
     int err_cnt;
     xml_rv_t xrv;
+
+    protocol_t *protocol = ibr_alloc(sizeof(*protocol));
+    if (protocol == NULL) {
+        return xml_e_nomem;
+    }
 
     protocol->name = GET_ATTR_AND_PROCESS_ERR(xml_attr_str, protocol_node, "name", &err_cnt);
 
@@ -324,9 +330,12 @@ static xml_rv_t load_protocol(xml_node_t *protocol_node, protocol_t *protocol) {
         }
     }
 
+    if (err_cnt == 0) {
+        *protocol_rv = protocol;
+    }
+
     return err_cnt > 0 ? xml_e_dom_process : xml_e_ok;
 }
-
 
 
 xml_rv_t load_process(xml_node_t *process_node, const ibr_cfg_t *ibr, process_cfg_t *process) {
@@ -335,15 +344,18 @@ xml_rv_t load_process(xml_node_t *process_node, const ibr_cfg_t *ibr, process_cf
     GET_ATTR_INIT();
 
     process->name = GET_ATTR_AND_PROCESS_ERR(xml_attr_str, process_node, "name", &err_cnt);
+    process->type = GET_ATTR_AND_PROCESS_ERR(xml_attr_str, process_node, "type", &err_cnt);
     process->msg = GET_ATTR_OPTIONAL(xml_attr_str, process_node, "src_msg", &err_cnt);
     process->frame = GET_ATTR_OPTIONAL(xml_attr_str, process_node, "frame", &err_cnt);
     process->src = GET_ATTR_AND_PROCESS_ERR(xml_attr_str, process_node, "src", &err_cnt);
     process->dst = GET_ATTR_AND_PROCESS_ERR(xml_attr_str, process_node, "dst", &err_cnt);
 
-    if ((process->msg == NULL) && (process->frame == NULL)) {
-        xml_err("Either \"src_msg\" or \"frame\" must be specified for IBR \"%s\"", ibr->spec.name != NULL ? ibr->spec.name : "N/A");
-        err_cnt++;
-    }
+
+
+//    if ((process->msg == NULL) && (process->frame == NULL)) {
+//        xml_err("Either \"src_msg\" or \"frame\" must be specified for IBR \"%s\"", ibr->spec.name != NULL ? ibr->spec.name : "N/A");
+//        err_cnt++;
+//    }
 
 //    if (process->src_msg == NULL) {
 //        xml_err("Message \"%s\" does not specified in IBR \"%s\"", src_msg, ibr->spec.name != NULL ? ibr->spec.name : "N/A");
@@ -391,10 +403,10 @@ ibr_rv_t ibr_cfg_load(const char *path, ibr_cfg_t **ibr_cfg_rv) {
     }
 
     xml_node_t *protocol_node = xml_node_find_child(ibr_cfg_root, "protocol");
-    if (protocol_node == NULL) {
-        xml_err("Tag \"protocol\" is not specified in \"%s\"", path);
-        return ibr_loaderr;
-    } else {
+    if (protocol_node != NULL) {
+//        xml_err("Tag \"protocol\" is not specified in \"%s\"", path);
+//        return ibr_loaderr;
+//    } else {
         xrv = load_protocol(protocol_node, &ibr_cfg->protocol);
         if (xrv != xml_e_ok) {
             err_cnt++;
@@ -402,7 +414,10 @@ ibr_rv_t ibr_cfg_load(const char *path, ibr_cfg_t **ibr_cfg_rv) {
     }
 
     ibr_cfg->processes_num = xml_node_count_siblings(ibr_cfg_root->first_child, "process");
-    if (ibr_cfg->processes_num < 1) {
+    if (ibr_cfg->processes_num > 1) {
+        // FIXME limiting to one process for now
+        xml_err("Only one process is allowed \"%s\"", path);
+    } else if (ibr_cfg->processes_num < 1) {
         xml_err("Not a single process is registered for IBR \"%s\"", path);
         err_cnt++;
     } else {

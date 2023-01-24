@@ -36,10 +36,6 @@ typedef struct {
     int descr;
 } irb_media_setup_t;
 
-typedef struct {
-
-} irb_msg_record_t;
-
 
 typedef struct msg_record {
     uint32_t id;
@@ -51,8 +47,17 @@ typedef struct msg_record {
     int descr; // connection descriptor
 } msg_record_t;
 
+
+typedef enum {
+    ibr_process_type_frame,
+    ibr_process_type_copy,
+    ibr_process_type_invalid,
+} ibr_process_type_t;
+
 typedef struct {
     const char *name;
+
+    ibr_process_type_t type;
 
     irb_media_setup_t src;
     irb_media_setup_t dst;
@@ -75,6 +80,7 @@ typedef struct {
 
 const irb_media_driver_t *ibr_get_driver (irb_media_driver_type_t mdt);
 ibr_rv_t ibr_decode_addr(const char *addr, irb_media_driver_type_t *mdt, const char **addr_rv);
+void *ibr_process_thread (void *setup);
 ibr_rv_t ibr_process_start (irb_process_setup_t *setup);
 
 #endif //C_ATOM_IBR_PROCESS_H
