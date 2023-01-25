@@ -251,9 +251,12 @@ static inline ibr_rv_t ibr_process_copy(irb_process_setup_t *setup) {
         int br = msg_size;
         rv = dev_src->recv(srcd, buf, &br);
         if (rv == ibr_ok) {
+
+            /*
             printf("Copy cycle %d bytes: ", br);
-//            for (int i = 0; i < br; i++) printf("%02X ", buf[i]);
+            for (int i = 0; i < br; i++) printf("%02X ", buf[i]);
             printf("\n");
+            */
 
             rv = dev_dst->send(dstd, buf, &br);
             if (rv != ibr_ok) {
