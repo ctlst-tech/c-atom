@@ -247,7 +247,18 @@ class ParameterRef:
         raise Exception(f'Parameter reference {self.param_name} is not resolved for function {f.name}')
 
 
+class VectorTypeRefName:
+    def __init__(self):
+        pass
+
+    def __get__(self, obj, objtype=None):
+        return obj.vector_type.name
+
+
 class VectorTypeRef(ValueType):
+
+    name = VectorTypeRefName()
+
     def __init__(self, *,
                  vector_type_name: Union[str, ValueType], size: Union[int, ParameterRef]):
         super().__init__()
@@ -262,7 +273,6 @@ class VectorTypeRef(ValueType):
             self.size.resolve(function)
 
         return self
-
     def get_c_type_name(self):
         self.vector_type.get_c_type_name()
 

@@ -1971,6 +1971,7 @@ class FuncProcessor:
         self.generated_funcs_list: List[GeneratedFunction] = []
         self.types_list = []
         self.types_structures_list = []
+        self.types_vectors_list = []
 
         self.spec_header_filename = 'fspecs.h'
 
@@ -1986,6 +1987,8 @@ class FuncProcessor:
                     self.types_list.append(t)
                 for t in pkg.structures:
                     self.types_structures_list.append(t)
+                for t in pkg.vectors:
+                    self.types_vectors_list.append(t)
         else:
             for function in package.functions:
                 f = GeneratedFunction(function, self)
@@ -2136,7 +2139,7 @@ class FuncProcessor:
 
         local_fprint('<fspecs>')
 
-        for t in [*self.types_list, *self.types_structures_list]:
+        for t in [*self.types_list, *self.types_structures_list, *self.types_vectors_list]:
             print_type(local_fprint, t)
 
         local_fprint()
