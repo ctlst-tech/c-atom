@@ -2,15 +2,15 @@ from fspeclib import *
 
 
 Function(
-    name='core.math.vector_calib',
+    name='core.vector.calib',
     title=LocalizedString(
         en='Vector calibration'
     ),
 
     inputs=[
         Input(
-            name='in',
-            title='3d vector',
+            name='v',
+            title='Input vector',
             value_type='core.type.v3f64'
         ),
     ],
@@ -104,8 +104,8 @@ Function(
 
     outputs=[
         Output(
-            name='out',
-            title='3d vector',
+            name='v',
+            title='Output vector',
             value_type='core.type.v3f64'
         ),
     ],
