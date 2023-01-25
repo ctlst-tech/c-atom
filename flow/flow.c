@@ -352,25 +352,41 @@ fspec_rv_t flow_init_inputs(void *dhandle, const func_conn_spec_t *conn_spec, es
 fspec_rv_t flow_set_invocation_params(flow_interface_t *flow_dh, const char *inv_name, const func_param_t *param);
 fspec_rv_t flow_find_invocation(flow_interface_t *flow_dh, const char *inv_name, const function_inside_flow_t **inv, void **dhandle);
 
-static const char* check_and_resolve_params_reference(const func_param_t *flow_params, func_param_t *func_params) {
+static fspec_rv_t check_and_resolve_params_reference(const func_param_t *flow_params, func_param_t *func_params,
+                                                      func_param_t *resolved_func_params,
+                                                      unsigned resolved_params_num,
+                                                      const char **failed_param) {
     const char *param_ref;
     if (flow_params == NULL || func_params == NULL) {
-        return NULL;
+        return fspec_rv_no_param;
     }
+    const char *val;
 
-    for (int i = 0; func_params[i].alias != NULL; i++) {
+    int i;
+    int resolvings = 0;
+
+    for (i = 0; func_params[i].alias != NULL; i++) {
         if (func_params[i].value[0] == '$') {
             param_ref = &func_params[i].value[1];
-            const char *val = fspec_find_param(flow_params, param_ref);
+            val = fspec_find_param(flow_params, param_ref);
             if (val == NULL) {
-                return param_ref;
-            } else {
-                func_params[i].value = val;
+                *failed_param = param_ref;
+                return fspec_rv_inval_param;
             }
+            resolvings++;
+        } else {
+            val = func_params[i].value;
         }
+        if (i >= resolved_params_num - 1) {
+            return fspec_rv_no_memory;
+        }
+        resolved_func_params[i].alias = func_params[i].alias;
+        resolved_func_params[i].value = val;
     }
 
-    return NULL;
+    resolved_func_params[i].alias = NULL;
+
+    return fspec_rv_ok;
 }
 
 fspec_rv_t flow_set_params(void *dhandle, const func_param_t *params, int initial_call) {
@@ -383,14 +399,32 @@ fspec_rv_t flow_set_params(void *dhandle, const func_param_t *params, int initia
     if (initial_call && (!flow_dh->got_initial_param_set_call)) {
         while (flow_dh->functions_batch[i].h != NULL) {
             // resolve params inheritance
-            const char *failed_param = check_and_resolve_params_reference(params, (func_param_t *) flow_dh->functions_batch[i].initial_params);
-            if (failed_param != NULL) {
-                dbg_msg("Invalid param reference for \"%s\": \"%s\" (check param existence in flow)", flow_dh->functions_batch[i].name, failed_param);
-                errs++;
+
+            const char *failed_param = NULL;
+            #define CALCULATED_PARAMS_NUM 32
+            func_param_t calculated_params[CALCULATED_PARAMS_NUM];
+            frv = check_and_resolve_params_reference(params, (func_param_t *) flow_dh->functions_batch[i].initial_params,
+                                                 calculated_params, CALCULATED_PARAMS_NUM, &failed_param);
+
+            switch (frv) {
+                case fspec_rv_ok:
+                    break;
+
+                case fspec_rv_inval_param:
+                    dbg_msg("Invalid param reference for \"%s\": \"%s\" (check param existence in flow)", flow_dh->functions_batch[i].name, failed_param);
+                    errs++;
+                    break;
+
+                case fspec_rv_no_memory:
+                    dbg_msg("Too many paramters for \"%s\"", flow_dh->functions_batch[i].name);
+                    errs++;
+
+                default:
+                    return frv;
             }
 
             frv = function_set_param(flow_dh->functions_batch[i].h, flow_dh->function_handles_batch[i],
-                                     flow_dh->functions_batch[i].initial_params, initial_call);
+                                     calculated_params, initial_call);
 
             if ((frv != fspec_rv_ok) && (frv != fspec_rv_not_supported)) { // it is ok not to have inputs
                 flow_init_dbg_msg(frv, &flow_dh->functions_batch[i], flow_dh->flow_name);
