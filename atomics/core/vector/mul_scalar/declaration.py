@@ -4,7 +4,7 @@ from fspeclib import *
 Function(
     name='core.vector.mul_scalar',
     title=LocalizedString(
-        en='Multuply scalar'
+        en='Multiply vector by scalar'
     ),
 
     inputs=[

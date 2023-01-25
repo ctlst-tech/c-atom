@@ -4,7 +4,7 @@ from fspeclib import *
 Function(
     name='core.vector.dot_product',
     title=LocalizedString(
-        en='Scalar multiplication'
+        en='Scalar multiplication of two vectors'
     ),
 
     inputs=[
