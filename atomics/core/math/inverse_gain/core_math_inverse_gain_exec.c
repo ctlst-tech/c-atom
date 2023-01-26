@@ -6,5 +6,5 @@ void core_math_inverse_gain_exec(
     const core_math_inverse_gain_params_t *p
 )
 {
-    o->output = i->input * p->inverse_gain;
+    o->output = i->input * p->gain;
 }
