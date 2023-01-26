@@ -15,7 +15,7 @@ Function(
         ),
         Input(
             name='scalar',
-            title='Vector 2',
+            title='Scalar',
             value_type='core.type.f64'
         ),
     ],
