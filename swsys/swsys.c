@@ -39,6 +39,12 @@ const char *swsys_strerror(swsys_rv_t rv) {
     }
 }
 
+/*
+#include "xml_priv.h"
+static unsigned allocations = 0;
+static unsigned allocated_bytes = 0;
+*/
+
 static swsys_rv_t task_load(swsys_task_t *t) {
     swsys_rv_t rv = swsys_e_ok;
 
@@ -87,6 +93,7 @@ static swsys_rv_t task_load(swsys_task_t *t) {
             break;
     }
 
+//    xml_alloc_stat(t->name, &allocations, &allocated_bytes);
 
     return rv;
 }

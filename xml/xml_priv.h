@@ -16,6 +16,8 @@ xml_attr_t *new_attr(const char *name, const char *value) ;
 void node_add_child(xml_node_t *parent, xml_node_t *child);
 
 void* xml_alloc(size_t s);
+void xml_alloc_stat(const char *header, unsigned *pan, unsigned *pba);
+
 void xml_free(void *p);
 void* xml_realloc(void *ptr, size_t s);
 

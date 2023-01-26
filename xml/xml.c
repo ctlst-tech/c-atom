@@ -9,9 +9,20 @@
 #include "xml.h"
 #include "xml_priv.h"
 
+static unsigned allocs_num;
+static unsigned bytes_allocated;
 
+void xml_alloc_stat(const char *header, unsigned *pan, unsigned *pba) {
+    if (header != NULL) {
+        printf("xml_alloc stat: %s allocs %d bytes %d bytes_total %d\n", header, allocs_num - *pan, bytes_allocated - *pba, bytes_allocated);
+    }
+    *pan = allocs_num;
+    *pba = bytes_allocated;
+}
 
 void* xml_alloc(size_t s) {
+    allocs_num++;
+    bytes_allocated += s;
     return calloc(1, s);
 }
 
@@ -25,7 +36,7 @@ void* xml_realloc(void *ptr, size_t s) {
 
 
 
-#define STR_LOOKUP_BATCH_SIZE 200
+#define STR_LOOKUP_BATCH_SIZE 512
 /*
  * FIXME not thread safe
  * FIXME make it O(log N)
@@ -57,9 +68,17 @@ int add_to_lookup_table(const char *s) {
     return 0;
 }
 
+const char *my_strdup(const char *s) {
+    unsigned len = strlen(s);
+    char *rv = xml_alloc(len + 1);
+    strcpy(rv, s);
+    return rv;
+}
+
 const char* xml_strdup(const char *s) {
     const char *rv = lookup_str(s);
     if (rv == NULL) {
+//        rv = my_strdup(s);
         rv = strdup(s);
         if (add_to_lookup_table(rv)) {
             dyn_mem_saved += strlen(s);
