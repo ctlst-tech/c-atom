@@ -2,23 +2,27 @@ from fspeclib import *
 
 
 Function(
-    name='core.vector.integrate',
+    name='core.vector.propagate',
     title=LocalizedString(
-        en='Vector integration'
+        en='Propagate vector with derivative over time'
     ),
 
     inputs=[
         Input(
             name='v',
-            title='Input vector',
+            title='V',
+            value_type='core.type.v3f64'
+        ),
+        Input(
+            name='v0',
+            title='V0',
             value_type='core.type.v3f64'
         ),
 
         Input(
-            name='reset',
-            title='Reset',
-            value_type='core.type.bool',
-            mandatory=False
+            name='derivative',
+            title='Derivative',
+            value_type='core.type.v3f64'
         ),
 
         Input(
@@ -31,9 +35,9 @@ Function(
 
     state=[
         Variable(
-            name='integral',
-            title='Accumulated Integral term',
-            value_type='core.type.v3f64'
+            name='inited',
+            title='Initial value is set',
+            value_type='core.type.bool'
         ),
     ],
 
