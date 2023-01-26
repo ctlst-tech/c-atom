@@ -69,8 +69,6 @@ static int check_connectivity(const char *flow_name, const char *inv_name, const
                                 (__func_invk)->h->spec->name,                                                                           \
                                 __flow_name)
 
-fspec_rv_t flow_set_params(void *dhandle, const func_param_t *params, int initial_call);
-
 fspec_rv_t flow_init(void *iface, const function_spec_t *spec, const char *inv_name, eswb_topic_descr_t mounting_td, const void *extension_handler) {
     flow_interface_t *flow_dh = (flow_interface_t *)iface;
     int err_cnt = 0;
@@ -357,16 +355,17 @@ static fspec_rv_t check_and_resolve_params_reference(const func_param_t *flow_pa
                                                       unsigned resolved_params_num,
                                                       const char **failed_param) {
     const char *param_ref;
-    if (flow_params == NULL || func_params == NULL) {
+    if (flow_params == NULL && func_params == NULL) {
         return fspec_rv_no_param;
     }
+
     const char *val;
 
     int i;
     int resolvings = 0;
 
     for (i = 0; func_params[i].alias != NULL; i++) {
-        if (func_params[i].value[0] == '$') {
+        if (flow_params != NULL && func_params[i].value[0] == '$') {
             param_ref = &func_params[i].value[1];
             val = fspec_find_param(flow_params, param_ref);
             if (val == NULL) {
@@ -421,6 +420,7 @@ fspec_rv_t flow_set_params(void *dhandle, const func_param_t *params, int initia
                     dbg_msg("Too many paramters for \"%s\"", flow_dh->functions_batch[i].name);
                     errs++;
                     break;
+
                 case fspec_rv_no_param:
                     break;
 
@@ -429,6 +429,7 @@ fspec_rv_t flow_set_params(void *dhandle, const func_param_t *params, int initia
             }
 
             if (!skip_function) {
+//                printf("Setting params for flow %s\n", flow_dh->flow_name);
                 frv = function_set_param(flow_dh->functions_batch[i].h, flow_dh->function_handles_batch[i],
                                          calculated_params, initial_call);
 
