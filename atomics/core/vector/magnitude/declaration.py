@@ -2,9 +2,9 @@ from fspeclib import *
 
 
 Function(
-    name='core.vector.proj',
+    name='core.vector.magnitude',
     title=LocalizedString(
-        en='Vector projection on XY-plane'
+        en='Vector magnitude'
     ),
 
     inputs=[
@@ -17,13 +17,8 @@ Function(
 
     outputs=[
         Output(
-            name='m',
-            title='Vector module',
-            value_type='core.type.f64'
-        ),
-        Output(
-            name='a',
-            title='Vector angle',
+            name='output',
+            title='Magnitude',
             value_type='core.type.f64'
         ),
     ],
