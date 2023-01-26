@@ -336,6 +336,7 @@ static fspec_rv_t swsys_call_set_param(void *dhandle, const func_param_t *params
         fspec_rv_t rv = function_set_param(&swsys->tasks[i].func_handler, swsys->tasks[i].func_call_dhandle,
                                            swsys->tasks[i].params, initial_call);
         if (rv != fspec_rv_ok && rv != fspec_rv_not_supported) {
+            dbg_msg_ec(rv, "function_set_param failed for %s task", swsys->tasks[i].name);
             err_cnt++;
         }
     }
@@ -507,7 +508,7 @@ swsys_rv_t swsys_top_module_start(swsys_t *swsys) {
 
     swsys_func_dhandle_t *dhandle = NULL;
 
-    rv = function_alloc_handle(&fh, &dhandle);
+    rv = function_alloc_handle(&fh, (void**)&dhandle);
     if (rv != fspec_rv_ok) {
         dbg_msg_ec(rv, "function_alloc_handle failed");
         return swsys_e_initerr;

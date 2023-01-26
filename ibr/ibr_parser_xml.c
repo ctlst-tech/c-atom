@@ -393,7 +393,7 @@ ibr_rv_t ibr_cfg_load(const char *path, ibr_cfg_t **ibr_cfg_rv) {
     if (spec_node == NULL) {
         //xml_err("No spec is presented for fsminst \"%s\"", fsminst->name == NULL ? "N/A" : fsminst->name);
         xml_err("No spec is presented for ibr");
-        err_cnt++;
+        return ibr_loaderr;
     }
 
     xrv = func_xml_load_spec(spec_node, &ibr_cfg->spec);

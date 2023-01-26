@@ -405,9 +405,11 @@ fspec_rv_t flow_set_params(void *dhandle, const func_param_t *params, int initia
             func_param_t calculated_params[CALCULATED_PARAMS_NUM];
             frv = check_and_resolve_params_reference(params, (func_param_t *) flow_dh->functions_batch[i].initial_params,
                                                  calculated_params, CALCULATED_PARAMS_NUM, &failed_param);
+            int skip_function = -1;
 
             switch (frv) {
                 case fspec_rv_ok:
+                    skip_function = 0;
                     break;
 
                 case fspec_rv_inval_param:
@@ -418,18 +420,24 @@ fspec_rv_t flow_set_params(void *dhandle, const func_param_t *params, int initia
                 case fspec_rv_no_memory:
                     dbg_msg("Too many paramters for \"%s\"", flow_dh->functions_batch[i].name);
                     errs++;
+                    break;
+                case fspec_rv_no_param:
+                    break;
 
                 default:
                     return frv;
             }
 
-            frv = function_set_param(flow_dh->functions_batch[i].h, flow_dh->function_handles_batch[i],
-                                     calculated_params, initial_call);
+            if (!skip_function) {
+                frv = function_set_param(flow_dh->functions_batch[i].h, flow_dh->function_handles_batch[i],
+                                         calculated_params, initial_call);
 
-            if ((frv != fspec_rv_ok) && (frv != fspec_rv_not_supported)) { // it is ok not to have inputs
-                flow_init_dbg_msg(frv, &flow_dh->functions_batch[i], flow_dh->flow_name);
-                errs++;
+                if ((frv != fspec_rv_ok) && (frv != fspec_rv_not_supported)) { // it is ok not to have inputs
+                    flow_init_dbg_msg(frv, &flow_dh->functions_batch[i], flow_dh->flow_name);
+                    errs++;
+                }
             }
+
             i++;
         }
         flow_dh->got_initial_param_set_call = -1;
