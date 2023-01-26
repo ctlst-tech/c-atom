@@ -40,14 +40,14 @@ topic_data_type_t ibr_eswb_field_type(field_type_t *ft) {
     }
 }
 
-const irb_media_driver_t irb_media_driver_eswb;
-const irb_media_driver_t irb_media_driver_eswb_bridge;
-const irb_media_driver_t irb_media_driver_eswb_vector;
-const irb_media_driver_t irb_media_driver_udp;
+extern const irb_media_driver_t irb_media_driver_eswb;
+extern const irb_media_driver_t irb_media_driver_eswb_bridge;
+extern const irb_media_driver_t irb_media_driver_eswb_vector;
+extern const irb_media_driver_t irb_media_driver_udp;
 
-const irb_media_driver_t irb_media_driver_file;
-const irb_media_driver_t irb_media_driver_sdtl;
-const irb_media_driver_t irb_media_driver_serial;
+extern const irb_media_driver_t irb_media_driver_file;
+extern const irb_media_driver_t irb_media_driver_sdtl;
+extern const irb_media_driver_t irb_media_driver_serial;
 
 
 
