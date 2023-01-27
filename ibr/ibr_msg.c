@@ -320,6 +320,11 @@ ibr_rv_t ibr_msg_to_functional_msg(msg_t *src, msg_t **dst_rv, conv_instr_queue_
 
     *dst_rv = dst;
 
+    /*
+    ibr_print_message(src, 0);
+    ibr_print_message(dst, 0);
+    */
+
     return ibr_ok;
 }
 
@@ -390,7 +395,7 @@ void print_enum(enum_variant_t *e, int nesting) {
     }
 }
 
-void print_data(msg_t *d, int nesting);
+void ibr_print_message(msg_t *d, int nesting);
 
 void print_field(field_t *f, int nesting) {
 
@@ -415,7 +420,7 @@ void print_field(field_t *f, int nesting) {
         case fc_bitfield:
             tb(nesting);
             printf ("Bit field size=%d\n", f->size);
-            print_data(f->nested.bitfield_list, nesting+1);
+            ibr_print_message(f->nested.bitfield_list, nesting + 1);
             break;
 
         case fc_enum:
@@ -442,7 +447,7 @@ void print_field(field_t *f, int nesting) {
     }
 }
 
-void print_data(msg_t *d, int nesting) {
+void ibr_print_message(msg_t *d, int nesting) {
     tb(nesting);
     printf ("Frame data \"%s\", size=%d : %s\n", d->name, d->size, (d->description != NULL) ? d->description : "");
     for (field_t *n = d->fields_list_head; n != NULL; n = n->next) {
@@ -501,7 +506,7 @@ int test_payload_config() {
 
     d.size = offset;
 
-    print_data(&d, 0);
+    ibr_print_message(&d, 0);
 
     return 0;
 }

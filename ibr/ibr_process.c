@@ -210,11 +210,16 @@ static inline ibr_rv_t ibr_process_frame (irb_process_setup_t *setup) {
                 continue;
             }
             if (m->src_msg->size != resolved_len) {
+                /*
                 printf("%s | INVALID LEN | frame id=0x%02X expect len=%d got=%d (br=%d)\n", __func__, resolved_id, m->src_msg->size, resolved_len, br);
+                */
                 continue;
             }
 
+            /*
             printf("%s | resolved id=0x%02X len=%d\n", __func__, resolved_id, resolved_len);
+            */
+
 
             int bw = conv_exec(&m->conv_queue, src_buf_payload, m->src_msg->size,
                                dst_buf, m->src_msg->size);

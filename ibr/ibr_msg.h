@@ -160,4 +160,6 @@ field_scalar_type_t ibr_scalar_typefromstr(const char *ts);
 topic_data_type_t ibr_eswb_field_type(field_type_t *ft);
 int ibr_get_scalar_size(field_scalar_type_t t);
 
+void ibr_print_message(msg_t *d, int nesting);
+
 #endif //HW_IBR_H
