@@ -341,9 +341,11 @@ int xml_attr_int(xml_node_t *n, const char *aname, xml_rv_t *err) {
         return 0;
     }
 
-    int value = strtol(v, NULL, 0);
+    char *endptr;
+
+    int value = strtol(v, &endptr, 0);
     if (errno != 0
-        || (value == 0 && !str_is_zero_num(v))) {
+        || (endptr == v)) {
         *err = xml_e_invattr;
         return 0;
     }
@@ -362,7 +364,10 @@ double xml_attr_double(xml_node_t *n, const char *aname, xml_rv_t *err) {
 
     double value = 0;
 
-    if (sscanf(v,"%lf", &value) < 1) {
+    char* endptr;
+
+    value = strtod(v, &endptr);
+    if (v == endptr) {
         *err = xml_e_invattr;
         return 0;
     }
@@ -406,12 +411,16 @@ int xml_attr_bool(xml_node_t *n, const char *aname, xml_rv_t *err) {
     return rv;
 }
 
-int xml_dom_process_attr_parser_err(const char *attr_name, xml_node_t *node, xml_rv_t err_code) {
+int xml_dom_process_attr_parser_err(const char *attr_name, xml_node_t *node, xml_rv_t err_code, int opt) {
     int rv;
     switch(err_code) {
         case xml_e_noattr:
-            xml_err("No mandatory \"%s\" attr for node \"%s\"", attr_name, node->name);
-            rv = 1;
+            if (!opt) {
+                xml_err("No mandatory \"%s\" attr for node \"%s\"", attr_name, node->name);
+                rv = 1;
+            } else {
+                rv = 0;
+            }
             break;
 
         case xml_e_invattr:

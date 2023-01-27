@@ -82,19 +82,17 @@ const char *xml_strdup(const char *s);
 
 #define xml_err(text, ...) fprintf(stderr, text "\n", ##__VA_ARGS__)
 
-int xml_dom_process_attr_parser_err(const char *attr_name, xml_node_t *node, xml_rv_t err_code);
+int xml_dom_process_attr_parser_err(const char *attr_name, xml_node_t *node, xml_rv_t err_code, int opt);
 
 const char *xml_strerror(xml_rv_t ec);
 
 #define GET_ATTR_INIT()     xml_rv_t ___xml_rv_;                             \
                             int ____cnt = 0;
 
-#define GET_ATTR_AND_PROCESS_ERR_GENERIC(_func, _node, _attr_name, _opt, _err_cnt_ptr) \
-        _func(_node, _attr_name, &___xml_rv_);                                     \
-        if (!(_opt)) {                                                             \
-            ____cnt += xml_dom_process_attr_parser_err(_attr_name, _node, ___xml_rv_);     \
-            if ((_err_cnt_ptr) != NULL) {*(_err_cnt_ptr) = ____cnt;}               \
-        }
+#define GET_ATTR_AND_PROCESS_ERR_GENERIC(_func, _node, _attr_name, _opt, _err_cnt_ptr)   \
+        _func(_node, _attr_name, &___xml_rv_);                                           \
+        ____cnt += xml_dom_process_attr_parser_err(_attr_name, _node, ___xml_rv_, _opt); \
+        if ((_err_cnt_ptr) != NULL) {*(_err_cnt_ptr) = ____cnt;}
 
 
 #define GET_ATTR_AND_PROCESS_ERR(_func, _node, _attr_name, _err_cnt_ptr) GET_ATTR_AND_PROCESS_ERR_GENERIC(_func,_node,_attr_name,0,_err_cnt_ptr)
