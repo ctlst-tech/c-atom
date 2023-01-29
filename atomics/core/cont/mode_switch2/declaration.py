@@ -22,7 +22,7 @@ Function(
         ),
         Output(
             name='mode2',
-            title='Mode 1',
+            title='Mode 2',
             value_type='core.type.bool'
         )
     ]
