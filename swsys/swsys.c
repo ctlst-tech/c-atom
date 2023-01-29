@@ -438,6 +438,7 @@ static fspec_rv_t swsys_call_pre_exec_init (void *dhandle) {
     for (int i = 0; i < swsys->tasks_num; i++) {
         fspec_rv_t rv = function_pre_exec_init(&swsys->tasks[i].func_handler, swsys->tasks[i].func_call_dhandle);
         if ((rv != fspec_rv_ok) && (rv != fspec_rv_not_supported)) {
+            dbg_msg_ec(rv, "function_pre_exec_init failed for %s task", swsys->tasks[i].name);
             err_cnt++;
         }
     }

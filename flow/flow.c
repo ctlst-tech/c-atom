@@ -216,7 +216,7 @@ static fspec_rv_t bridge_the_flow(const func_conn_spec_t *src, const func_conn_s
         } else {
             erv = eswb_bridge_connect(br[i], dst_mtd, dst_path);
             if (erv != eswb_e_ok) {
-                dbg_msg("eswb_bridge_connect_scalar failed: %s", eswb_strerror(erv));
+                dbg_msg("eswb_bridge_connect failed: %s", eswb_strerror(erv));
                 errs++;
             }
         }
@@ -278,6 +278,7 @@ fspec_rv_t flow_init_outputs(void *dhandle, const func_conn_spec_t *conn_spec,
                               &flow_dh->out_bridges, &flow_dh->out_bridges_num);
 
         if (frv != fspec_rv_ok) {
+            dbg_msg_ec(frv, "%s | bridge_the_flow failed", flow_dh->flow_name);
             errs++;
         }
     }
@@ -326,7 +327,7 @@ fspec_rv_t flow_init_inputs(void *dhandle, const func_conn_spec_t *conn_spec, es
                                   flow_dh->mounted_to_dir ? flow_dh->parent_root_td : 0,
                                   inputs_dir_td, &flow_dh->in_bridges, &flow_dh->in_bridges_num);
             if (frv != fspec_rv_ok) {
-                dbg_msg_ec(frv, "bridge_the_flow failed");
+                dbg_msg_ec(frv, "%s | bridge_the_flow failed", flow_dh->flow_name);
                 errs++;
             }
         }
