@@ -118,7 +118,7 @@ fspec_rv_t flow_init(void *iface, const function_spec_t *spec, const char *inv_n
         strcpy(bus_name, FLOW_PREFIX);
         strncat(bus_name, inv_name, ESWB_BUS_NAME_MAX_LEN - strlen(FLOW_PREFIX));
 
-        rv = eswb_create(bus_name, eswb_non_synced, 256);
+        rv = eswb_create(bus_name, eswb_non_synced, 100);
         if (rv != eswb_e_ok) {
             dbg_msg("eswb_create error: %s", eswb_strerror(rv));
             return fspec_rv_initerr;
