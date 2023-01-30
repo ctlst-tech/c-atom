@@ -256,8 +256,8 @@ class GCallableFunction:
         return f'{self.declaration()};'
 
     def declaration(self):
-        stat = 'static' if self.static else ''
-        rv = f'{stat} {self.return_type} {self.name}('
+        stat = 'static ' if self.static else ''
+        rv = f'{stat}{self.return_type} {self.name}('
         arg_eol = ' '
         arg_tab = ''
 
@@ -1208,11 +1208,19 @@ class GeneratedFunction:
         else:
             raise Exception(f'No type conversion from C-ATOM type \'{typename}\' to ESWB type')
 
+    @staticmethod
+    def eswb_topic_typename(value_type):
+        if isinstance(value_type, fspeclib.Structure):
+            typename = 'tt_struct'
+        else:
+            typename = GeneratedFunction.scalar_topic_typename(value_type.name)
+
+        return typename
+
     def decl_interface_src(self, interface_source_filename):
         # Generate interface source file
         f_func = self.spec
         fprint = new_file_write_call(interface_source_filename)
-
 
         def impl_general_init():
             fprint(f'{self.callable_interface_init.declaration()}')
@@ -1276,6 +1284,7 @@ class GeneratedFunction:
             fprint(f'    eswb_rv_t rv;')
             fprint(f'    int errcnt_no_topic = 0;')
             fprint(f'    int errcnt_no_input = 0;')
+            fprint(f'    int errcnt_invalid_type = 0;')
 
             def topic_path(i):
                 return f'topic_path_in_{i.name}'
@@ -1296,6 +1305,15 @@ class GeneratedFunction:
                 fprint(f'            error("failed connect input \\"{inp.name}\\" to topic \\"%s\\": %s", {topic_path(inp)}, eswb_strerror(rv));')
                 fprint(f'            errcnt_no_topic++;')
                 fprint(f'        }}')
+
+                typename = self.eswb_topic_typename(inp.value_type)
+                typesize = f'sizeof({inp.value_type.get_c_type_name()})'
+
+                fprint(f'        rv = eswb_check_topic_type({self.interface_arg.name}->eswb_descriptors.in_{inp.name}, {typename}, {typesize});')
+                fprint(f'        if(rv != eswb_e_ok) {{')
+                fprint(f'            error("Topic for input \\"{inp.name}\\" does not match type \\"{typename}\\" and size=%d", {typesize});')
+                fprint(f'            errcnt_invalid_type++;')
+                fprint(f'        }}')
                 fprint(f'    }}', end='')
                 if inp.mandatory:
                     fprint(f' else {{')
@@ -1306,12 +1324,12 @@ class GeneratedFunction:
                     fprint()
                 fprint()
 
-            fprint(f'    if ((errcnt_no_input > 0) || (errcnt_no_topic > 0)) {{')
-            fprint(f'        if (errcnt_no_input > errcnt_no_topic) {{')
-            fprint(f'            return fspec_rv_no_input;')
-            fprint(f'        }} else {{')
-            fprint(f'            return fspec_rv_no_topic;')
-            fprint(f'        }}')
+            fprint(f'    if (errcnt_no_topic) {{')
+            fprint(f'        return fspec_rv_no_topic;')
+            fprint(f'    }} else if (errcnt_invalid_type){{')
+            fprint(f'        return fspec_rv_inv_topic_type;')
+            fprint(f'    }} else if (errcnt_no_input){{')
+            fprint(f'        return fspec_rv_no_input;')
             fprint(f'    }}')
             fprint(f'    return fspec_rv_ok;')
             fprint(f'}}')

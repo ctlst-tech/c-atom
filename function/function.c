@@ -166,6 +166,7 @@ const char *fspec_errmsg(fspec_rv_t c) {
         case fspec_rv_no_input:         return "No such input";
         case fspec_rv_no_param:         return "No such param";
         case fspec_rv_no_topic:         return "No such topic";
+        case fspec_rv_inv_topic_type:   return "Unexpected topic type";
         case fspec_rv_no_path:          return "Path is not specified";
         case fspec_rv_publish_err:      return "Publishing error";
         case fspec_rv_empty:            return "Flow is empty";
