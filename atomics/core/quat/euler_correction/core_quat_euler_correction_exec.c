@@ -20,6 +20,8 @@ void core_quat_euler_correction_exec(
     core_type_quat_t q_err;
     core_type_quat_t q_out;
 
+    q_out = i->q;
+
     if (fabs(i->yaw_err) > 0.0) {
         q_err.w = cos(-i->yaw_err * 0.5);
         q_err.x = 0;
@@ -27,8 +29,6 @@ void core_quat_euler_correction_exec(
         q_err.z = sin(-i->yaw_err * 0.5);
 
         quat_product(&q_err, &i->q, &q_out);
-    } else {
-        q_out = i->q;
     }
 
     if ((fabs(i->roll_err) > 0.0) || (fabs(i->pitch_err) > 0.0)) {
