@@ -30,7 +30,11 @@ void core_cont_pid_exec(
 
         double const P = p->Kp * error;
         double const I = state->integral;
-        double const D = p->Kd * (error - state->previous_error) / dt;
+        double D = p->Kd * (error - state->previous_error) / dt;
+
+        if (dt == 0.0) {
+            D = 0.0;
+        }
 
         o->output = P + I + D;
 
