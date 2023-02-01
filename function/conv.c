@@ -17,16 +17,15 @@ static int contains_only(const char *s, const char *cs) {
 
 conv_rv_t conv_str_double(const char *s, double *v) {
     double tmp;
-    tmp = strtod(s, NULL);
+    char *endptr;
+    errno = 0;
+    tmp = strtod(s, &endptr);
 
     if (errno != 0) {
         return conv_rv_range;
     }
-
-    if (tmp == 0.0) {
-        if (!contains_only(s, "+-0.")) {
-            return conv_rv_format;
-        }
+    if (s == endptr) {
+        return conv_rv_format;
     }
     *v = tmp;
     return conv_rv_ok;
