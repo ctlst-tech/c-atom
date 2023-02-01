@@ -56,6 +56,12 @@ class Package:
             for field in structure.fields:
                 field.value_type = field.value_type.resolve(None, resolve_lambda)
 
+        for vector in self.vectors:
+            try:
+                vector.elem_type = vector.elem_type.resolve(None, resolve_lambda)
+            except:
+                pass
+
         # Resolve type reference in function
         for function in self.functions:
             for parameter in function.parameters:

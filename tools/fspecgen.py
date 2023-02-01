@@ -177,7 +177,7 @@ class GPackage:
             vector_name = vector.get_escaped_name()
 
             header_filename = vector.get_common_h_filepath()
-            header_file = create_generated_file(full_path=header_filename, tag='structs')
+            header_file = create_generated_file(full_path=header_filename, tag='vectors')
 
             def fprint(*args, **kwargs):
                 print(*args, **kwargs, file=header_file)
@@ -1369,6 +1369,14 @@ class GeneratedFunction:
 
 
         def impl_outputs_init():
+            def has_vector_allocate_func():
+                if self.has_vector_allocate_func:
+                    fprint(f'    fspec_rv_t frv = {self.callable_aux_alloc_vectors.call([self.callable_interface_outputs_init.arguments[0].name])}')
+                    fprint(f'    if (frv != fspec_rv_ok) {{')
+                    fprint(f'        return frv;')
+                    fprint(f'    }}')
+                    fprint()
+
             def declare_struct_elems(root_node_name: str, struct_type_name: str, outputs: List[fspeclib.Output], *, dry_run: bool):
                 tree_elem_num = 0
                 for output in outputs:
@@ -1400,6 +1408,9 @@ class GeneratedFunction:
 
                 fprint(f'{self.callable_interface_outputs_init.declaration()}')
                 fprint(f'{{')
+
+                has_vector_allocate_func()
+
                 fprint(f'    TOPIC_TREE_CONTEXT_LOCAL_DEFINE(cntx, {tree_elems + 1});')
 
                 fprint(f'    {self.type_outputs.get_name()} out;')
@@ -1450,12 +1461,7 @@ class GeneratedFunction:
                 fprint(f'{{')
                 fprint()
 
-                if self.has_vector_allocate_func:
-                    fprint(f'    fspec_rv_t frv = {self.callable_aux_alloc_vectors.call([self.callable_interface_outputs_init.arguments[0].name])}')
-                    fprint(f'    if (frv != fspec_rv_ok) {{')
-                    fprint(f'        return frv;')
-                    fprint(f'    }}')
-                    fprint()
+                has_vector_allocate_func()
 
                 fprint(f'    TOPIC_TREE_CONTEXT_LOCAL_DEFINE(cntx, {tree_elems + 1});')
 
