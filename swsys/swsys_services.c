@@ -135,6 +135,41 @@ static swsys_rv_t sdtl_init_and_start(const swsys_service_t *s) {
     return swsys_e_ok;
 }
 
+static swsys_rv_t eqrb_client_sdtl_init(const swsys_service_t *s) {
+    const char *sdtl_service_name = resourse_value_attr(s->resources, "sdtl_service");
+    const char *sdtl_ch1_name = resourse_value_attr(s->resources, "channel_1_name");
+    const char *sdtl_ch2_name = resourse_value_attr(s->resources, "channel_2_name");
+    //const char *ch_mask_s = fspec_find_param(s->params, "ch_mask");
+    //uint32_t ch_mask;
+    const char *mounting_point = resourse_value_attr(s->resources, "mounting_point");
+    const char *map_size_str = resourse_value_attr(s->resources, "map_size");
+    char *map_size_str_end_ptr;
+
+    unsigned map_size;
+
+    if (map_size_str == NULL) {
+        map_size = 512;
+    } else {
+        map_size = strtoul(map_size_str, &map_size_str_end_ptr, 0);
+        if (map_size_str_end_ptr == map_size_str) {
+            return swsys_e_invargs;
+        }
+    }
+
+    if (sdtl_service_name == NULL || sdtl_ch1_name == NULL || mounting_point == NULL) {
+        return swsys_e_invargs;
+    }
+
+    const char *err_msg;
+    eqrb_rv_t rv = eqrb_sdtl_client_connect(sdtl_service_name, sdtl_ch1_name, sdtl_ch2_name, mounting_point, map_size, 0);
+
+    if (rv != eqrb_rv_ok) {
+        dbg_msg("eqrb_sdtl_server_start for \"%s\" failed: %s", sdtl_service_name, err_msg);
+    }
+
+    return rv == eqrb_rv_ok ? swsys_e_ok : swsys_e_service_fail;
+}
+
 swsys_rv_t swsys_service_start(const swsys_service_t *s) {
 
     if (strcmp(s->type, "sdtl") == 0) {
@@ -165,6 +200,8 @@ swsys_rv_t swsys_service_start(const swsys_service_t *s) {
         }
 
         return rv == eqrb_rv_ok ? swsys_e_ok : swsys_e_service_fail;
+    } else if (strcmp(s->type, "eqrb_client_sdtl") == 0){
+        return eqrb_client_sdtl_init(s);
     } else if (strcmp(s->type, "eqrb_file_write") == 0) {
         const char *bus2replicate =
             resourse_value_attr(s->resources, "event_queue_source");
