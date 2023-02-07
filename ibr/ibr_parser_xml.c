@@ -135,7 +135,7 @@ static xml_rv_t load_payload_messages_lut(frame_t *frame, protocol_t *protocol, 
             if (msg_name != NULL) {
                 msg_t *m = ibr_protocol_find_msg(protocol, msg_name);
                 if (m != NULL) {
-                    if (m->id > 0) {
+                    if (m->id > 0 || frame->resolve_id == NULL) { // if we dont have ID resolve, will use first message
                         frame->msgs[frame->msg_num] = m;
                         frame->msg_num++;
                     } else {

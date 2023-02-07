@@ -194,32 +194,40 @@ static inline ibr_rv_t ibr_process_frame (irb_process_setup_t *setup) {
 
     ibr_set_pthread_name(setup->name);
 
+    int resolve_msg = setup->frame->resolve_id != NULL;
+    int resolve_len_and_check = setup->frame->resolve_len != NULL;
 
     while(1) {
         int br = msg_size;
         rv = dev_src->recv(srcd, src_buf, &br);
         if (rv == ibr_ok) {
 
-            // TODO frame fields are optional
-            uint32_t resolved_id = resolve_scalar_int(setup->frame->resolve_id, src_buf);
-            uint32_t resolved_len = resolve_scalar_int(setup->frame->resolve_len, src_buf);
+            msg_record_t *m;
 
-            msg_record_t *m = resolve_message_record(setup, resolved_id);
-
-            if (m == NULL) {
-                continue;
+            if (resolve_msg) {
+                uint32_t resolved_id = resolve_scalar_int(setup->frame->resolve_id, src_buf);
+                m = resolve_message_record(setup, resolved_id);
+                if (m == NULL) {
+                    continue;
+                }
+            } else {
+                m = &setup->msgs_setup[0];
             }
-            if (m->src_msg->size != resolved_len) {
-                /*
-                printf("%s | INVALID LEN | frame id=0x%02X expect len=%d got=%d (br=%d)\n", __func__, resolved_id, m->src_msg->size, resolved_len, br);
-                */
-                continue;
+
+            if (resolve_len_and_check) {
+                uint32_t resolved_len = resolve_scalar_int(setup->frame->resolve_len, src_buf);
+
+                if (m->src_msg->size != resolved_len) {
+                    /*
+                    printf("%s | INVALID LEN | frame id=0x%02X expect len=%d got=%d (br=%d)\n", __func__, resolved_id, m->src_msg->size, resolved_len, br);
+                    */
+                    continue;
+                }
             }
 
             /*
             printf("%s | resolved id=0x%02X len=%d\n", __func__, resolved_id, resolved_len);
             */
-
 
             int bw = conv_exec(&m->conv_queue, src_buf_payload, m->src_msg->size,
                                dst_buf, m->src_msg->size);
@@ -257,6 +265,7 @@ static inline ibr_rv_t ibr_process_copy(irb_process_setup_t *setup) {
         rv = dev_src->recv(srcd, buf, &br);
         if (rv == ibr_ok) {
 
+//            printf("Copy cycle %d bytes\n", br);
             /*
             printf("Copy cycle %d bytes: ", br);
             for (int i = 0; i < br; i++) printf("%02X ", buf[i]);
