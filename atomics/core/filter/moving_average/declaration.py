@@ -40,7 +40,7 @@ Function(
         ),
         Variable(
             name='index',
-            title='Selction index',
+            title='Selection index',
             value_type='core.type.u32',
         ),
     ],
