@@ -308,7 +308,11 @@ int xml_node_count_attrs(xml_node_t *node) {
 
 int xml_node_child_is_unique(xml_node_t *n, char *name) {
     xml_node_t *ch = xml_node_find_child(n, name);
-    xml_node_t *nch = xml_node_find_following_sibling(ch, name);
+    xml_node_t *nch;
+
+    if (ch != NULL) {
+        nch = xml_node_find_following_sibling(ch, name);
+    }
 
     return ((ch != NULL) && (nch == NULL)) ? -1 : 0;
 }

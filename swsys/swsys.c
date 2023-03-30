@@ -171,6 +171,8 @@ static swsys_rv_t create_dirs(eswb_topic_descr_t bus_td, swsys_bus_directory_t *
     return err_num > 0 ? swsys_e_loaderr : swsys_e_ok;
 }
 
+int swsys_service_start(const swsys_service_t *s);
+
 static swsys_rv_t swsys_init(swsys_t *sys) {
     int i;
     int err_num = 0;
@@ -250,6 +252,14 @@ static swsys_rv_t swsys_init(swsys_t *sys) {
             }
         } else {
             dbg_msg("Task \"%s\" load error (%s)", sys->tasks[i].name, swsys_strerror(rv));
+            err_num++;
+        }
+    }
+
+    for (i = 0; i < sys->services_num; i++) {
+        int rvs = swsys_service_start(&sys->services[i]);
+        if (rvs != 0) {
+            dbg_msg("swsys_service_start \"%s\" failed", sys->services[i].name);
             err_num++;
         }
     }
@@ -427,7 +437,6 @@ int start_task(swsys_task_handle_t *th){
     return rv;
 }
 
-int swsys_service_start(const swsys_service_t *s);
 
 static fspec_rv_t swsys_call_pre_exec_init (void *dhandle) {
     swsys_func_dhandle_t *ssdh = (swsys_func_dhandle_t *)dhandle;
@@ -450,14 +459,6 @@ static void swsys_call_exec (void *dhandle) {
     swsys_func_dhandle_t *ssdh = (swsys_func_dhandle_t *)dhandle;
 
     int i;
-
-    for (i = 0; i < ssdh->swsys->services_num; i++) {
-        int rv = swsys_service_start(&ssdh->swsys->services[i]);
-        if (rv != 0) {
-            dbg_msg("swsys_service_start \"%s\" failed", ssdh->swsys->services[i].name);
-            return;
-        }
-    }
 
     for (i = 0; i < ssdh->swsys->tasks_num; i++) {
         swsys_task_handle_t *th = swsys_alloc(sizeof (*th));

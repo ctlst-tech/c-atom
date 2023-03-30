@@ -2,12 +2,12 @@ from fspeclib import *
 
 
 Function(
-    name='core.filter.moving_average',
-    title="Moving average",
+    name='core.filter.delay',
+    title="Signal delay",
     parameters=[
         Parameter(
-            name='selection_size',
-            title='Selection size',
+            name='cycles_to_delay',
+            title='Cycles to delay number',
             value_type='core.type.u16',
             tunable=False,
             default=10,
@@ -34,13 +34,13 @@ Function(
     ],
     state=[
         Variable(
-            name='selection',
-            title='Selection',
-            value_type=VectorTypeRef(vector_type_name='core.type.vector_f64', size=ParameterRef('selection_size')),
+            name='accumulator',
+            title='Accumulator',
+            value_type=VectorTypeRef(vector_type_name='core.type.vector_f64', size=ParameterRef('cycles_to_delay')),
         ),
         Variable(
-            name='index',
-            title='Selection index',
+            name='head_index',
+            title='Head index',
             value_type='core.type.u32',
         ),
     ],
