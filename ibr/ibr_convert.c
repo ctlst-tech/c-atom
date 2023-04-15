@@ -14,6 +14,7 @@ ibr_rv_t ibr_cast_scalar(void *src, field_scalar_type_t st, void *dst, field_sca
 
 
 // TODO rename CAST to CONV
+// TODO HANDLE UNALIGNED WRITING ACCESS
 
 //#define CAST_UNALIGNED(from__,to__) {*dst = *src;}
 //#define CAST_UNALIGNED_SCALED(from__,to__,scale__) {*dst = *src; (*dst) *= (scale__);}
