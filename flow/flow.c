@@ -118,7 +118,11 @@ fspec_rv_t flow_init(void *iface, const function_spec_t *spec, const char *inv_n
         strcpy(bus_name, FLOW_PREFIX);
         strncat(bus_name, inv_name, ESWB_BUS_NAME_MAX_LEN - strlen(FLOW_PREFIX));
 
-        rv = eswb_create(bus_name, eswb_non_synced, 128);
+        uint32_t max_topics_mum;
+        for (max_topics_mum = 0;  flow_dh->functions_batch[max_topics_mum].h != NULL; max_topics_mum++);
+        max_topics_mum *= 8;
+
+        rv = eswb_create(bus_name, eswb_non_synced, max_topics_mum);
         if (rv != eswb_e_ok) {
             dbg_msg("eswb_create error: %s", eswb_strerror(rv));
             return fspec_rv_initerr;
