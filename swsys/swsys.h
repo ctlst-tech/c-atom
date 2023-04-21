@@ -107,7 +107,5 @@ swsys_rv_t swsys_load(const char *path, const char *swsys_root_dir, swsys_t *sys
 swsys_rv_t swsys_top_module_start(swsys_t *swsys);
 swsys_rv_t swsys_set_params(swsys_t *sys, const char *task_name, const char *cmd);
 const char *swsys_strerror(swsys_rv_t rv);
-int swsys_commander(int argc, char **argv);
-swsys_rv_t swsys_commander_init(swsys_t *swsys);
 
 #endif //C_ATOM_SWSYS_H
