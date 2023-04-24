@@ -31,7 +31,7 @@ static xml_rv_t load_rule(xml_node_t *rule_node, field_t *field) {
 }
 
 
-static xml_rv_t load_field_array(xml_node_t *field_node, int *offset, msg_t *to_msg) {
+static xml_rv_t load_field_array(xml_node_t *field_node, int *offset, ibr_msg_t *to_msg) {
     int err_cnt;
     GET_ATTR_INIT();
 
@@ -66,7 +66,7 @@ static xml_rv_t load_field_array(xml_node_t *field_node, int *offset, msg_t *to_
 }
 
 
-static xml_rv_t load_field_scalar(xml_node_t *field_node, int *offset, msg_t *to_msg) {
+static xml_rv_t load_field_scalar(xml_node_t *field_node, int *offset, ibr_msg_t *to_msg) {
     int err_cnt;
     GET_ATTR_INIT();
 
@@ -105,7 +105,7 @@ static xml_rv_t load_field_scalar(xml_node_t *field_node, int *offset, msg_t *to
 }
 
 
-static xml_rv_t load_field_bitfield(xml_node_t *field_node, int *offset, msg_t *to_msg) {
+static xml_rv_t load_field_bitfield(xml_node_t *field_node, int *offset, ibr_msg_t *to_msg) {
     int err_cnt;
     GET_ATTR_INIT();
 
@@ -133,7 +133,7 @@ static xml_rv_t load_payload_messages_lut(frame_t *frame, protocol_t *protocol, 
         if (xml_node_name_eq(n, "m")) {
             const char *msg_name = GET_ATTR_AND_PROCESS_ERR(xml_attr_str, n, "name", &err_num);
             if (msg_name != NULL) {
-                msg_t *m = ibr_protocol_find_msg(protocol, msg_name);
+                ibr_msg_t *m = ibr_protocol_find_msg(protocol, msg_name);
                 if (m != NULL) {
                     if (m->id > 0 || frame->resolve_id == NULL) { // if we dont have ID resolve, will use first message
                         frame->msgs[frame->msg_num] = m;
@@ -229,12 +229,12 @@ static xml_rv_t load_frame(protocol_t *protocol, xml_node_t *frame_node, frame_t
     return err_num > 0 ? xml_e_dom_process : xml_e_ok;
 }
 
-static xml_rv_t load_msg(xml_node_t *msg_node, msg_t **msg_rv) {
+static xml_rv_t load_msg(xml_node_t *msg_node, ibr_msg_t **msg_rv) {
 
     xml_rv_t xrv;
     int err_num;
 
-    msg_t *msg = ibr_alloc(sizeof(*msg));
+    ibr_msg_t *msg = ibr_alloc(sizeof(*msg));
     if (msg == NULL) {
         return xml_e_nomem;
     }
@@ -303,7 +303,7 @@ static xml_rv_t load_protocol(xml_node_t *protocol_node, protocol_t **protocol_r
         xml_err("Not a single message is presented for \"%s\"", protocol->name == NULL ? "N/A" : protocol->name);
         err_cnt++;
     } else {
-        protocol->msgs = ibr_alloc((msg_cnt + 1) * sizeof(msg_t *));
+        protocol->msgs = ibr_alloc((msg_cnt + 1) * sizeof(ibr_msg_t *));
         if (protocol->msgs == NULL) {
             return xml_e_nomem;
         }

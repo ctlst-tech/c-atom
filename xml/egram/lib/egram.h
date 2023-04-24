@@ -45,7 +45,9 @@ typedef const char * (*rule_handler_t)(void *context, const char* value, unsigne
 
 struct gsybmbol;
 
-typedef struct gsybmbol {
+typedef struct gsybmbol gsymbol_t;
+
+struct gsybmbol {
     const char *name;
     rule_handler_t h;
     symbol_type_t type;
@@ -55,8 +57,8 @@ typedef struct gsybmbol {
     union {
         token_t *t;
         struct gsybmbol **elems;
-    };
-} gsymbol_t;
+    } tg;
+};
 
 
 typedef struct {
@@ -80,7 +82,7 @@ typedef struct {
 
 #define DEFINE_TERMINAL(name__, tok__, many__, optional__, h__) { \
     .name = (name__),                          \
-    .t = (tok__),                              \
+    .tg.t = (tok__),                              \
     .type = GST_TERM,                          \
     .many = (many__),                          \
     .optional = (optional__),                  \
@@ -90,7 +92,7 @@ typedef struct {
 #define DEFINE_NONTERMINAL(name__, elems__, many__, optional__, h__) \
 { \
     .name = (name__),                          \
-    .elems = (elems__),                        \
+    .tg.elems = (elems__),                        \
     .type = GST_NONTERM,                       \
     .many = (many__),                          \
     .optional = (optional__),                  \

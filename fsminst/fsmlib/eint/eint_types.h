@@ -1,6 +1,8 @@
 #ifndef HW_BRIDGE_EINT_TYPES_H
 #define HW_BRIDGE_EINT_TYPES_H
 
+#include <stdint.h>
+
 typedef int boolval_t;
 
 #define TRUE 1

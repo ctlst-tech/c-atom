@@ -18,13 +18,13 @@ typedef enum {
     ibr_not_sup,
 } ibr_rv_t;
 
-typedef struct msg msg_t;
+typedef struct msg ibr_msg_t;
 typedef struct frame frame_t;
 
 typedef struct protocol {
     const char *name;
     frame_t *frame;
-    msg_t **msgs;
+    struct msg **msgs;
 } protocol_t;
 
 typedef struct {

@@ -95,7 +95,7 @@ inline static void clk_process(clk_mux_t *m) {
     m->process(m->process_data_handle);
 }
 
-_Noreturn void clk_cycle (clk_mux_t *m) {
+__attribute__((__noreturn__)) void clk_cycle (clk_mux_t *m) {
 
     while (1) {
         switch (clk_mux_point(m)) {
