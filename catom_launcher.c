@@ -18,8 +18,10 @@ int main(int argc, char* argv[]) {
     char *swsys_cfg_root_dir;
     char *cfg_path = argv[1];
 
-    getcwd(cwd, sizeof(cwd));
-    strcat(cwd, "/");
+    if(cfg_path[0] != '/') {
+        getcwd(cwd, sizeof(cwd));
+        strcat(cwd, "/");
+    }
     strcat(cwd, cfg_path);
 
     swsys_cfg_root_dir = dirname(cwd);
