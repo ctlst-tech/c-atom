@@ -2131,7 +2131,8 @@ class FuncProcessor:
 
             for prm in fs.parameters:
                 if not prm.computable:
-                    fprint(f'{idnt(3)}<param alias="{prm.name}" title="{prm.title}" type="{prm.value_type.name}">')
+                    default_val = f' default="{prm.default}"' if prm.default else ''
+                    fprint(f'{idnt(3)}<param alias="{prm.name}" title="{prm.title}" type="{prm.value_type.name}"{default_val}>')
                     if prm.description:
                         fprint(f'{idnt(4)}{prm.description}')
                     fprint(f'{idnt(3)}</param>')

@@ -68,11 +68,14 @@ ibr_rv_t drv_sdtl_send(int td, void *d, int *bts) {
     return ibr_ok;
 }
 
+//static unsigned pkt_num = 0;
+
 ibr_rv_t drv_sdtl_recv(int td, void *d, int *btr) {
 
-    size_t br;
+    size_t br = 0;
 
     sdtl_rv_t srv = sdtl_channel_recv_data(channel_handlers[td], d, *btr, &br);
+//    printf("%s Got %d bytes from channel, pkt %d\n", __func__, br, pkt_num++);
     if (srv == SDTL_OK) {
         *btr = br;
     } else {
