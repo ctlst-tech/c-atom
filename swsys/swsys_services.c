@@ -78,7 +78,7 @@ static swsys_rv_t sdtl_service_load_channels(const swsys_service_t *s, sdtl_serv
     return swsys_e_ok;
 }
 
-static swsys_rv_t sdtl_init_and_start(const swsys_service_t *s) {
+static swsys_rv_t sdtl_serial_init_and_start(const swsys_service_t *s) {
 
     sdtl_service_t *sdtl_service;
     sdtl_media_serial_params_t ser_params;
@@ -135,6 +135,81 @@ static swsys_rv_t sdtl_init_and_start(const swsys_service_t *s) {
     return swsys_e_ok;
 }
 
+static swsys_rv_t sdtl_udp_init_and_start(const swsys_service_t *s) {
+    sdtl_service_t *sdtl_service;
+    sdtl_media_udp_params_t udp_params;
+    uint32_t mtu;
+
+    const char *client_ip = resourse_value_attr(s->resources, "ip");
+    const char *client_port = resourse_value_attr(s->resources, "port");
+    const char *server_ip = resourse_value_attr(s->resources, "server_ip");
+    const char *server_port = resourse_value_attr(s->resources, "server_port");
+    const char *mtu_str = resourse_value_attr(s->resources, "mtu");
+
+    if (client_ip == NULL) {
+        return swsys_e_invargs;
+    } else {
+        udp_params.ip_out = strdup(client_ip);
+    }
+
+    if (client_port == NULL) {
+        return swsys_e_invargs;
+    } else {
+        udp_params.port_out = strdup(client_port);
+    }
+
+    if (server_ip == NULL) {
+        udp_params.ip_in = strdup("0.0.0.0");
+    } else {
+        udp_params.ip_in = strdup(server_ip);
+    }
+
+    if (server_port == NULL) {
+        udp_params.port_in = strdup("4000");
+    } else {
+        udp_params.port_in = strdup(server_port);
+    }
+
+    if (mtu_str != NULL) {
+        mtu = strtoul(mtu_str, NULL, 0);
+    } else {
+        mtu = 0;
+    }
+
+    size_t ch_num = count_ch_resources(s);
+
+    if (ch_num == 0) {
+        return swsys_e_invargs;
+    }
+
+    if (!sdtl_bus_inited) {
+        // TODO get proper metrics for needed topics num
+        eswb_rv_t erv = eswb_create(SDTL_BUS_NAME, eswb_inter_thread, (10 + 16 * ch_num) * MAX_SDTLS);
+        if (erv != eswb_e_ok) {
+            return swsys_e_service_fail;
+        }
+
+        sdtl_bus_inited = -1;
+    }
+
+    sdtl_rv_t rv = sdtl_service_init(&sdtl_service, s->name, SDTL_BUS_SPECIFIER, mtu, ch_num, &sdtl_media_udp);
+    if (rv != SDTL_OK) {
+        return swsys_e_service_fail;
+    }
+
+    swsys_rv_t srv = sdtl_service_load_channels(s, sdtl_service);
+    if (srv != swsys_e_ok) {
+        return srv;
+    }
+
+    rv = sdtl_service_start(sdtl_service, NULL, &udp_params);
+    if (rv != SDTL_OK) {
+        return swsys_e_service_fail;
+    }
+
+    return swsys_e_ok;
+}
+
 static swsys_rv_t eqrb_client_sdtl_init(const swsys_service_t *s) {
     const char *sdtl_service_name = resourse_value_attr(s->resources, "sdtl_service");
     const char *sdtl_ch1_name = resourse_value_attr(s->resources, "channel_1_name");
@@ -173,7 +248,16 @@ static swsys_rv_t eqrb_client_sdtl_init(const swsys_service_t *s) {
 swsys_rv_t swsys_service_start(const swsys_service_t *s) {
 
     if (strcmp(s->type, "sdtl") == 0) {
-        return sdtl_init_and_start(s);
+        const char *type = resourse_value_attr(s->resources, "type");
+        if (type == NULL) {
+            return swsys_e_invargs;
+        } else if (!strcmp(type, "serial")) {
+            return sdtl_serial_init_and_start(s);
+        } else if (!strcmp(type, "udp")) {
+            return sdtl_udp_init_and_start(s);
+        } else {
+            return swsys_e_invargs;
+        }
     } else if (strcmp(s->type, "eqrb_sdtl") == 0) {
         const char *sdtl_service_name = resourse_value_attr(s->resources, "sdtl_service");
         const char *sdtl_ch1_name = resourse_value_attr(s->resources, "channel_1_name");
