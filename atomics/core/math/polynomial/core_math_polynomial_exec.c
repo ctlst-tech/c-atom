@@ -14,7 +14,7 @@ fspec_rv_t core_math_polynomial_pre_exec_init(
             if (state->coeffs.curr_len + 8 > state->coeffs.max_len) {
                 return fspec_rv_inval_param;
             }
-            state->coeffs.vector[state->coeffs.curr_len/sizeof(double)] = tmp;
+            state->coeffs.vector[state->coeffs.curr_len / sizeof(double)] = tmp;
             state->coeffs.curr_len += sizeof(double);
         } else if (number == EOF) {
             break;
@@ -31,9 +31,10 @@ void core_math_polynomial_exec(const core_math_polynomial_inputs_t *i,
                                core_math_polynomial_state_t *state) {
     double out = state->coeffs.vector[0];
     double input_degree = 1;
-    for (size_t index = 1; index < state->coeffs.curr_len / sizeof(double); index++) {
+    for (size_t index = 1; index < state->coeffs.curr_len / sizeof(double);
+         index++) {
         input_degree *= i->input;
-        out += input_degree * state->coeffs.vector[index]; 
+        out += input_degree * state->coeffs.vector[index];
     }
     o->output = out;
 }
