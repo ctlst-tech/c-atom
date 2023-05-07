@@ -8,13 +8,12 @@
 
 int main(int argc, char* argv[]) {
     swsys_t sys;
-
     if (argc < 2) {
         fprintf(stderr, "Path to swsys config must be specified\n");
         return 1;
     }
 
-    char cwd[PATH_MAX];
+    char cwd[PATH_MAX] = {0};
     char *swsys_cfg_root_dir;
     char *cfg_path = argv[1];
 
