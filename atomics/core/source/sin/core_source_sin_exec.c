@@ -9,5 +9,5 @@ void core_source_sin_exec(
 )
 {
     state->time += injection->dt;
-    o->out = sin(p->phase + p->omega * state->time);
+    o->output = sin(p->phase + p->omega * state->time);
 }

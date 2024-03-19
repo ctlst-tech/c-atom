@@ -33,7 +33,7 @@ field_type_t ibr_field_type_from_eswb(topic_data_type_t d) {
     return rv;
 }
 
-static eswb_rv_t create_bridge(const char *path, msg_t *dst_msg, msg_t *src_msg, eswb_topic_descr_t *td) {
+static eswb_rv_t create_bridge(const char *path, ibr_msg_t *dst_msg, ibr_msg_t *src_msg, eswb_topic_descr_t *td) {
 
 
     if (!bridges_num) {
@@ -112,7 +112,7 @@ static eswb_rv_t create_bridge(const char *path, msg_t *dst_msg, msg_t *src_msg,
 }
 
 
-ibr_rv_t drv_eswb_bridge_proclaim(const char *path, msg_t *src_msg, msg_t *dst_msg, int *td) {
+ibr_rv_t drv_eswb_bridge_proclaim(const char *path, ibr_msg_t *src_msg, ibr_msg_t *dst_msg, int *td) {
     eswb_rv_t rv;
 
     rv = create_bridge(path, dst_msg, src_msg, td);

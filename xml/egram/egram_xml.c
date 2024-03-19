@@ -349,7 +349,7 @@ void egram4xml_parser_init(egram4xml_parser_t *parser,
     parse_state->end_element = end_element;
 
     gsymbol_t *to_recourse = find_symbol(recourse_tag_line, TAG_RECOURSE_LABEL_NAME);
-    to_recourse->elems = tag_pack; // link recurse // let it crash if not found
+    to_recourse->tg.elems = tag_pack; // link recurse // let it crash if not found
 
     egram_reset_parser(&parser->pc);
 }

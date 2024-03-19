@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/types.h>
 #include "instr.h"
 #include "ast.h"
 #include "eint_types.h"

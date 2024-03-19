@@ -125,7 +125,7 @@ static rule_rv_t process_line(egram_parsing_context_t *cntx, gsymbol_t *upper_ru
                 #endif
 
                 tokenize_reset_context(&cntx->token_context);
-                tokenize_rv_t trv = read_token(&cntx->token_context, symb->t, input, len, &parsed_bytes);
+                tokenize_rv_t trv = read_token(&cntx->token_context, symb->tg.t, input, len, &parsed_bytes);
                 rrv = trv == t_match ? r_match : r_miss;
 
                 #ifdef EGRAM_DEBUG
@@ -144,7 +144,7 @@ static rule_rv_t process_line(egram_parsing_context_t *cntx, gsymbol_t *upper_ru
                 for (rn = 0; symb->elems[rn] != NULL; rn++);
                 #endif
 
-                for (int j = 0; symb->elems[j] != NULL; j++) {
+                for (int j = 0; symb->tg.elems[j] != NULL; j++) {
 
                     #ifdef EGRAM_DEBUG
                     print_indent(depth);
@@ -153,7 +153,7 @@ static rule_rv_t process_line(egram_parsing_context_t *cntx, gsymbol_t *upper_ru
                     printf("\n");
                     #endif
 
-                    rrv = process_line(cntx, symb->elems[j], input, len, &parsed_bytes, depth + 1);
+                    rrv = process_line(cntx, symb->tg.elems[j], input, len, &parsed_bytes, depth + 1);
 
                     #ifdef EGRAM_DEBUG
                     print_indent(depth);
