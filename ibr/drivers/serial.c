@@ -1,4 +1,4 @@
-#include <sys/termios.h>
+#include <termios.h>
 
 #include "ibr.h"
 #include "ibr_process.h"

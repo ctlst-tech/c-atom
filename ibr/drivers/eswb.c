@@ -6,7 +6,7 @@
 
 
 
-static eswb_rv_t proclaim_msg(msg_t *m, const char *dst_path, eswb_topic_descr_t *td) {
+static eswb_rv_t proclaim_msg(ibr_msg_t *m, const char *dst_path, eswb_topic_descr_t *td) {
 
     char path[ESWB_TOPIC_MAX_PATH_LEN + 1];
     char struct_topic_name[ESWB_TOPIC_NAME_MAX_LEN + 1];
@@ -65,7 +65,7 @@ static eswb_rv_t proclaim_msg(msg_t *m, const char *dst_path, eswb_topic_descr_t
     return rv;
 }
 
-ibr_rv_t drv_eswb_proclaim(const char *path, msg_t *src_msg, msg_t *dst_msg, int *td) {
+ibr_rv_t drv_eswb_proclaim(const char *path, ibr_msg_t *src_msg, ibr_msg_t *dst_msg, int *td) {
     eswb_rv_t rv;
 
     rv = proclaim_msg(dst_msg, path, td);

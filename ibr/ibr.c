@@ -5,7 +5,7 @@
 
 void *ibr_alloc(size_t s);
 
-msg_t *ibr_protocol_find_msg(const protocol_t *protocol, const char *msg_name) {
+ibr_msg_t *ibr_protocol_find_msg(const protocol_t *protocol, const char *msg_name) {
     for(int i = 0; protocol->msgs[i] != NULL; i++) {
         if (strcmp(protocol->msgs[i]->name, msg_name) == 0) {
             return protocol->msgs[i];
@@ -240,7 +240,7 @@ fspec_rv_t ibr_init_inputs(void *dhandle, const func_conn_spec_t *conn_spec, esw
         }
 
 //        if (ibr_setup->process_setups[i].src.drv->proclaim != NULL) {
-//            msg_t *msg = ibr_alloc(sizeof(msg_t));
+//            ibr_msg_t *msg = ibr_alloc(sizeof(ibr_msg_t));
 //            if (msg == NULL) {
 //                return fspec_rv_no_memory;
 //            }

@@ -24,7 +24,7 @@ typedef connection_spec_t input_spec_t;
 typedef connection_spec_t output_spec_t;
 typedef connection_spec_t param_spec_t;
 
-#define FUNCTION_MAX_STR_PARAM_LEN 64
+#define FUNCTION_MAX_STR_PARAM_LEN 256
 
 typedef enum fspec_rv {
     fspec_rv_ok = 0,

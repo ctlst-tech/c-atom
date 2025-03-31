@@ -192,6 +192,9 @@ static fspec_rv_t bridge_the_flow(const func_conn_spec_t *src, const func_conn_s
     int errs = 0;
     // TODO signle bridge or signal by signal
     int links_num;
+    if(src == NULL) {
+        return fspec_rv_initerr;
+    }
     for (links_num = 0; src[links_num].alias != NULL; links_num++);
 
     eswb_bridge_t **br = flow_alloc(links_num * sizeof(eswb_bridge_t *));

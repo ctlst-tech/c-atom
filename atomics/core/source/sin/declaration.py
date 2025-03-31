@@ -29,7 +29,7 @@ Function(
     ],
     outputs=[
         Output(
-            name='out',
+            name='output',
             title='Sinus value',
             value_type='core.type.f64'
         )

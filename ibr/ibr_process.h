@@ -5,7 +5,7 @@
 #include "ibr_msg.h"
 #include "ibr_convert.h"
 
-typedef ibr_rv_t (*irb_media_proclaim)(const char *path, msg_t *src_msg, msg_t *dst_msg, int *md);
+typedef ibr_rv_t (*irb_media_proclaim)(const char *path, ibr_msg_t *src_msg, ibr_msg_t *dst_msg, int *md);
 typedef ibr_rv_t (*irb_media_connect)(const char *path, int *md);
 typedef ibr_rv_t (*irb_media_disconnect)(int md);
 typedef ibr_rv_t (*irb_media_send)(int md, void *d, int *bts);
@@ -39,9 +39,9 @@ typedef struct {
 
 typedef struct msg_record {
     uint32_t id;
-    msg_t *src_msg;
+    ibr_msg_t *src_msg;
 
-    msg_t *dst_msg;
+    ibr_msg_t *dst_msg;
 
     conv_instr_queue_t conv_queue;
     int descr; // connection descriptor

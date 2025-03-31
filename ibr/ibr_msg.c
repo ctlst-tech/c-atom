@@ -8,8 +8,8 @@ field_t *ibr_alloc_field() {
     return calloc(1, sizeof(field_t));
 }
 
-msg_t *ibr_alloc_msg() {
-    return calloc(1, sizeof(msg_t));
+ibr_msg_t *ibr_alloc_msg() {
+    return calloc(1, sizeof(ibr_msg_t));
 }
 
 enum_variant_t *ibr_alloc_enum_variant() {
@@ -18,7 +18,7 @@ enum_variant_t *ibr_alloc_enum_variant() {
 
 
 
-int ibr_msg_fields_num(msg_t *m) {
+int ibr_msg_fields_num(ibr_msg_t *m) {
     int rv = 0;
 
     for (field_t *n = m->fields_list_head; n != NULL; n = n->next) {
@@ -31,7 +31,7 @@ int ibr_msg_fields_num(msg_t *m) {
 }
 
 
-field_t *ibr_msg_field_find(msg_t *m, const char *name) {
+field_t *ibr_msg_field_find(ibr_msg_t *m, const char *name) {
 
     for (field_t *n = m->fields_list_head; n != NULL; n = n->next) {
         if (strcmp(n->name, name) == 0) {
@@ -44,7 +44,7 @@ field_t *ibr_msg_field_find(msg_t *m, const char *name) {
 
 
 
-ibr_rv_t ibr_add_field(msg_t *d, const char *name, field_class_t cls, field_flags_t flags, int size,
+ibr_rv_t ibr_add_field(ibr_msg_t *d, const char *name, field_class_t cls, field_flags_t flags, int size,
                        int *offset, field_t **r) { //const char *unit, const char *description
     field_t *new, **tail, *n;
 
@@ -128,7 +128,7 @@ field_scalar_type_t ibr_get_equivalent_type_for_bitfield_size(unsigned s) {
     return rv;
 }
 
-ibr_rv_t ibr_add_scalar(msg_t *d, const char *name, field_scalar_type_t type, int *offset, field_t **r) {
+ibr_rv_t ibr_add_scalar(ibr_msg_t *d, const char *name, field_scalar_type_t type, int *offset, field_t **r) {
     int size = ibr_get_scalar_size(type);
     if (size == 0) {
         return ibr_invarg;
@@ -147,21 +147,21 @@ ibr_rv_t ibr_add_scalar(msg_t *d, const char *name, field_scalar_type_t type, in
     return rv;
 }
 
-ibr_rv_t ibr_add_dummy(msg_t *d, const char *name, int size, int *offset, field_t **r) {
+ibr_rv_t ibr_add_dummy(ibr_msg_t *d, const char *name, int size, int *offset, field_t **r) {
     return ibr_add_field(d, name, fc_plain_data, 0, size, offset, r);
 }
 
-ibr_rv_t ibr_add_array(msg_t *d, const char *name, int elem_size, int array_size, int *offset, field_t **r) {
+ibr_rv_t ibr_add_array(ibr_msg_t *d, const char *name, int elem_size, int array_size, int *offset, field_t **r) {
     return ibr_add_field(d, name, fc_array, 0, elem_size * array_size, offset, r);
 }
 
-ibr_rv_t ibr_add_string(msg_t *d, const char *name, int size, int *offset, field_t **r) {
+ibr_rv_t ibr_add_string(ibr_msg_t *d, const char *name, int size, int *offset, field_t **r) {
     return ibr_add_array(d, name, 1, size, offset, r);
 }
 
-ibr_rv_t ibr_add_bitfield(msg_t *d, const char *name, int size_in_bytes, int *offset, field_t **r) {
+ibr_rv_t ibr_add_bitfield(ibr_msg_t *d, const char *name, int size_in_bytes, int *offset, field_t **r) {
 
-    msg_t *new_d = ibr_alloc_msg();
+    ibr_msg_t *new_d = ibr_alloc_msg();
     if (d == NULL) {
         return ibr_nomem;
     }
@@ -233,7 +233,7 @@ ibr_rv_t ibr_field_annotate(field_t *f, const char *unit, const char *descriptio
 }
 
 
-static ibr_rv_t copy_nested_bitfields(msg_t *src, field_t *dst_f) {
+static ibr_rv_t copy_nested_bitfields(ibr_msg_t *src, field_t *dst_f) {
 
     int offset_int_bits = 0;
     field_t *new_f;
@@ -262,9 +262,9 @@ static ibr_rv_t copy_nested_bitfields(msg_t *src, field_t *dst_f) {
     return ibr_ok;
 }
 
-ibr_rv_t ibr_msg_to_functional_msg(msg_t *src, msg_t **dst_rv, conv_instr_queue_t *conv_queue) {
+ibr_rv_t ibr_msg_to_functional_msg(ibr_msg_t *src, ibr_msg_t **dst_rv, conv_instr_queue_t *conv_queue) {
 
-    msg_t *dst = ibr_alloc_msg();
+    ibr_msg_t *dst = ibr_alloc_msg();
     if (dst == NULL) {
         return ibr_nomem;
     }
@@ -395,7 +395,7 @@ void print_enum(enum_variant_t *e, int nesting) {
     }
 }
 
-void ibr_print_message(msg_t *d, int nesting);
+void ibr_print_message(ibr_msg_t *d, int nesting);
 
 void print_field(field_t *f, int nesting) {
 
@@ -447,7 +447,7 @@ void print_field(field_t *f, int nesting) {
     }
 }
 
-void ibr_print_message(msg_t *d, int nesting) {
+void ibr_print_message(ibr_msg_t *d, int nesting) {
     tb(nesting);
     printf ("Frame data \"%s\", size=%d : %s\n", d->name, d->size, (d->description != NULL) ? d->description : "");
     for (field_t *n = d->fields_list_head; n != NULL; n = n->next) {
@@ -458,7 +458,7 @@ void ibr_print_message(msg_t *d, int nesting) {
 
 int test_payload_config() {
 
-    msg_t d={.name = "timeutc", .description = "UTC time solution"};
+    ibr_msg_t d={.name = "timeutc", .description = "UTC time solution"};
     field_t *f, *bf;
     int offset = 0;
     int bits_offset;

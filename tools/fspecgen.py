@@ -1772,6 +1772,7 @@ class GeneratedFunction:
 
         fprint(')')
 
+        fprint(f'target_link_libraries({self.cmakelists_lib_name} PUBLIC bsp-static)')
         # fprint(f'target_link_libraries({self.cmakelists_lib_name} PUBLIC eswb-if)')
 
     def generate_code(self, as_static_lib=False):

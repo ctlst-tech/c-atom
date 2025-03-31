@@ -95,7 +95,7 @@ typedef struct field {
 } field_t;
 
 
-typedef struct msg {
+struct msg {
     const char *name;
     const char *description;
 
@@ -104,15 +104,15 @@ typedef struct msg {
     int size;
     field_t *fields_list_head;
     //field_t *fields_list_tail;
-} msg_t;
+};
 
 
 
-typedef struct frame {
+struct frame {
     const char *name;
     const char *description;
 
-    msg_t *structure;
+    ibr_msg_t *structure;
 
     uint32_t payload_offset;
 
@@ -120,11 +120,11 @@ typedef struct frame {
     field_t *resolve_len;
 
     unsigned msg_num;
-    msg_t **msgs;
-} frame_t;
+    ibr_msg_t **msgs;
+};
 
 typedef struct demrsh_handle {
-    msg_t *format;
+    ibr_msg_t *format;
     field_t *varlng_field;
 
     int head_size;
@@ -136,30 +136,30 @@ typedef struct demrsh_handle {
     void *tail;
 } demrsh_handle_t;
 
-int ibr_msg_fields_num(msg_t *m);
-field_t *ibr_msg_field_find(msg_t *m, const char *name);
+int ibr_msg_fields_num(ibr_msg_t *m);
+field_t *ibr_msg_field_find(ibr_msg_t *m, const char *name);
 
 field_scalar_type_t ibr_get_equivalent_type_for_bitfield_size(unsigned s);
 
-ibr_rv_t ibr_add_scalar(msg_t *d, const char *name, field_scalar_type_t type, int *offset, field_t **r);
-ibr_rv_t ibr_add_bitfield(msg_t *d, const char *name, int size_in_bytes, int *offset, field_t **r);
+ibr_rv_t ibr_add_scalar(ibr_msg_t *d, const char *name, field_scalar_type_t type, int *offset, field_t **r);
+ibr_rv_t ibr_add_bitfield(ibr_msg_t *d, const char *name, int size_in_bytes, int *offset, field_t **r);
 ibr_rv_t ibr_enum_add_variant(field_t *f, const char *name, int val, const char *description);
 ibr_rv_t ibr_bitfield_add_element_flag(field_t *f, const char *name, int *offset_int_bits, field_t **r);
 ibr_rv_t ibr_bitfield_add_element_enum(field_t *f, const char *name, int size_in_bits, int *offset_int_bits, field_t **r);
 
-ibr_rv_t ibr_add_dummy(msg_t *d, const char *name, int size, int *offset, field_t **r);
-ibr_rv_t ibr_add_string(msg_t *d, const char *name, int size, int *offset, field_t **r);
-ibr_rv_t ibr_add_array(msg_t *d, const char *name, int elem_size, int array_size, int *offset, field_t **r);
+ibr_rv_t ibr_add_dummy(ibr_msg_t *d, const char *name, int size, int *offset, field_t **r);
+ibr_rv_t ibr_add_string(ibr_msg_t *d, const char *name, int size, int *offset, field_t **r);
+ibr_rv_t ibr_add_array(ibr_msg_t *d, const char *name, int elem_size, int array_size, int *offset, field_t **r);
 
 ibr_rv_t ibr_field_scalar_add_scaling(field_t *f, double factor);
 
 struct conv_instr_queue;
-ibr_rv_t ibr_msg_to_functional_msg(msg_t *src, msg_t **dst_rv, struct conv_instr_queue *conv_queue);
+ibr_rv_t ibr_msg_to_functional_msg(ibr_msg_t *src, ibr_msg_t **dst_rv, struct conv_instr_queue *conv_queue);
 
 field_scalar_type_t ibr_scalar_typefromstr(const char *ts);
 topic_data_type_t ibr_eswb_field_type(field_type_t *ft);
 int ibr_get_scalar_size(field_scalar_type_t t);
 
-void ibr_print_message(msg_t *d, int nesting);
+void ibr_print_message(ibr_msg_t *d, int nesting);
 
 #endif //HW_IBR_H
