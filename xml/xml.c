@@ -346,7 +346,7 @@ int xml_attr_int(xml_node_t *n, const char *aname, xml_rv_t *err) {
     }
 
     char *endptr;
-
+    errno = 0;
     int value = strtol(v, &endptr, 0);
     if (errno != 0
         || (endptr == v)) {
