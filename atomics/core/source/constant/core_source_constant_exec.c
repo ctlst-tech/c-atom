@@ -6,4 +6,6 @@ void core_source_constant_exec(
 )
 {
     o->output = p->value;
+    o->output_i32 = (int32_t)p->value;
+    o->output_u32 = (uint32_t)p->value;
 }

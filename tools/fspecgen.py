@@ -343,10 +343,11 @@ class GeneratedFunction:
     def func_name_prefix(self):
         return self.spec.get_prefix()
 
-    def __init__(self, func: fspeclib.Function, processor):
+    def __init__(self, func: fspeclib.Function, processor, no_include_bsp):
         self.spec = func
         self.processor = processor
         self.spec.generator = self
+        self.no_include_bsp = no_include_bsp
         self.files = []
         self.cmake_src_list = []
         self.function_name = func.get_escaped_name()
@@ -1772,7 +1773,9 @@ class GeneratedFunction:
 
         fprint(')')
 
-        # fprint(f'target_link_libraries({self.cmakelists_lib_name} PUBLIC bsp-static)')
+        # Added due to quad_sim build does not have any bsp-static
+        if (not self.no_include_bsp):
+            fprint(f'target_link_libraries({self.cmakelists_lib_name} PUBLIC bsp-static)')
         # fprint(f'target_link_libraries({self.cmakelists_lib_name} PUBLIC eswb-if)')
 
     def generate_code(self, as_static_lib=False):
@@ -1992,7 +1995,7 @@ class GeneratedFunction:
 
 
 class FuncProcessor:
-    def __init__(self, package: fspeclib.Package, context: List[fspeclib.Package], process_context=False):
+    def __init__(self, package: fspeclib.Package, context: List[fspeclib.Package], process_context=False, no_include_bsp = False):
         self.generated_funcs_list: List[GeneratedFunction] = []
         self.types_list = []
         self.types_structures_list = []
@@ -2006,7 +2009,7 @@ class FuncProcessor:
         if process_context:
             for pkg in context:
                 for function in pkg.functions:
-                    f = GeneratedFunction(function, self)
+                    f = GeneratedFunction(function, self, no_include_bsp)
                     self.generated_funcs_list.append(f)
                 for t in pkg.types:
                     self.types_list.append(t)
@@ -2016,7 +2019,7 @@ class FuncProcessor:
                     self.types_vectors_list.append(t)
         else:
             for function in package.functions:
-                f = GeneratedFunction(function, self)
+                f = GeneratedFunction(function, self, no_include_bsp)
                 self.generated_funcs_list.append(f)
 
         self.atomics_registry_c_filename = f'{self.package.name}_registry.c'
@@ -2312,6 +2315,12 @@ def init_parser():
         action='store_true'
     )
 
+    parser.add_argument(
+        '--no_include_bsp',
+        help='Do not include BSP in CMake',
+        action='store_true'
+    )
+
     parser.add_argument('--atomics_dirs',
                         help='specifies list of dirs of atomics functions in a format pkg_name:pkg_root_path',
                         nargs='+')
@@ -2369,12 +2378,12 @@ if __name__ == "__main__":
         gp.process_structures()
         gp.process_vectors()
 
-        fp = FuncProcessor(p, pkgs)
+        fp = FuncProcessor(p, pkgs, False, args.no_include_bsp)
 
         if args.code:
             fp.generate_code(not central_registry)
 
-    fp = FuncProcessor(pkgs[0], pkgs, True)
+    fp = FuncProcessor(pkgs[0], pkgs, True,  args.no_include_bsp)
 
     if central_registry:
         (path, fp.atomics_registry_c_filename) = os.path.split(args.registry_c)

@@ -19,6 +19,16 @@ Function(
             name='output',
             title='Output',
             value_type='core.type.f64'
+        ),
+        Output(
+            name='output_i32',
+            title='Output Int32',
+            value_type='core.type.i32'
+        ),
+        Output(
+            name='output_u32',
+            title='Output Uint32',
+            value_type='core.type.u32'
         )
     ]
 )
