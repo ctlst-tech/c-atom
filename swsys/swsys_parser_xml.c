@@ -254,7 +254,25 @@ static xml_rv_t load_service(xml_node_t *service_node, swsys_service_t *service)
 }
 
 
-swsys_rv_t swsys_load(const char *path, const char *swsys_root_dir, swsys_t *sys) {
+static int proceed_declaration_parsing(xml_node_t *node, const char *config_flag) {
+    // no config flag, meaning no config restriction applied
+    if (config_flag == NULL) {
+        return -1;
+    }
+
+    const char *flag_value = xml_attr_value(node, "config_flag");
+
+    // no config flag in xml, default behaviour to parse
+    if (flag_value == NULL) {
+        return -1;
+    } else {
+        // has flag, need to match to proceed
+        return strcmp(flag_value, config_flag) == 0 ? -1 : 0;
+    }
+}
+
+swsys_rv_t swsys_load(const char *path, const char *swsys_root_dir,
+                      swsys_t *sys, const char *config_flag) {
 
     xml_node_t *xml_root;
     xml_rv_t xrv = xml_parse_from_file(path, &xml_root);
@@ -273,28 +291,30 @@ swsys_rv_t swsys_load(const char *path, const char *swsys_root_dir, swsys_t *sys
     }
 
     for (xml_node_t *n = xml_root->first_child; n != NULL; n = n->next_sibling) {
-        if (xml_node_name_eq(n, "bus")) {
-            xrv = load_bus(n, &sys->busses[sys->busses_num]);
-            if (xrv == xml_e_ok) {
-                sys->busses_num++;
-            }
-        } else if (xml_node_name_eq(n, "task")) {
-            xrv = load_task(n, swsys_root_dir, &sys->tasks[sys->tasks_num]);
-            if (xrv == xml_e_ok) {
-                sys->tasks_num++;
-            }
-        } else if (xml_node_name_eq(n, "bridge")) {
-            // ESWB bridge service is wrapped inside usual task for simplicity
-            xrv = ebr_load_task(n, &sys->tasks[sys->tasks_num]);
-            if (xrv == xml_e_ok) {
-                sys->tasks_num++;
-            }
-        } else if (xml_node_name_eq(n, "service")) {
-            xrv = load_service(n, &sys->services[sys->services_num]);
-            if (xrv == xml_e_ok) {
-                sys->services_num++;
-            } else {
-                xml_err("swsys service load error: %s", xml_strerror(xrv));
+        if (proceed_declaration_parsing(n, config_flag)) {
+            if (xml_node_name_eq(n, "bus")) {
+                xrv = load_bus(n, &sys->busses[sys->busses_num]);
+                if (xrv == xml_e_ok) {
+                    sys->busses_num++;
+                }
+            } else if (xml_node_name_eq(n, "task")) {
+                xrv = load_task(n, swsys_root_dir, &sys->tasks[sys->tasks_num]);
+                if (xrv == xml_e_ok) {
+                    sys->tasks_num++;
+                }
+            } else if (xml_node_name_eq(n, "bridge")) {
+                // ESWB bridge service is wrapped inside usual task for simplicity
+                xrv = ebr_load_task(n, &sys->tasks[sys->tasks_num]);
+                if (xrv == xml_e_ok) {
+                    sys->tasks_num++;
+                }
+            } else if (xml_node_name_eq(n, "service")) {
+                xrv = load_service(n, &sys->services[sys->services_num]);
+                if (xrv == xml_e_ok) {
+                    sys->services_num++;
+                } else {
+                    xml_err("swsys service load error: %s", xml_strerror(xrv));
+                }
             }
         }
     }
