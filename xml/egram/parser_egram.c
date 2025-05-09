@@ -134,7 +134,7 @@ xml_rv_t xml_egram_parse_from_str(const char *str, xml_node_t **parse_result_roo
     return rrv == r_match ? xml_e_ok : xml_e_dom_parsing;
 }
 
-#define MAX_XML_FILE_SIZE (1024*16)
+#define MAX_XML_FILE_SIZE (1024*18)
 static uint8_t file_content[MAX_XML_FILE_SIZE];
 
 static int load_file(const char *path) {
