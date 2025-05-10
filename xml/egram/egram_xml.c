@@ -335,6 +335,14 @@ egram4xml_parser_t *egram4xml_parser_allocate() {
 }
 
 
+void egram4xml_parser_free(egram4xml_parser_t *parser) {
+    if (parser != NULL) {
+        free(parser->pc.user_data);
+//        free(parser);
+    }
+}
+
+
 void egram4xml_parser_init(egram4xml_parser_t *parser,
                            void (*start_element)(xml_dom_walker_state_t *, const char *, const attr_t *),
                            void (*char_datahandler)(xml_dom_walker_state_t *, const char *, int),

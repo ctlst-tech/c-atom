@@ -116,6 +116,15 @@ xml_rv_t xml_egram_parser_init(void *dhandle, egram4xml_parser_t **parser_rv) {
     return xml_e_ok;
 }
 
+xml_rv_t xml_egram_parser_destroy(egram4xml_parser_t *parser) {
+    if (parser == NULL)
+        return xml_e_invarg;
+
+//    egram4xml_parser_free(parser); FIXME Causes issues
+
+    return xml_e_ok;
+}
+
 xml_rv_t xml_egram_parse_from_str(const char *str, xml_node_t **parse_result_root) {
 
     egram4xml_parser_t *parser;
@@ -131,14 +140,14 @@ xml_rv_t xml_egram_parse_from_str(const char *str, xml_node_t **parse_result_roo
     rule_rv_t rrv = egram4xml_parse_from_str(parser, str, strlen(str));
     *parse_result_root = dom_walker.root;
 
+    xml_egram_parser_destroy(parser);
+
     return rrv == r_match ? xml_e_ok : xml_e_dom_parsing;
 }
 
-#define MAX_XML_FILE_SIZE (1024*16)
-static uint8_t file_content[MAX_XML_FILE_SIZE];
+#define MAX_XML_FILE_SIZE (1024 * 24)
 
-static int load_file(const char *path) {
-
+static char *load_file(const char *path) {
     int rv = -1;
     unsigned offset = 0;
 
@@ -146,39 +155,63 @@ static int load_file(const char *path) {
     if (fd < 0) {
         if (errno == 0) {
             // happens in FreeRTOS
-            return ENOENT;
+            return NULL;
         }
-        return errno;
+        errno = errno;
+        return NULL;
     }
 
-    while((rv = read(fd, &file_content[offset], 1024)) > 0) {
+    char *file_content = malloc(MAX_XML_FILE_SIZE);
+//    static char file_content[MAX_XML_FILE_SIZE];
+
+    if (!file_content) {
+        close(fd);
+        errno = ENOMEM;
+        return NULL;
+    }
+
+    while ((rv = read(fd, &file_content[offset], 1024)) > 0) {
         offset += rv;
         if (offset > MAX_XML_FILE_SIZE) {
             close(fd);
-            return ENOMEM;
+            free(file_content);
+            errno = ENOMEM;
+            return NULL;
         }
     }
 
-    return rv < 0 ? errno : 0;
-}
+    close(fd);
 
-xml_rv_t egram_parse_from_file(const char *path, xml_node_t **parse_result_root) {
-    int rv = load_file(path);
-    switch (rv) {
-        case 0:
-            break;
-
-        case ENOMEM:
-            return xml_e_nomem;
-
-        case ENOENT:
-            return xml_e_no_file;
-
-        default:
-            return xml_e_file_read;
+    if (rv < 0) {
+        free(file_content);
+        return NULL;
     }
 
-    return xml_egram_parse_from_str((char *)file_content, parse_result_root);
+    file_content[offset] = '\0';
+    return file_content;
+}
+
+xml_rv_t egram_parse_from_file(const char *path,
+                               xml_node_t **parse_result_root) {
+    errno = 0;
+    char *content = load_file(path);
+
+    if (!content) {
+        switch (errno) {
+            case ENOMEM:
+                return xml_e_nomem;
+            case ENOENT:
+                return xml_e_no_file;
+            default:
+                return xml_e_file_read;
+        }
+    }
+
+    xml_rv_t rv = xml_egram_parse_from_str(content, parse_result_root);
+
+    free(content);
+
+    return rv;
 }
 
 xml_rv_t xml_parse_from_file(const char *path, xml_node_t **parse_result_root) {
