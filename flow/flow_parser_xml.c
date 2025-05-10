@@ -169,6 +169,7 @@ fspec_rv_t flow_load(const char *path, function_flow_t **flow_rv) {
     }
 
     fspec_rv_t rv;
+    xml_node_t *flow_xml_root = NULL;
 
     do {
         flow = flow_alloc(sizeof(*flow));
@@ -178,7 +179,6 @@ fspec_rv_t flow_load(const char *path, function_flow_t **flow_rv) {
             break;
         }
 
-        xml_node_t *flow_xml_root;
         xml_rv_t xml_rv = xml_parse_from_file(path, &flow_xml_root);
 
         if (xml_rv != xml_e_ok) {
@@ -267,6 +267,10 @@ fspec_rv_t flow_load(const char *path, function_flow_t **flow_rv) {
 
         rv = err_num > 0 ? fspec_rv_loaderr : fspec_rv_ok;
     } while(0);
+
+    if (flow_reg_root != NULL) {
+        xml_nodes_tree_free(flow_xml_root);
+    }
 
     if (rv == fspec_rv_ok) {
         if (flow_rv != NULL) {
