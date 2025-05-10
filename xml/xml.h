@@ -48,6 +48,8 @@ typedef struct xml_node {
 
 xml_rv_t xml_parse_from_file(const char *path, xml_node_t **parse_result_root);
 
+void xml_nodes_tree_free(xml_node_t *n);
+
 int xml_node_name_eq(xml_node_t *n, const char *name);
 
 xml_node_t *xml_node_find_child(xml_node_t *parent, char *name);
@@ -79,6 +81,8 @@ int xml_list_from_attr_size(const char *s);
 const char **xml_list_from_attr_alloc(int el_num);
 
 const char *xml_strdup(const char *s);
+
+void xml_free_str_lookup_table(int full_cleanup);
 
 #define xml_err(text, ...) fprintf(stderr, text "\n", ##__VA_ARGS__)
 

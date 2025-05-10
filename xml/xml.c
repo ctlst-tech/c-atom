@@ -35,23 +35,24 @@ void* xml_realloc(void *ptr, size_t s) {
 }
 
 
-
-#define STR_LOOKUP_BATCH_SIZE 512
+#define STR_LOOKUP_BATCH_SIZE 1024
 /*
  * FIXME not thread safe
  * FIXME make it O(log N)
  */
 
 //typedef struct str_lookup_batch {
-const char *strs_lookup_batch[STR_LOOKUP_BATCH_SIZE];
+const char **strs_lookup_batch = NULL;
 unsigned strs_lookup_batch_size = 0;
 unsigned dyn_mem_saved = 0;
 
 const char *lookup_str(const char *s) {
 
-    for (unsigned i = 0; i < strs_lookup_batch_size; i++) {
-        if (strcmp(strs_lookup_batch[i], s) == 0) {
-            return strs_lookup_batch[i];
+    if (strs_lookup_batch != NULL) {
+        for (unsigned i = 0; i < strs_lookup_batch_size; i++) {
+            if (strcmp(strs_lookup_batch[i], s) == 0) {
+                return strs_lookup_batch[i];
+            }
         }
     }
 
@@ -59,6 +60,10 @@ const char *lookup_str(const char *s) {
 }
 
 int add_to_lookup_table(const char *s) {
+    if (strs_lookup_batch == NULL) {
+        strs_lookup_batch = xml_alloc(STR_LOOKUP_BATCH_SIZE * sizeof(const char *));
+    }
+
     if (strs_lookup_batch_size >= STR_LOOKUP_BATCH_SIZE) {
         return -1;
     }
@@ -66,6 +71,18 @@ int add_to_lookup_table(const char *s) {
     strs_lookup_batch[strs_lookup_batch_size] = s;
     strs_lookup_batch_size++;
     return 0;
+}
+
+void xml_free_str_lookup_table(int full_cleanup) {
+    if (full_cleanup) {
+        for (unsigned i = 0; i < strs_lookup_batch_size; i++) {
+            xml_free(strs_lookup_batch[i]);
+        }
+    }
+    xml_free(strs_lookup_batch);
+    strs_lookup_batch = NULL;
+    strs_lookup_batch_size = 0;
+    dyn_mem_saved = 0;
 }
 
 const char *my_strdup(const char *s) {
@@ -80,7 +97,7 @@ const char* xml_strdup(const char *s) {
     if (rv == NULL) {
 //        rv = my_strdup(s);
         rv = strdup(s);
-        if (add_to_lookup_table(rv)) {
+        if (add_to_lookup_table(rv) == 0) {
             dyn_mem_saved += strlen(s);
         }
     }
@@ -209,6 +226,41 @@ xml_attr_t *new_attr(const char *name, const char *value) {
     rv->value = xml_strdup(value);
 
     return rv;
+}
+
+
+void node_free_attrs(xml_node_t *n) {
+    xml_attr_t *an = n->attrs_list;
+    while (an != NULL) {
+        xml_attr_t *next = an->next_attr;
+//        xml_free(an->name);
+//        xml_free(an->value);
+        xml_free(an);
+        an = next;
+    }
+    n->attrs_list = NULL;
+}
+
+
+void _xml_nodes_tree_free(xml_node_t *n) {
+    if (n == NULL) {
+        return;
+    }
+    _xml_nodes_tree_free(n->first_child);
+    _xml_nodes_tree_free(n->next_sibling);
+    node_free_attrs(n);
+//    xml_free(n->name);
+//    if (n->data != NULL) {
+//        xml_free(n->data);
+//    }
+    xml_free(n->attrs_list);
+    xml_free(n);
+}
+
+
+void xml_nodes_tree_free(xml_node_t *n) {
+    _xml_nodes_tree_free(n);
+//    printf("xml_strdup: dyn_mem_saved %d\n", dyn_mem_saved);
 }
 
 void node_add_child(xml_node_t *parent, xml_node_t *child) {
