@@ -438,6 +438,10 @@ ibr_rv_t ibr_cfg_load(const char *path, ibr_cfg_t **ibr_cfg_rv) {
         }
     }
 
+    if (ibr_cfg_root != NULL) {
+        xml_nodes_tree_free(ibr_cfg_root);
+    }
+
     if (err_cnt == 0) {
         *ibr_cfg_rv = ibr_cfg;
     }
