@@ -319,5 +319,9 @@ swsys_rv_t swsys_load(const char *path, const char *swsys_root_dir,
         }
     }
 
+    if (xml_root != NULL) {
+        xml_nodes_tree_free(xml_root);
+    }
+
     return swsys_e_ok;
 }
