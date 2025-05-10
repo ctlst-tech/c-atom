@@ -1,16 +1,16 @@
-#include <stdlib.h>
-#include <unistd.h>
-
-#include <pthread.h> // FIXME
+#include "swsys.h"
 
 #include <eswb/api.h>
 #include <eswb/event_queue.h>
+#include <pthread.h>  // FIXME
+#include <stdlib.h>
+#include <unistd.h>
 
-#include "swsys.h"
-#include "function.h"
-#include "fsminst.h"
 #include "flow.h"
+#include "fsminst.h"
+#include "function.h"
 #include "ibr.h"
+#include "xml.h"
 
 typedef struct {
     const swsys_task_t *task;
@@ -477,6 +477,12 @@ static void swsys_call_exec (void *dhandle) {
                     return;
                 }
             } else {
+                // FIXME This is tricky, it frees all string constants used at init,
+                //  wrong place, should be optional for embedded targets only
+                //  also, if full_cleanup might disrupt any maintenance string operations in the task
+                //
+                xml_free_str_lookup_table(0);
+
                 // calling thread runs tha last task
                 task(th);
             }
