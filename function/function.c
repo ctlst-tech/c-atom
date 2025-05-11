@@ -189,6 +189,7 @@ const char *fspec_errmsg(fspec_rv_t c) {
         case fspec_rv_inv_topic_type:   return "Unexpected topic type";
         case fspec_rv_no_path:          return "Path is not specified";
         case fspec_rv_publish_err:      return "Publishing error";
+        case fspec_rv_topics_max:       return "Topics limit reached";
         case fspec_rv_empty:            return "Flow is empty";
         case fspec_rv_invarg:           return "Invalid argument";
         case fspec_rv_loaderr:          return "Load error";

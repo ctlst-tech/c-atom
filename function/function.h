@@ -44,6 +44,7 @@ typedef enum fspec_rv {
     fspec_rv_inv_topic_type,
     fspec_rv_no_path,
     fspec_rv_publish_err,
+    fspec_rv_topics_max,
     fspec_rv_update_err,
     // fspec_rv_subscr_err,
     fspec_rv_empty,
