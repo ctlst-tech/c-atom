@@ -1430,7 +1430,7 @@ class GeneratedFunction:
 
                 fprint(f'    rv = eswb_proclaim_tree(mounting_td, {root_node_varname}, cntx->t_num, &{self.interface_arg.name}->eswb_descriptors.out_all);')
                 fprint(f'    if (rv != eswb_e_ok) {{')
-                fprint(f'        return fspec_rv_publish_err;')
+                fprint(f'        return rv == eswb_e_mem_topic_max ? fspec_rv_topics_max : fspec_rv_publish_err;')
                 fprint(f'    }}')
                 fprint()
 
