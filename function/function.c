@@ -98,6 +98,26 @@ fspec_rv_t function_init_outputs(const function_handler_t *fh, void *interface, 
     }
 }
 
+fspec_rv_t function_outputs_count(const function_handler_t *fh) {
+    int rv = 0;
+
+    if (fh->spec->outputs != NULL) {
+        for (rv = 0; fh->spec->outputs[rv] != NULL; rv++);
+    }
+
+    return rv;
+}
+
+fspec_rv_t function_inputs_count(const function_handler_t *fh) {
+    int rv = 0;
+
+    if (fh->spec->inputs != NULL) {
+        for (rv = 0; fh->spec->inputs[rv] != NULL; rv++);
+    }
+
+    return rv;
+}
+
 fspec_rv_t
 function_set_param(const function_handler_t *fh, void *interface, const func_param_t *params, int initial_call) {
     if (fh->calls->set_params != NULL) {
