@@ -69,21 +69,23 @@ static int check_connectivity(const char *flow_name, const char *inv_name, const
                                 (__func_invk)->h->spec->name,                                                                           \
                                 __flow_name)
 
-static volatile uint32_t bus_multiplier = 8;
 
 fspec_rv_t flow_init(void *iface, const function_spec_t *spec, const char *inv_name, eswb_topic_descr_t mounting_td, const void *extension_handler) {
     flow_interface_t *flow_dh = (flow_interface_t *)iface;
     int err_cnt = 0;
     // Default max topics multiplier
-    uint32_t max_topics_mum = 8;
+    uint32_t max_topics_mum = 0;
     fspec_rv_t frv;
 
-    // Check for pattern "busnNN" anywhere in inv_name
+    // FIXME  this is nasty hack
+    //  Check for pattern "busnNN" anywhere in inv_name
     char *busn_pos = strstr(inv_name, "busn");
+    int max_topics_multiplier = 0;
+
     if (busn_pos != NULL) {
         int val = atoi(busn_pos + 4); // 4 = strlen("busn")
         if (val > 0) {
-            bus_multiplier = val;
+            max_topics_multiplier = val;
         }
     }
 
@@ -131,9 +133,11 @@ fspec_rv_t flow_init(void *iface, const function_spec_t *spec, const char *inv_n
         strcpy(bus_name, FLOW_PREFIX);
         strncat(bus_name, inv_name, ESWB_BUS_NAME_MAX_LEN - strlen(FLOW_PREFIX));
 
-        uint32_t max_topics_mum;
         for (max_topics_mum = 0;  flow_dh->functions_batch[max_topics_mum].h != NULL; max_topics_mum++);
-        max_topics_mum *= bus_multiplier;
+        max_topics_mum *= 8;
+        if (max_topics_multiplier > 0) {
+            max_topics_mum *= max_topics_multiplier;
+        }
 
         rv = eswb_create(bus_name, eswb_non_synced, max_topics_mum);
         if (rv != eswb_e_ok) {
