@@ -81,6 +81,7 @@ typedef struct function_spec {
     const output_spec_t **outputs;
     const param_spec_t **params;
     const param_spec_t **state_vars;
+    const int output_topics_num;
 } function_spec_t;
 
 typedef struct function_calls {
