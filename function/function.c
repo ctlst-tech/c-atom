@@ -29,6 +29,7 @@ const connection_spec_t *fspec_conn_find(const connection_spec_t **conn_spec, co
     return NULL;
 }
 
+
 int fspec_conn_arr_size(const connection_spec_t **conn_spec) {
     int rv = 0;
     if (conn_spec != NULL) {

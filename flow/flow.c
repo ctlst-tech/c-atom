@@ -69,12 +69,13 @@ static int check_connectivity(const char *flow_name, const char *inv_name, const
                                 (__func_invk)->h->spec->name,                                                                           \
                                 __flow_name)
 
+// volatile static uint32_t prev_max_atomics_total = 0;
+// volatile static uint32_t curr_max_atomics_total = 0;
 
 fspec_rv_t flow_init(void *iface, const function_spec_t *spec, const char *inv_name, eswb_topic_descr_t mounting_td, const void *extension_handler) {
     flow_interface_t *flow_dh = (flow_interface_t *)iface;
     int err_cnt = 0;
     // Default max topics multiplier
-    uint32_t max_topics_mum = 0;
     fspec_rv_t frv;
 
     // FIXME  this is nasty hack
@@ -129,15 +130,45 @@ fspec_rv_t flow_init(void *iface, const function_spec_t *spec, const char *inv_n
     if (mounting_td == 0) {
         // TODO count topics num
         char bus_name[ESWB_BUS_NAME_MAX_LEN + 1];
-        #define FLOW_PREFIX "_flow_"
+#define FLOW_PREFIX "_flow_"
         strcpy(bus_name, FLOW_PREFIX);
-        strncat(bus_name, inv_name, ESWB_BUS_NAME_MAX_LEN - strlen(FLOW_PREFIX));
+        strncat(bus_name, inv_name,
+                ESWB_BUS_NAME_MAX_LEN - strlen(FLOW_PREFIX));
 
-        for (max_topics_mum = 0;  flow_dh->functions_batch[max_topics_mum].h != NULL; max_topics_mum++);
-        max_topics_mum *= 8;
-        if (max_topics_multiplier > 0) {
-            max_topics_mum *= max_topics_multiplier;
+        uint32_t max_topics_mum = 0;
+
+        int i;
+        for (i = 0; flow_dh->functions_batch[i].h != NULL; i++) {
+            max_topics_mum += 1 + // function invocation itself
+                flow_dh->functions_batch[i].h->spec->topics_num_required;
         }
+
+        max_topics_mum += 1; // inputs dir
+        uint32_t input_topics_num  = 0;
+
+        if (flow_dh->inputs_spec != NULL) {
+            for (int i = 0; flow_dh->inputs_spec[i] != NULL; i++) {
+                const connection_spec_t *cs = flow_dh->inputs_spec[i];
+                input_topics_num += 1;
+                // if (cs->type == tt_struct) { // fixme, type is not retrieved, need to create declared types -> eswb - types
+                max_topics_mum += 4; // quat as max structure
+                    // FIXME, magic constant putting margin on inputs as structs
+                // }
+                // TODO:
+                //  - create function for getting types from declaration, it should be generated in fspecgen
+                //  - put number of topics related to type
+                //  - generate it in atomics_*... fspec_find_type
+            }
+        }
+        max_topics_mum += input_topics_num;
+
+        // int mat_delta = i * 8;
+        // if (max_topics_multiplier > 0) {
+        //     mat_delta *= max_topics_multiplier;
+        // }
+        //
+        // prev_max_atomics_total += mat_delta;
+        // curr_max_atomics_total += max_topics_mum;
 
         rv = eswb_create(bus_name, eswb_non_synced, max_topics_mum);
         if (rv != eswb_e_ok) {
@@ -161,13 +192,14 @@ fspec_rv_t flow_init(void *iface, const function_spec_t *spec, const char *inv_n
 
         eswb_mkdir(flow_root_path, inv_name);
         // reusing same variable:
-        strncat(flow_root_path, "/", ESWB_TOPIC_MAX_PATH_LEN - strlen(flow_root_path));
-        strncat(flow_root_path, inv_name, ESWB_TOPIC_MAX_PATH_LEN - strlen(flow_root_path));
+        strncat(flow_root_path, "/",
+                ESWB_TOPIC_MAX_PATH_LEN - strlen(flow_root_path));
+        strncat(flow_root_path, inv_name,
+                ESWB_TOPIC_MAX_PATH_LEN - strlen(flow_root_path));
 
         flow_dh->mounted_to_dir = -1;
         flow_dh->parent_root_td = mounting_td;
     }
-
     rv = eswb_connect(flow_root_path, &mounting_td);
     if (rv != eswb_e_ok) {
         dbg_msg("eswb_connect error: %s", eswb_strerror(rv));

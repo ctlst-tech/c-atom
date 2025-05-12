@@ -1116,7 +1116,16 @@ class GeneratedFunction:
         fprint(f'}};')
         fprint()
 
+        topics_num_required = 0
+
         for output in f_spec.outputs:
+            if isinstance(output.value_type, fspeclib.Structure):
+                topics_num_required += 1 + len(output.value_type.fields) # structure itself + fields
+            elif isinstance(output.value_type, fspeclib.VectorTypeRef):
+                topics_num_required += 1 + 1
+            else:
+                topics_num_required += 1
+
             fprint(f'static const output_spec_t o_{output.name} = {{')
             fprint(f'    .name = "{output.name}",')
             fprint(f'    .annotation = "{output.title.en}",')
@@ -1159,7 +1168,8 @@ class GeneratedFunction:
         fprint(f'    .annotation = "{f_spec.title.en}",')
         fprint(f'    .inputs = inputs,')
         fprint(f'    .outputs = outputs,')
-        fprint(f'    .params = params')
+        fprint(f'    .params = params,')
+        fprint(f'    .topics_num_required = {topics_num_required}')
         fprint(f'}};')
         fprint()
 
