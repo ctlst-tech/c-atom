@@ -151,8 +151,6 @@ static ibr_rv_t ibr_process_frame_setup(ibr_cfg_t *ibr_cfg, const function_spec_
 }
 
 
-
-
 fspec_rv_t ibr_init(void *dhandle, const function_spec_t *spec, const char *inv_name, eswb_topic_descr_t mounting_td, const void *extension_handler) {
     int err_cnt = 0;
     ibr_cfg_t *ibr_cfg = (ibr_cfg_t *) extension_handler;
@@ -253,8 +251,10 @@ fspec_rv_t ibr_init_inputs(void *dhandle, const func_conn_spec_t *conn_spec, esw
 //                                                                ibr_setup->process_setups[i].dst_msg,
 //                                                                &ibr_setup->process_setups[i].src.descr);
 //        } else {
+        if (ibr_setup->process_setups[i].src.drv->connect != NULL) {
             rv = ibr_setup->process_setups[i].src.drv->connect(in_path,
                                                                &ibr_setup->process_setups[i].src.descr);
+        }
 //        }
 
         if (rv != ibr_ok) {
