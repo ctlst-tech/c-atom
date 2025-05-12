@@ -125,6 +125,30 @@ ibr_rv_t drv_eswb_bridge_proclaim(const char *path, ibr_msg_t *src_msg, ibr_msg_
 }
 
 
+
+ibr_rv_t drv_eswb_bridge_connect(const char *path, int *td) {
+    // input must be dir
+    eswb_rv_t rv;
+
+    if (bridges_num >= MAX_BRIDGES) {
+        return ibr_nomem;
+    }
+
+    char bridge_name[ESWB_BUS_NAME_MAX_LEN];
+    snprintf(bridge_name, sizeof(bridge_name), "_ibr_bridge_%d", bridges_num);
+
+    eswb_bridge_t *new_bridge;
+    rv = eswb_bridge_create_from_directory(bridge_name, path, &new_bridge);
+    if (rv == eswb_e_ok) {
+        bridges[bridges_num] = new_bridge;
+        *td = bridges_num;
+        bridges_num++;
+    }
+
+    return rv == eswb_e_ok ? ibr_ok : ibr_nomedia;
+}
+
+
 ibr_rv_t drv_eswb_bridge_recv(int td, void *d, int *btr) {
     eswb_rv_t rv;
     eswb_bridge_t *br = bridges[td];
@@ -132,7 +156,10 @@ ibr_rv_t drv_eswb_bridge_recv(int td, void *d, int *btr) {
     // clocking using last topic
     rv = eswb_get_update(br->topics[br->tds_num-1].td, NULL);
     if (rv == eswb_e_ok) {
-        rv = eswb_bridge_read(bridges[td], d);
+        rv = eswb_bridge_update(br);
+        if (rv == eswb_e_ok) {
+            rv = eswb_bridge_read(bridges[td], d);
+        }
     }
 
     *btr = (int)br->buffer2post_size;
@@ -143,7 +170,7 @@ ibr_rv_t drv_eswb_bridge_recv(int td, void *d, int *btr) {
 
 const irb_media_driver_t irb_media_driver_eswb_bridge = {
         .proclaim = drv_eswb_bridge_proclaim,
-        .connect = NULL,
+        .connect = drv_eswb_bridge_connect,
         .disconnect = drv_eswb_disconnect,
         .send = NULL,
         .recv = drv_eswb_bridge_recv,
