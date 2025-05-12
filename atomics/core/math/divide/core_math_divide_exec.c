@@ -1,3 +1,5 @@
+#include <math.h>
+
 #include "core_math_divide.h"
 
 void core_math_divide_exec(const core_math_divide_inputs_t *i,
