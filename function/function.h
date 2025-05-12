@@ -7,7 +7,7 @@
 #include <eswb/types.h>
 
 
-typedef struct topic_spec {
+typedef struct connection_spec {
     const char *name;
     const char *annotation;
     const char *units;
@@ -82,7 +82,7 @@ typedef struct function_spec {
     const output_spec_t **outputs;
     const param_spec_t **params;
     const param_spec_t **state_vars;
-    const int output_topics_num;
+    const int topics_num_required;
 } function_spec_t;
 
 typedef struct function_calls {
