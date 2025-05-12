@@ -4,7 +4,7 @@ from fspeclib import *
 Function(
     name='core.quat.to_euler',
     title=LocalizedString(
-        en='Covert quaternion to Euler angles'
+        en='Convert quaternion to Euler angles'
     ),
 
     inputs=[
