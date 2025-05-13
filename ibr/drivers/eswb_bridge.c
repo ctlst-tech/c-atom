@@ -156,10 +156,10 @@ ibr_rv_t drv_eswb_bridge_recv(int td, void *d, int *btr) {
     // clocking using last topic
     rv = eswb_get_update(br->topics[br->tds_num-1].td, NULL);
     if (rv == eswb_e_ok) {
-        rv = eswb_bridge_update(br);
-        if (rv == eswb_e_ok) {
-            rv = eswb_bridge_read(bridges[td], d);
-        }
+        // we do not normally update bridge,
+        // because its destination part is not connected
+        // no need for that, just reading concatenated data
+        rv = eswb_bridge_read(bridges[td], d);
     }
 
     *btr = (int)br->buffer2post_size;
