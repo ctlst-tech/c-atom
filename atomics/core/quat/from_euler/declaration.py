@@ -30,4 +30,5 @@ Function(
             value_type='core.type.quat'
         ),
     ],
+    target_link_libraries=['m']
 )

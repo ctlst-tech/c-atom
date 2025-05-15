@@ -43,5 +43,6 @@ Function(
     ],
     injection=Injection(
         timedelta=True
-    )
+    ),
+    target_link_libraries=['m']
 )

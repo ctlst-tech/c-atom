@@ -416,6 +416,7 @@ class Function(Declarable):
                  state: Optional[List[Variable]] = None,
                  injection: Optional[Injection] = None,
                  has_pre_exec_init_call = False,
+                 target_link_libraries: Optional[List[str]] = None,
                  custom_cmakefile: bool = False,
                  dynamic: bool = False):
         super().__init__(name=name, title=title, description=description, omit_validation=dynamic)
@@ -425,6 +426,7 @@ class Function(Declarable):
         self.outputs = outputs if outputs is not None else []
         self.state = state if state is not None else []
         self.injection = injection if injection is not None else Injection()
+        self.target_link_libraries = target_link_libraries or []
         self.custom_cmakefile = custom_cmakefile
         self.has_pre_exec_init_call = has_pre_exec_init_call
         self.generator = None

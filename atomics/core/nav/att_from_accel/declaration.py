@@ -27,4 +27,5 @@ Function(
             value_type='core.type.f64'
         ),
     ],
+    target_link_libraries=['m']
 )
