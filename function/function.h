@@ -30,6 +30,7 @@ typedef enum fspec_rv {
     fspec_rv_ok = 0,
     fspec_rv_no_update = 1,
     fspec_rv_inval_param,
+    fspec_rv_expect_param,
     //fspec_rv_no_module_handler,
     fspec_rv_no_memory,
     fspec_rv_exists,

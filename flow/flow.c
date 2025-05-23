@@ -69,26 +69,12 @@ static int check_connectivity(const char *flow_name, const char *inv_name, const
                                 (__func_invk)->h->spec->name,                                                                           \
                                 __flow_name)
 
-// volatile static uint32_t prev_max_atomics_total = 0;
-// volatile static uint32_t curr_max_atomics_total = 0;
 
 fspec_rv_t flow_init(void *iface, const function_spec_t *spec, const char *inv_name, eswb_topic_descr_t mounting_td, const void *extension_handler) {
     flow_interface_t *flow_dh = (flow_interface_t *)iface;
     int err_cnt = 0;
     // Default max topics multiplier
     fspec_rv_t frv;
-
-    // FIXME  this is nasty hack
-    //  Check for pattern "busnNN" anywhere in inv_name
-    char *busn_pos = strstr(inv_name, "busn");
-    int max_topics_multiplier = 0;
-
-    if (busn_pos != NULL) {
-        int val = atoi(busn_pos + 4); // 4 = strlen("busn")
-        if (val > 0) {
-            max_topics_multiplier = val;
-        }
-    }
 
     const function_flow_cfg_t *fl_cfg = (const function_flow_cfg_t *) extension_handler;
     flow_dh->functions_batch = fl_cfg->functions_batch;
@@ -161,14 +147,6 @@ fspec_rv_t flow_init(void *iface, const function_spec_t *spec, const char *inv_n
             }
         }
         max_topics_mum += input_topics_num;
-
-        // int mat_delta = i * 8;
-        // if (max_topics_multiplier > 0) {
-        //     mat_delta *= max_topics_multiplier;
-        // }
-        //
-        // prev_max_atomics_total += mat_delta;
-        // curr_max_atomics_total += max_topics_mum;
 
         rv = eswb_create(bus_name, eswb_non_synced, max_topics_mum);
         if (rv != eswb_e_ok) {
@@ -412,7 +390,7 @@ static fspec_rv_t check_and_resolve_params_reference(const func_param_t *flow_pa
                                                       unsigned resolved_params_num,
                                                       const char **failed_param) {
     const char *param_ref;
-    if (flow_params == NULL && func_params == NULL) {
+    if (func_params == NULL) {
         return fspec_rv_no_param;
     }
 
@@ -422,12 +400,17 @@ static fspec_rv_t check_and_resolve_params_reference(const func_param_t *flow_pa
     int resolvings = 0;
 
     for (i = 0; func_params[i].alias != NULL; i++) {
-        if (flow_params != NULL && func_params[i].value[0] == '$') {
+        if (func_params[i].value[0] == '$') {
             param_ref = &func_params[i].value[1];
-            val = fspec_find_param(flow_params, param_ref);
-            if (val == NULL) {
+            if (flow_params != NULL) {
+                val = fspec_find_param(flow_params, param_ref);
+                if (val == NULL) {
+                    *failed_param = param_ref;
+                    return fspec_rv_inval_param;
+                }
+            } else {
                 *failed_param = param_ref;
-                return fspec_rv_inval_param;
+                return fspec_rv_expect_param;
             }
             resolvings++;
         } else {
@@ -476,6 +459,10 @@ fspec_rv_t flow_set_params(void *dhandle, const func_param_t *params, int initia
                 case fspec_rv_no_memory:
                     dbg_msg("Too many paramters for \"%s\"", flow_dh->functions_batch[i].name);
                     errs++;
+                    break;
+
+                case fspec_rv_expect_param:
+                    dbg_msg("Flow \"%s\" expects param \"%s\"", flow_dh->flow_name, failed_param);
                     break;
 
                 case fspec_rv_no_param:

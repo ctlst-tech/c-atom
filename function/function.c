@@ -181,6 +181,7 @@ const char *fspec_errmsg(fspec_rv_t c) {
         case fspec_rv_ok:               return "OK";
         case fspec_rv_no_update:        return "No update";
         case fspec_rv_inval_param:      return "Invalid parameters";
+        case fspec_rv_expect_param:     return "Expect parameter which is not present";
         case fspec_rv_no_memory:        return "Not enough memory";
         case fspec_rv_exists:           return "Entity exists";
         case fspec_rv_not_supported:    return "Not supported";
