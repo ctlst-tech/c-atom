@@ -442,6 +442,9 @@ fspec_rv_t flow_set_params(void *dhandle, const func_param_t *params, int initia
             const char *failed_param = NULL;
             #define CALCULATED_PARAMS_NUM 32
             func_param_t calculated_params[CALCULATED_PARAMS_NUM];
+            calculated_params[0].alias = NULL;
+            calculated_params[0].value = NULL;
+
             frv = check_and_resolve_params_reference(params, (func_param_t *) flow_dh->functions_batch[i].initial_params,
                                                  calculated_params, CALCULATED_PARAMS_NUM, &failed_param);
             int skip_function = -1;
@@ -466,6 +469,7 @@ fspec_rv_t flow_set_params(void *dhandle, const func_param_t *params, int initia
                     break;
 
                 case fspec_rv_no_param:
+                    skip_function = 0; // need to set initial parameters anyway
                     break;
 
                 default:
