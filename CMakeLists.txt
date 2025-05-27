@@ -11,6 +11,7 @@ project(c-atom)
 add_subdirectory(eswb)
 add_subdirectory(fsminst/fsmlib)
 add_subdirectory(xml)
+add_subdirectory(swsys/cli)
 
 set(FSMINST_SRC
         fsminst/fsminst.c
@@ -90,6 +91,7 @@ target_link_libraries(c-atom-static PRIVATE
         fsminst-static
         fsm-static
         xml-static
+        atomics-cli-static
         )
 
 

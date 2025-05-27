@@ -1,7 +1,8 @@
 #include <stdlib.h>
+
+#include "cli/atomics_cli_cmd.h"
 #include "eswb/services/eqrb.h"
 #include "eswb/services/sdtl.h"
-
 #include "swsys.h"
 
 #define SDTL_BUS_NAME "sdtl"
@@ -333,8 +334,11 @@ swsys_rv_t swsys_service_start(const swsys_service_t *s) {
         }
 
         return rv == eqrb_rv_ok ? swsys_e_ok : swsys_e_service_fail;
+    } else if (strcmp(s->type, "atomics_cli") == 0) {
+        eswb_rv_t rv = atomics_cli_init_and_start(s);
+        return rv == eswb_e_ok ? swsys_e_ok : swsys_e_service_fail;
     }
-    
+
     return swsys_e_no_such_service;
 }
 
