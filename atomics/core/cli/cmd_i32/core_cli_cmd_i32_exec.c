@@ -13,7 +13,7 @@ fspec_rv_t core_cli_cmd_i32_pre_exec_init(const core_cli_cmd_i32_params_t *p, co
     topic_proclaiming_tree_t *cmd_fifo_root = usr_topic_set_fifo(cntx, p->alias, 2);
     usr_topic_add_struct_child(cntx, cmd_fifo_root, atomic_cmd_i32_t, cmd_i32, "cmd_i32", tt_int32);
 
-    eswb_rv_t erv = atomic_cli_register_fifo(cntx, cmd_fifo_root, &state->fifo_td);
+    eswb_rv_t erv = atomic_cli_register_fifo(p->alias, cntx, cmd_fifo_root, &state->fifo_td);
     if (erv == eswb_e_ok) {
         rv = fspec_rv_ok;
     } else {

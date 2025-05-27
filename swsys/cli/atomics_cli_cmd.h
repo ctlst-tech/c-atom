@@ -22,11 +22,13 @@ typedef struct {
 eswb_rv_t atomics_cli_init_and_start();
 
 eswb_rv_t atomic_cli_register_fifo(
+    const char *alias,
     const topic_tree_context_t *cntx,
     const topic_proclaiming_tree_t *root,
     eswb_topic_descr_t *td);
 
 eswb_rv_t atomics_cli_cmd_post_parse(char *cmd_line);
 eswb_rv_t atomics_cli_cmd_post(const char *alias, const char *value);
+void atomics_cli_aliases_print(void);
 
 #endif //ATOMICS_CLI_CMD_H

@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "eswb/api.h"
+#include "stdio.h"
 
 eswb_rv_t atomics_cli_init_and_start() {
 
@@ -31,8 +32,10 @@ eswb_rv_t get_td(const char *alias, eswb_topic_descr_t *td) {
     int i;
     for (i = 0; i < ATOMICS_CLI_MAX_COMMANDS && alias2td[i].alias != NULL; i++) {
         if (strcmp(alias, alias2td[i].alias) == 0) {
-            *td =  alias2td[i].td;
-            return eswb_e_ok;
+            if (alias2td[i].td) {
+                *td =  alias2td[i].td;
+                return eswb_e_ok;
+            }
         }
     }
 
@@ -57,6 +60,18 @@ eswb_rv_t get_td(const char *alias, eswb_topic_descr_t *td) {
     *td = ttd;
 
     return eswb_e_ok;
+}
+
+void atomics_cli_aliases_print(void) {
+    printf("Registered command aliases:\n");
+    int i;
+    for (i = 0; i < ATOMICS_CLI_MAX_COMMANDS && alias2td[i].alias != NULL; i++) {
+        printf("  - %s\n", alias2td[i].alias);
+    }
+
+    if (i == 0) {
+        printf("  (No aliases are currently registered)\n");
+    }
 }
 
 
@@ -128,6 +143,7 @@ eswb_rv_t atomics_cli_cmd_post_parse(char *cmd_line) {
 
 
 eswb_rv_t atomic_cli_register_fifo(
+    const char *alias,
     const topic_tree_context_t *cntx,
     const topic_proclaiming_tree_t *root,
     eswb_topic_descr_t *td) {
@@ -138,6 +154,10 @@ eswb_rv_t atomic_cli_register_fifo(
     // strcat(path, p->alias);
 
     eswb_rv_t erv = eswb_proclaim_tree_by_path(ATOMICS_CLI_BUS_SPECIFIER, root, cntx->t_num, td);
+
+    // registering td for client and proclaiming alias
+    eswb_topic_descr_t ttd;
+    eswb_rv_t erv2 = get_td(alias, &ttd);
 
     return erv;
 }
