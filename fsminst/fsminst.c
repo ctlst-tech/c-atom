@@ -252,7 +252,7 @@ static topic_data_type_t fsm_type2eswb(result_type_t rt) {
         case nr_float: return tt_double;
         case nr_int: return tt_int32;
         case nr_string: return tt_string; // TODO handle properly
-        case nr_bool: return tt_int32;
+        case nr_bool: return tt_bool;
 
         default:
         case nr_na:

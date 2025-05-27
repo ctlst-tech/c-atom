@@ -27,6 +27,8 @@ field_type_t ibr_field_type_from_eswb(topic_data_type_t d) {
         case tt_uint64:     rv.cls = fc_scalar; rv.st = ft_uint64; break;
         case tt_int64:      rv.cls = fc_scalar; rv.st = ft_int64; break;
 
+        case tt_bool:       rv.cls = fc_scalar; rv.st = ft_int32; break;
+
         case tt_string:     rv.cls = fc_array; rv.st = ft_uint8; break;
     }
 
