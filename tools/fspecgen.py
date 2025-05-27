@@ -984,8 +984,11 @@ class GeneratedFunction:
             for parameter in f_spec.parameters:
                 if parameter.mandatory or type(parameter) == fspeclib.ComputedParameter:
                     continue
+
+                dv = parameter.default if not isinstance(parameter.default, str) else f"\"{parameter.default}\""
+
                 fprint(f'        if (!flags.{self.changed_param_bitfield_name(parameter.name)}) {{', )
-                fprint(f'            p.{parameter.name} = {parameter.default};', )
+                fprint(f'            p.{parameter.name} = {dv};', )
                 fprint(f'            flags.{self.changed_param_bitfield_name(parameter.name)} = 1;', )
                 fprint(f'        }}', )
         fprint('    }', )
