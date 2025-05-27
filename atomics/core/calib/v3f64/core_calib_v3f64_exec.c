@@ -117,7 +117,7 @@ static void handle_calibration_fsm(
     int32_t user_fsm_cmd) {
 
     char cli_cmd_topic_name[128];
-    snprintf(cli_cmd_topic_name, sizeof(cli_cmd_topic_name), "%s/cmd", p->cli_base_alias);
+    snprintf(cli_cmd_topic_name, sizeof(cli_cmd_topic_name), "%s_cmd", p->cli_base_alias);
 
     // Handle global commands
     if (user_fsm_cmd == CALIB_CMD_CANCEL_CALIBRATION) {
@@ -359,7 +359,7 @@ static void process_calibration_logic(
     if (state->calibration_active || state->calib_stage == CALIB_STAGE_ERROR) { // Allow commands if active or in error
         if (eswb_fifo_try_pop(state->stage_cmd_fifo_td, &stage_fsm_payload) == eswb_e_ok) {
             user_fsm_cmd = stage_fsm_payload.cmd_i32;
-            printf("CALIB: '%s/cmd' CLI: Received FSM command: %d\n", p->cli_base_alias, user_fsm_cmd);
+            printf("CALIB: '%s_cmd' CLI: Received FSM command: %d\n", p->cli_base_alias, user_fsm_cmd);
         }
     }
 
