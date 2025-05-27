@@ -1,28 +1,40 @@
 #include <float.h>  // For DBL_MAX, DBL_EPSILON
 #include <math.h>
+#include <stdarg.h>  // For va_list, va_start, va_end
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
-#include "atomics_cli_cmd.h"
+#include "atomics_cli_cmd.h"  // For atomic_cmd_i32_t, atomic_cmd_bool_t
 #include "core_calib_v3f64.h"
 #include "eswb/api.h"
-#include "eswb/topic_proclaiming_tree.h"
+#include "eswb/topic_proclaiming_tree.h"  // For ESWB topic setup
 
-// Calibration FSM Stages (Revised for generic axis processing)
+// Calibration FSM Stages
 #define CALIB_STAGE_IDLE 0
-#define CALIB_STAGE_START_AXIS_SEQUENCE 5  // Initializes for the first axis (X)
-#define CALIB_STAGE_PROMPT_EXTREME 10      // Prompts user for current axis/extreme
-#define CALIB_STAGE_SAMPLING_EXTREME 11    // Collects and averages samples for the current extreme
-#define CALIB_STAGE_CALCULATE_SAVE 40      // All axes sampled, calculate K/B and save
-#define CALIB_STAGE_DONE_APPLYING 50       // Calibration successful, applying new coefficients
-#define CALIB_STAGE_ERROR 60               // Error occurred
+#define CALIB_STAGE_START_AXIS_SEQUENCE 5
+#define CALIB_STAGE_PROMPT_EXTREME 10
+#define CALIB_STAGE_SAMPLING_EXTREME 11
+#define CALIB_STAGE_CALCULATE_SAVE 40
+#define CALIB_STAGE_DONE_APPLYING 50
+#define CALIB_STAGE_ERROR 60
 
 // User FSM Commands (from stage_cmd_fifo_td)
 #define CALIB_CMD_NONE 0
 #define CALIB_CMD_NEXT_STAGE 1
 #define CALIB_CMD_RESTART_CALIBRATION 2
 #define CALIB_CMD_CANCEL_CALIBRATION 3
+
+// Helper for formatted printing with alias
+static void calib_printf(const char *cli_base_alias, bool is_error, const char *format, ...) {
+    char prefixed_format[256];
+    snprintf(prefixed_format, sizeof(prefixed_format), "CALIB [%s]: %s\n", cli_base_alias ? cli_base_alias : "NO_ALIAS", format);
+
+    va_list args;
+    va_start(args, format);
+    vfprintf(is_error ? stderr : stdout, prefixed_format, args);
+    va_end(args);
+}
 
 // Helper to get axis name as string
 static const char* get_axis_name(uint8_t axis_idx) {
@@ -33,11 +45,11 @@ static const char* get_axis_name(uint8_t axis_idx) {
 }
 
 // Helper to get the input value for the current sampling axis
-static double get_input_for_axis(const core_calib_v3f64_inputs_t *i, uint8_t axis_idx) {
-    if (axis_idx == 0) return i->input.x;
-    if (axis_idx == 1) return i->input.y;
-    if (axis_idx == 2) return i->input.z;
-    return 0.0; // Should not happen
+static double get_input_for_axis(const core_type_v3f64_t *input, uint8_t axis_idx) {
+    if (axis_idx == 0) return input->x;
+    if (axis_idx == 1) return input->y;
+    if (axis_idx == 2) return input->z;
+    return 0.0;
 }
 
 // Helper to store the determined min/max averaged values for an axis
@@ -57,115 +69,106 @@ static void store_axis_min_max_avg(core_calib_v3f64_state_t *state, uint8_t axis
     }
 }
 
-
-// Helper to reset averaged min/max raw values
 static void reset_averaged_min_max_data(core_calib_v3f64_state_t *state) {
     state->min_x_raw_avg = DBL_MAX; state->max_x_raw_avg = -DBL_MAX;
     state->min_y_raw_avg = DBL_MAX; state->max_y_raw_avg = -DBL_MAX;
     state->min_z_raw_avg = DBL_MAX; state->max_z_raw_avg = -DBL_MAX;
     state->num_samples_in_accumulator = 0;
-    state->current_sampling_axis_idx = 0; // Start with X-axis
-    state->is_positive_extreme_next = true; // Start with positive extreme
+    state->current_sampling_axis_idx = 0;
+    state->is_positive_extreme_next = true;
     state->current_axis_avg_extreme1 = 0.0;
 }
 
-// Load calibration data from file (remains similar)
-static bool load_calibration_data(const char *path, core_calib_v3f64_state_t *state) {
+static bool load_calibration_data(const char *cli_base_alias, const char *path, core_calib_v3f64_state_t *state) {
     if (path == NULL || strlen(path) == 0) return false;
     FILE *f = fopen(path, "r");
     if (!f) {
-        printf("CALIB: No calibration file '%s'. Using initial/current parameters.\n", path);
+        calib_printf(cli_base_alias, false, "No calibration file '%s'. Using initial/current parameters.", path);
         return false;
     }
     if (fscanf(f, "%lf %lf %lf\n%lf %lf %lf",
                &state->current_b.x, &state->current_b.y, &state->current_b.z,
                &state->current_k.x, &state->current_k.y, &state->current_k.z) == 6) {
-        printf("CALIB: Loaded K={%.4f,%.4f,%.4f}, B={%.4f,%.4f,%.4f} from '%s'\n",
+        calib_printf(cli_base_alias, false, "Loaded K={%.4f,%.4f,%.4f}, B={%.4f,%.4f,%.4f} from '%s'",
                state->current_k.x, state->current_k.y, state->current_k.z,
                state->current_b.x, state->current_b.y, state->current_b.z, path);
         fclose(f);
         return true;
     }
-    printf("CALIB_ERROR: Reading file '%s'. Using initial/current parameters.\n", path);
+    calib_printf(cli_base_alias, true, "Error reading file '%s'. Using initial/current parameters.", path);
     fclose(f);
     return false;
 }
 
-// Save calibration data to file (remains similar)
-static bool save_calibration_data(const char *path, const core_calib_v3f64_state_t *state) {
+static bool save_calibration_data(const char *cli_base_alias, const char *path, const core_calib_v3f64_state_t *state) {
     if (path == NULL || strlen(path) == 0) return false;
     FILE *f = fopen(path, "w");
     if (!f) {
-        fprintf(stderr, "CALIB_ERROR: Opening file '%s' for writing: ", path); perror(NULL);
+        calib_printf(cli_base_alias, true, "Error opening file '%s' for writing.", path);
         return false;
     }
     fprintf(f, "%.10g %.10g %.10g\n", state->current_b.x, state->current_b.y, state->current_b.z);
     fprintf(f, "%.10g %.10g %.10g\n", state->current_k.x, state->current_k.y, state->current_k.z);
     fclose(f);
-    printf("CALIB: Saved K={%.4f,%.4f,%.4f}, B={%.4f,%.4f,%.4f} to '%s'\n",
+    calib_printf(cli_base_alias, false, "Saved K={%.4f,%.4f,%.4f}, B={%.4f,%.4f,%.4f} to '%s'",
            state->current_k.x, state->current_k.y, state->current_k.z,
            state->current_b.x, state->current_b.y, state->current_b.z, path);
     return true;
 }
 
-
-// Finite State Machine Handler
 static void handle_calibration_fsm(
     const core_calib_v3f64_inputs_t *i,
     const core_calib_v3f64_params_t *p,
     core_calib_v3f64_state_t *state,
     int32_t user_fsm_cmd) {
 
-    char cli_cmd_topic_name[128];
-    snprintf(cli_cmd_topic_name, sizeof(cli_cmd_topic_name), "%s_cmd", p->cli_base_alias);
+    // Store current stage to detect change for messages
+    // This is now handled by comparing state->calib_stage with state->previous_calib_stage
 
-    // Handle global commands
+    bool print_instr = (state->calib_stage != state->previous_calib_stage)
+                        || (user_fsm_cmd != CALIB_CMD_NONE && state->calib_stage == CALIB_STAGE_PROMPT_EXTREME);
+
+    // Handle global commands that can interrupt any stage if calibration is active
     if (user_fsm_cmd == CALIB_CMD_CANCEL_CALIBRATION) {
-        printf("CALIB: CANCEL received. Calibration stopped.\n");
-        state->calibration_active = false;
+        calib_printf(p->cli_base_alias, false, "CANCEL received. Calibration stopped and reset.");
+        state->calibration_active = false; // This will be caught by the outer logic in process_calibration_logic
         state->calib_stage = CALIB_STAGE_IDLE;
+        // Revert to initial or loaded K/B
         state->current_k.x = p->initial_k1; state->current_k.y = p->initial_k2; state->current_k.z = p->initial_k3;
         state->current_b.x = p->initial_b1; state->current_b.y = p->initial_b2; state->current_b.z = p->initial_b3;
-        load_calibration_data(p->settings_path, state); // Try to reload saved, else initial are kept
-        printf("CALIB: Reverted to initial/saved coefficients.\n");
-        return;
+        load_calibration_data(p->cli_base_alias, p->settings_path, state);
+        return; // FSM processing stops here for cancel
     }
     if (user_fsm_cmd == CALIB_CMD_RESTART_CALIBRATION) {
-        printf("CALIB: RESTART received. Restarting calibration.\n");
-        state->calibration_active = true;
+        calib_printf(p->cli_base_alias, false, "RESTART received. Restarting calibration sequence.");
+        // state->calibration_active should already be true
         reset_averaged_min_max_data(state);
         state->calib_stage = CALIB_STAGE_START_AXIS_SEQUENCE;
-        // Fall through to START_AXIS_SEQUENCE logic in this call
+        print_instr = true; // Force print for the new stage
     }
 
-    if (!state->calibration_active && state->calib_stage != CALIB_STAGE_IDLE) {
-         if (state->calib_stage > CALIB_STAGE_IDLE && state->calib_stage < CALIB_STAGE_DONE_APPLYING) {
-             // printf("CALIB_FSM_WARN: Calibration became inactive mid-process. Reverting to IDLE.\n");
-         }
-        state->calib_stage = CALIB_STAGE_IDLE;
-        return;
-    }
-
+    // FSM logic
     switch (state->calib_stage) {
         case CALIB_STAGE_IDLE:
-            if (state->calibration_active) {
-                printf("CALIB: Calibration enabled. To control, send commands to CLI topic '%s'.\n", cli_cmd_topic_name);
-                printf("CALIB_INFO: Commands: NEXT_STAGE (%d), RESTART (%d), CANCEL (%d).\n",
-                       CALIB_CMD_NEXT_STAGE, CALIB_CMD_RESTART_CALIBRATION, CALIB_CMD_CANCEL_CALIBRATION);
-                state->calib_stage = CALIB_STAGE_START_AXIS_SEQUENCE;
-                reset_averaged_min_max_data(state); // Prepare for first axis
+            // This stage is mostly a placeholder; activation logic in process_calibration_logic moves to START_AXIS_SEQUENCE
+            if (print_instr) { // Should only happen if forcefully set to IDLE and it was different before
+                calib_printf(p->cli_base_alias, false, "Calibration IDLE. Enable via CLI to start.");
             }
             break;
 
         case CALIB_STAGE_START_AXIS_SEQUENCE:
-            printf("CALIB: Initializing for %s-axis calibration.\n", get_axis_name(state->current_sampling_axis_idx));
+            if (print_instr) { // Print only on first entry to this stage
+                 calib_printf(p->cli_base_alias, false, "Initializing for %s-axis calibration.", get_axis_name(state->current_sampling_axis_idx));
+            }
             state->is_positive_extreme_next = true;
             state->num_samples_in_accumulator = 0;
             state->calib_stage = CALIB_STAGE_PROMPT_EXTREME;
-            // Fall through to print prompt in this cycle
+            // Fall through to print prompt in this cycle if previous_stage was different
+            print_instr = true; // Force print for next stage as we are transitioning
+            // No break, fall through
 
         case CALIB_STAGE_PROMPT_EXTREME:
-            {
+            if (print_instr) { // Print only on first entry or if command makes us re-evaluate
                 const char* axis_name = get_axis_name(state->current_sampling_axis_idx);
                 const char* extreme_direction = state->is_positive_extreme_next ? "positive" : "negative";
                 const char* example_orientation = "";
@@ -173,34 +176,39 @@ static void handle_calibration_fsm(
                 else if (strcmp(axis_name, "Y") == 0) example_orientation = state->is_positive_extreme_next ? "e.g., Y-axis pointing UP" : "e.g., Y-axis pointing DOWN";
                 else if (strcmp(axis_name, "Z") == 0) example_orientation = state->is_positive_extreme_next ? "e.g., Z-axis pointing UP" : "e.g., Z-axis pointing DOWN";
 
-                printf("CALIB: Position sensor for %s %s-axis extreme (%s) and hold steady.\n",
+                calib_printf(p->cli_base_alias, false, "Position sensor for %s %s-axis extreme (%s) and hold steady.",
                        extreme_direction, axis_name, example_orientation);
-                printf("CALIB: Send NEXT_STAGE (%d) to '%s' to start sampling for this position.\n", CALIB_CMD_NEXT_STAGE, cli_cmd_topic_name);
-
-                if (user_fsm_cmd == CALIB_CMD_NEXT_STAGE) {
-                    printf("CALIB: Starting %s %s-axis sampling for %u samples.\n",
-                           extreme_direction, axis_name, p->selection_size);
-                    state->num_samples_in_accumulator = 0; // Reset for this specific sampling run
-                    // Ensure sample_accumulator.vector is valid if using dynamic allocation (fspec should handle)
-                    if (state->sample_accumulator.vector == NULL && p->selection_size > 0) {
-                         fprintf(stderr, "CALIB_ERROR: Sample accumulator buffer is NULL!\n");
-                         state->calib_stage = CALIB_STAGE_ERROR;
-                         break;
-                    }
-                    state->calib_stage = CALIB_STAGE_SAMPLING_EXTREME;
+                calib_printf(p->cli_base_alias, false, "Send NEXT_STAGE command to start sampling: atomics_cli %s_cmd %d",
+                             p->cli_base_alias, CALIB_CMD_NEXT_STAGE);
+            }
+            if (user_fsm_cmd == CALIB_CMD_NEXT_STAGE) {
+                calib_printf(p->cli_base_alias, false, "Starting %s %s-axis sampling for %u samples.",
+                       state->is_positive_extreme_next ? "positive" : "negative", get_axis_name(state->current_sampling_axis_idx), p->selection_size);
+                state->num_samples_in_accumulator = 0;
+                if (state->sample_accumulator.vector == NULL && p->selection_size > 0) {
+                     calib_printf(p->cli_base_alias, true, "Sample accumulator buffer is NULL!");
+                     state->calib_stage = CALIB_STAGE_ERROR;
+                     break;
                 }
+                state->calib_stage = CALIB_STAGE_SAMPLING_EXTREME;
             }
             break;
 
         case CALIB_STAGE_SAMPLING_EXTREME:
             if (state->sample_accumulator.vector == NULL && p->selection_size > 0) {
-                 fprintf(stderr, "CALIB_ERROR: Sample accumulator buffer is NULL during sampling!\n");
+                 calib_printf(p->cli_base_alias, true, "Sample accumulator buffer is NULL during sampling!");
                  state->calib_stage = CALIB_STAGE_ERROR;
                  break;
             }
             if (state->num_samples_in_accumulator < p->selection_size && state->num_samples_in_accumulator < state->sample_accumulator.max_len) {
-                state->sample_accumulator.vector[state->num_samples_in_accumulator] = get_input_for_axis(i, state->current_sampling_axis_idx);
+                state->sample_accumulator.vector[state->num_samples_in_accumulator] = get_input_for_axis(&(i->input), state->current_sampling_axis_idx);
                 state->num_samples_in_accumulator++;
+                 if (state->num_samples_in_accumulator % (p->selection_size/4 < 1 ? 1 : p->selection_size/4) == 0 || state->num_samples_in_accumulator == p->selection_size) {
+                    // Optional: print progress during sampling
+                    // calib_printf(p->cli_base_alias, false, "Sampling... %u/%u collected for %s %s-axis.",
+                    //        state->num_samples_in_accumulator, p->selection_size,
+                    //        state->is_positive_extreme_next ? "positive" : "negative", get_axis_name(state->current_sampling_axis_idx));
+                 }
             }
 
             if (state->num_samples_in_accumulator >= p->selection_size) {
@@ -208,55 +216,46 @@ static void handle_calibration_fsm(
                 for (uint16_t k = 0; k < p->selection_size; ++k) {
                     sum += state->sample_accumulator.vector[k];
                 }
-                double current_average = (p->selection_size > 0) ? (sum / p->selection_size) : 0.0;
+                double current_average = (p->selection_size > 0) ? (sum / p->selection_size) : get_input_for_axis(&(i->input), state->current_sampling_axis_idx); // Use current if selection_size is 0
 
                 const char* axis_name = get_axis_name(state->current_sampling_axis_idx);
-                printf("CALIB: %s-axis, %s extreme sampling complete. Averaged value: %.4f\n",
+                calib_printf(p->cli_base_alias, false, "%s-axis, %s extreme sampling complete. Averaged value: %.4f",
                        axis_name, state->is_positive_extreme_next ? "positive" : "negative", current_average);
 
                 if (state->is_positive_extreme_next) {
                     state->current_axis_avg_extreme1 = current_average;
-                    state->is_positive_extreme_next = false; // Move to negative extreme for current axis
-                    state->calib_stage = CALIB_STAGE_PROMPT_EXTREME; // Prompt for negative side
-                } else { // Negative extreme done for current_sampling_axis_idx
+                    state->is_positive_extreme_next = false;
+                    state->calib_stage = CALIB_STAGE_PROMPT_EXTREME;
+                } else {
                     store_axis_min_max_avg(state, state->current_sampling_axis_idx, state->current_axis_avg_extreme1, current_average);
-                    printf("CALIB: %s-axis min/max averages determined: Min=%.4f, Max=%.4f.\n", axis_name,
-                        (state->current_axis_avg_extreme1 < current_average ? state->current_axis_avg_extreme1 : current_average),
-                        (state->current_axis_avg_extreme1 > current_average ? state->current_axis_avg_extreme1 : current_average)
-                    );
+                    double r_min = (state->current_axis_avg_extreme1 < current_average ? state->current_axis_avg_extreme1 : current_average);
+                    double r_max = (state->current_axis_avg_extreme1 > current_average ? state->current_axis_avg_extreme1 : current_average);
+                    calib_printf(p->cli_base_alias, false, "%s-axis min/max averages determined: Min=%.4f, Max=%.4f.", axis_name, r_min, r_max);
 
-                    // Check if min/max are too close
-                    double range_check;
-                    if(state->current_sampling_axis_idx == 0) range_check = fabs(state->max_x_raw_avg - state->min_x_raw_avg);
-                    else if(state->current_sampling_axis_idx == 1) range_check = fabs(state->max_y_raw_avg - state->min_y_raw_avg);
-                    else range_check = fabs(state->max_z_raw_avg - state->min_z_raw_avg);
-
-                    if (range_check < 1e-6 * fabs(p->target_calibrated_magnitude_per_axis)) {
-                         printf("CALIB_ERROR: %s-Axis min/max averages are too close (%.4f, %.4f). Insufficient movement or sensor issue.\n",
-                               axis_name,
-                               (state->current_axis_avg_extreme1 < current_average ? state->current_axis_avg_extreme1 : current_average),
-                               (state->current_axis_avg_extreme1 > current_average ? state->current_axis_avg_extreme1 : current_average)
-                               );
+                    if (fabs(r_max - r_min) < 1e-6 * fabs(p->target_calibrated_magnitude_per_axis)) {
+                         calib_printf(p->cli_base_alias, true, "%s-Axis min/max averages are too close (%.4f, %.4f). Insufficient movement or sensor issue.", axis_name, r_min, r_max);
                          state->calib_stage = CALIB_STAGE_ERROR;
                          break;
                     }
 
-                    state->current_sampling_axis_idx++; // Move to next axis
-                    if (state->current_sampling_axis_idx < 3) { // Still axes to calibrate (0,1,2 for X,Y,Z)
-                        state->is_positive_extreme_next = true; // Start with positive for next axis
-                        printf("CALIB: Advancing to %s-axis calibration.\n", get_axis_name(state->current_sampling_axis_idx));
+                    state->current_sampling_axis_idx++;
+                    if (state->current_sampling_axis_idx < 3) {
+                        calib_printf(p->cli_base_alias, false, "Advancing to %s-axis calibration.", get_axis_name(state->current_sampling_axis_idx));
+                        state->is_positive_extreme_next = true;
                         state->calib_stage = CALIB_STAGE_PROMPT_EXTREME;
-                    } else { // All axes done
-                        printf("CALIB: All axes sampled. Proceeding to calculate coefficients.\n");
+                    } else {
+                        calib_printf(p->cli_base_alias, false, "All axes sampled. Proceeding to calculate coefficients.");
                         state->calib_stage = CALIB_STAGE_CALCULATE_SAVE;
                     }
                 }
-                state->num_samples_in_accumulator = 0; // Reset for next sampling run
+                state->num_samples_in_accumulator = 0;
             }
             break;
 
         case CALIB_STAGE_CALCULATE_SAVE:
-            printf("CALIB: Calculating and saving calibration coefficients using averaged min/max.\n");
+            if (print_instr) { // Print only on first entry
+                calib_printf(p->cli_base_alias, false, "Calculating and saving calibration coefficients using averaged min/max.");
+            }
             state->current_b.x = (state->max_x_raw_avg + state->min_x_raw_avg) / 2.0;
             state->current_b.y = (state->max_y_raw_avg + state->min_y_raw_avg) / 2.0;
             state->current_b.z = (state->max_z_raw_avg + state->min_z_raw_avg) / 2.0;
@@ -265,185 +264,193 @@ static void handle_calibration_fsm(
             double range_y = state->max_y_raw_avg - state->min_y_raw_avg;
             double range_z = state->max_z_raw_avg - state->min_z_raw_avg;
 
-            state->current_k.x = (fabs(range_x) > DBL_EPSILON) ? (2.0 * p->target_calibrated_magnitude_per_axis) / range_x : 1.0;
-            state->current_k.y = (fabs(range_y) > DBL_EPSILON) ? (2.0 * p->target_calibrated_magnitude_per_axis) / range_y : 1.0;
-            state->current_k.z = (fabs(range_z) > DBL_EPSILON) ? (2.0 * p->target_calibrated_magnitude_per_axis) / range_z : 1.0;
+            state->current_k.x = (fabs(range_x) > DBL_EPSILON * fabs(p->target_calibrated_magnitude_per_axis)) ? (2.0 * p->target_calibrated_magnitude_per_axis) / range_x : 1.0;
+            state->current_k.y = (fabs(range_y) > DBL_EPSILON * fabs(p->target_calibrated_magnitude_per_axis)) ? (2.0 * p->target_calibrated_magnitude_per_axis) / range_y : 1.0;
+            state->current_k.z = (fabs(range_z) > DBL_EPSILON * fabs(p->target_calibrated_magnitude_per_axis)) ? (2.0 * p->target_calibrated_magnitude_per_axis) / range_z : 1.0;
 
-            printf("CALIB: New B: {%.4f,%.4f,%.4f}, K: {%.4f,%.4f,%.4f}\n",
+            calib_printf(p->cli_base_alias, false, "New B: {%.4f,%.4f,%.4f}, K: {%.4f,%.4f,%.4f}",
                    state->current_b.x, state->current_b.y, state->current_b.z,
                    state->current_k.x, state->current_k.y, state->current_k.z);
 
-            save_calibration_data(p->settings_path, state);
+            save_calibration_data(p->cli_base_alias, p->settings_path, state);
             state->calib_stage = CALIB_STAGE_DONE_APPLYING;
-            printf("CALIB: Calibration complete. Applying new coefficients.\n");
-            state->calibration_active = false; // Calibration process itself is done
-            break;
+            // Fall through to print done message
+            print_instr = true; // Force print for next stage as we are transitioning
+            // No break
 
         case CALIB_STAGE_DONE_APPLYING:
-             if (state->calibration_active) { // User re-enables
-                printf("CALIB: Re-initiating calibration from DONE_APPLYING due to enable signal.\n");
-                reset_averaged_min_max_data(state);
-                state->calib_stage = CALIB_STAGE_START_AXIS_SEQUENCE;
+            if (print_instr) { // Print only on first entry
+                calib_printf(p->cli_base_alias, false, "Calibration complete. Applying new coefficients.");
             }
+            state->calibration_active = false; // Calibration process itself is done. Stays in this stage applying coeffs.
             break;
 
         case CALIB_STAGE_ERROR:
-            printf("CALIB_ERROR: FSM in error state. Calibration halted.\n");
-            printf("CALIB_ERROR: Send RESTART (%d) or CANCEL (%d) to '%s' to proceed.\n",
-                   CALIB_CMD_RESTART_CALIBRATION, CALIB_CMD_CANCEL_CALIBRATION, cli_cmd_topic_name);
-            state->calibration_active = false; // Stop further FSM processing unless command received
+            if (print_instr) { // Print only on first entry to error state
+                calib_printf(p->cli_base_alias, true, "FSM in error state. Calibration halted.");
+                calib_printf(p->cli_base_alias, true, "Send RESTART or CANCEL command: atomic_cli publish %s/cmd '{ \"cmd_i32\": %d }' (RESTART) or '{ \"cmd_i32\": %d }' (CANCEL)",
+                             p->cli_base_alias, CALIB_CMD_RESTART_CALIBRATION, CALIB_CMD_CANCEL_CALIBRATION);
+            }
+            state->calibration_active = false; // Stop FSM processing unless command received
             break;
 
         default:
-            fprintf(stderr, "CALIB_ERROR: Unknown stage: %d. Resetting to IDLE.\n", state->calib_stage);
+            calib_printf(p->cli_base_alias, true, "Unknown stage: %d. Resetting to IDLE.", state->calib_stage);
             state->calib_stage = CALIB_STAGE_IDLE;
             state->calibration_active = false;
             break;
     }
 }
 
-
 static void process_calibration_logic(
     const core_calib_v3f64_inputs_t *i,
     const core_calib_v3f64_params_t *p,
     core_calib_v3f64_state_t *state) {
 
-    // 1. Handle calibration activation timeout
-    if (p->calibration_start_timeout_iterations > 0 && !state->calibration_disabled && !state->calibration_active) {
+    // 1. Handle calibration activation timeout (runs regardless of current active state, if not permanently disabled yet)
+    if (p->calibration_start_timeout_iterations > 0 && !state->calibration_active) {
         state->init_iterations_counter++;
         if (state->init_iterations_counter > p->calibration_start_timeout_iterations) {
-            state->calibration_disabled = true;
-            printf("CALIB: Activation timeout reached. Calibration permanently disabled.\n");
+            state->calibration_disabled = true; // This will be caught by core_calib_v3f64_exec on the *next* call
+            calib_printf(p->cli_base_alias, false, "Activation timeout reached. Calibration permanently disabled for this session.");
+            return;
         }
     }
-     // If permanently disabled, ensure calibration_active is false and exit.
-    if (state->calibration_disabled) {
-        if(state->calibration_active) {
-            state->calibration_active = false; // Force disable
-            state->calib_stage = CALIB_STAGE_IDLE;
-        }
-        return;
-    }
 
-
-    // 2. Check for CLI commands
-    atomic_cmd_bool_t enable_cmd;
+    // 2. Check for CLI 'enable' command
+    atomic_cmd_bool_t enable_cmd_payload;
     bool prev_calibration_active = state->calibration_active;
-    if (eswb_fifo_try_pop(state->enable_cmd_fifo_td, &enable_cmd) == eswb_e_ok) {
-        if (state->calibration_disabled && enable_cmd.cmd_bool) {
-             printf("CALIB: '%s/enable' CLI: Enable ignored, calibration permanently disabled.\n", p->cli_base_alias);
-        } else if (state->calibration_active != enable_cmd.cmd_bool) {
-            state->calibration_active = enable_cmd.cmd_bool;
-            printf("CALIB: '%s/enable' CLI: Calibration active set to %s.\n", p->cli_base_alias, state->calibration_active ? "TRUE" : "FALSE");
 
-            if (state->calibration_active) {
-                 if (state->calib_stage == CALIB_STAGE_IDLE || state->calib_stage == CALIB_STAGE_DONE_APPLYING || state->calib_stage == CALIB_STAGE_ERROR) {
-                    state->calib_stage = CALIB_STAGE_IDLE; // FSM will transition to START_AXIS_SEQUENCE
+    if (eswb_fifo_try_pop(state->enable_cmd_fifo_td, &enable_cmd_payload) == eswb_e_ok) {
+        bool new_active_state = enable_cmd_payload.cmd_bool;
+        if (state->calibration_active != new_active_state) {
+            state->calibration_active = new_active_state;
+            calib_printf(p->cli_base_alias, false, "'%s_enable' CLI: Calibration active set to %s.", p->cli_base_alias, state->calibration_active ? "TRUE" : "FALSE");
+
+            if (state->calibration_active) { // Just became active
+                // If was idle, done, or error, reset to start the sequence
+                if (state->calib_stage == CALIB_STAGE_IDLE || state->calib_stage == CALIB_STAGE_DONE_APPLYING || state->calib_stage == CALIB_STAGE_ERROR) {
                     reset_averaged_min_max_data(state);
-                    printf("CALIB: Calibration (re)activated. Will proceed from initial stage.\n");
+                    state->calib_stage = CALIB_STAGE_START_AXIS_SEQUENCE;
+                    calib_printf(p->cli_base_alias, false, "Calibration (re)activated. Will proceed from initial axis sequence.");
+                } else {
+                     calib_printf(p->cli_base_alias, false, "Calibration re-activated, continuing from stage %d.", state->calib_stage);
                 }
-            } else { // Disabled by user
-                if (prev_calibration_active) {
-                     printf("CALIB: Calibration explicitly disabled. Current K/B params used.\n");
-                      if (state->calib_stage > CALIB_STAGE_IDLE && state->calib_stage < CALIB_STAGE_DONE_APPLYING) {
-                         printf("CALIB: Calibration was in progress. Halted. Stage reset to IDLE.\n");
-                     }
-                     state->calib_stage = CALIB_STAGE_IDLE;
+            } else { // Just became inactive
+                calib_printf(p->cli_base_alias, false, "Calibration explicitly disabled by CLI. Halting FSM.");
+                if (state->calib_stage > CALIB_STAGE_IDLE && state->calib_stage < CALIB_STAGE_DONE_APPLYING && state->calib_stage != CALIB_STAGE_ERROR) {
+                    calib_printf(p->cli_base_alias, false, "Calibration was in progress. Stage reset to IDLE.");
                 }
+                state->calib_stage = CALIB_STAGE_IDLE; // Reset to IDLE when disabled.
             }
         }
     }
 
-    int32_t user_fsm_cmd = CALIB_CMD_NONE;
-    atomic_cmd_i32_t stage_fsm_payload;
-    if (state->calibration_active || state->calib_stage == CALIB_STAGE_ERROR) { // Allow commands if active or in error
+    // 3. If calibration is active, process FSM and 'cmd' commands
+    if (state->calibration_active || state->calib_stage == CALIB_STAGE_ERROR) { // Allow CMDs in error state to recover
+        int32_t user_fsm_cmd = CALIB_CMD_NONE;
+        atomic_cmd_i32_t stage_fsm_payload;
+
         if (eswb_fifo_try_pop(state->stage_cmd_fifo_td, &stage_fsm_payload) == eswb_e_ok) {
             user_fsm_cmd = stage_fsm_payload.cmd_i32;
-            printf("CALIB: '%s_cmd' CLI: Received FSM command: %d\n", p->cli_base_alias, user_fsm_cmd);
+            calib_printf(p->cli_base_alias, false, "'%s_cmd' CLI: Received FSM command: %d", p->cli_base_alias, user_fsm_cmd);
         }
-    }
 
-    // 3. Execute FSM
-    if (state->calibration_active || user_fsm_cmd != CALIB_CMD_NONE || (state->calibration_active && !prev_calibration_active)) {
+        // Execute FSM based on decimation or if a command is received
         state->fsm_iteration_counter++;
         uint16_t decimation = (p->decimation_factor == 0) ? 1 : p->decimation_factor;
 
-        if ((state->calibration_active && state->fsm_iteration_counter >= decimation) || user_fsm_cmd != CALIB_CMD_NONE || (state->calibration_active && !prev_calibration_active)) {
+        // Process FSM if:
+        // - It's active and decimation count is met OR
+        // - A user command was received (process immediately) OR
+        // - Calibration just became active (process first step immediately)
+        if ( (state->calibration_active && state->fsm_iteration_counter >= decimation) ||
+             user_fsm_cmd != CALIB_CMD_NONE ||
+             (state->calibration_active && !prev_calibration_active) ) {
             state->fsm_iteration_counter = 0;
             handle_calibration_fsm(i, p, state, user_fsm_cmd);
         }
     }
+    // Update previous_calib_stage *after* all FSM logic for the current cycle has completed
+    state->previous_calib_stage = state->calib_stage;
 }
 
-
+// Initialization function
 fspec_rv_t core_calib_v3f64_pre_exec_init(const core_calib_v3f64_params_t *p, core_calib_v3f64_state_t *state) {
     state->calib_stage = CALIB_STAGE_IDLE;
+    state->previous_calib_stage = -1; // Ensure first message prints
     state->calibration_active = false;
     state->fsm_iteration_counter = 0;
 
     state->current_k.x = p->initial_k1; state->current_k.y = p->initial_k2; state->current_k.z = p->initial_k3;
     state->current_b.x = p->initial_b1; state->current_b.y = p->initial_b2; state->current_b.z = p->initial_b3;
 
-    reset_averaged_min_max_data(state); // Initializes new sampling state vars too
+    reset_averaged_min_max_data(state);
 
     state->init_iterations_counter = 0;
     state->calibration_disabled = false;
 
-    // sample_accumulator.vector is expected to be allocated by the fspec framework
-    // based on VectorTypeRef and selection_size parameter.
-    // We need to check if p->selection_size is valid for state->sample_accumulator.max_len
-    // For now, assume state->sample_accumulator.max_len is correctly set by fspec.
-    // If selection_size is 0, sample_accumulator.vector might be NULL, handle in FSM.
     if (p->selection_size == 0) {
-        printf("CALIB_INIT_WARN: selection_size is 0. Averaging will not occur.\n");
-        // FSM logic should handle p->selection_size == 0 gracefully (e.g. take one sample or error)
+        calib_printf(p->cli_base_alias, false, "Warning: selection_size is 0. Averaging will use single current sample.");
     }
-    // state->sample_accumulator.curr_len is not used by fspec type directly,
-    // state->num_samples_in_accumulator is our application counter.
+    calib_printf(p->cli_base_alias, false, "Sample accumulator max_len (from selection_size parameter): %u", state->sample_accumulator.max_len);
+     if (p->selection_size > state->sample_accumulator.max_len) {
+        calib_printf(p->cli_base_alias, true, "Error: selection_size (%u) > sample_accumulator.max_len (%u). Check FSpec setup.",
+                     p->selection_size, state->sample_accumulator.max_len);
+        // Depending on strictness, could return fspec_rv_initerr here
+    }
 
-    if (load_calibration_data(p->settings_path, state)) {
-        state->calib_stage = CALIB_STAGE_DONE_APPLYING;
-        printf("CALIB_INIT: Loaded calibration from '%s'. Stage: DONE_APPLYING.\n", p->settings_path);
+
+    if (load_calibration_data(p->cli_base_alias, p->settings_path, state)) {
+        state->calib_stage = CALIB_STAGE_DONE_APPLYING; // Start by applying loaded coeffs
+        state->previous_calib_stage = -1; // Ensure "applying new coeffs" message if relevant
+        calib_printf(p->cli_base_alias, false, "INIT: Loaded calibration from '%s'. Stage set to DONE_APPLYING.", p->settings_path);
     } else {
-        printf("CALIB_INIT: Using initial K,B. Stage: IDLE.\n");
+        calib_printf(p->cli_base_alias, false, "INIT: Using initial K,B. Stage set to IDLE.");
     }
 
+    // Setup ESWB CLI FIFOs
     fspec_rv_t rv = fspec_rv_ok;
     eswb_rv_t erv;
-    char topic_name_buf[ESWB_TOPIC_NAME_MAX_LEN + 1];
+    char topic_name_buf[128];
 
     TOPIC_TREE_CONTEXT_LOCAL_DEFINE(cntx_enable, 2);
     snprintf(topic_name_buf, sizeof(topic_name_buf), "%s_enable", p->cli_base_alias);
-    topic_proclaiming_tree_t *enable_cmd_root = usr_topic_set_fifo(cntx_enable, topic_name_buf, 2);
+    topic_proclaiming_tree_t *enable_cmd_root = usr_topic_set_fifo(cntx_enable, topic_name_buf, 2); // FIFO size 2
     usr_topic_add_struct_child(cntx_enable, enable_cmd_root, atomic_cmd_bool_t, cmd_bool, "cmd_bool", tt_bool);
     erv = atomic_cli_register_fifo(topic_name_buf, cntx_enable, enable_cmd_root, &state->enable_cmd_fifo_td);
     if (erv != eswb_e_ok) {
-        fprintf(stderr, "CALIB_INIT_ERROR: Registering enable CLI for '%s' (%s)\n", topic_name_buf, eswb_strerror(erv));
+        calib_printf(p->cli_base_alias, true, "INIT_ERROR: Registering enable CLI for '%s' (%s)", topic_name_buf, eswb_strerror(erv));
         rv = fspec_rv_initerr;
     }
 
     TOPIC_TREE_CONTEXT_LOCAL_DEFINE(cntx_stage, 2);
     snprintf(topic_name_buf, sizeof(topic_name_buf), "%s_cmd", p->cli_base_alias);
-    topic_proclaiming_tree_t *stage_cmd_root = usr_topic_set_fifo(cntx_stage, topic_name_buf, 2);
+    topic_proclaiming_tree_t *stage_cmd_root = usr_topic_set_fifo(cntx_stage, topic_name_buf, 2); // FIFO size 2
     usr_topic_add_struct_child(cntx_stage, stage_cmd_root, atomic_cmd_i32_t, cmd_i32, "cmd_i32", tt_int32);
     erv = atomic_cli_register_fifo(topic_name_buf, cntx_stage, stage_cmd_root, &state->stage_cmd_fifo_td);
     if (erv != eswb_e_ok) {
-        fprintf(stderr, "CALIB_INIT_ERROR: Registering stage_cmd CLI for '%s' (%s)\n", topic_name_buf, eswb_strerror(erv));
+        calib_printf(p->cli_base_alias, true, "INIT_ERROR: Registering stage_cmd CLI for '%s' (%s)", topic_name_buf, eswb_strerror(erv));
         rv = fspec_rv_initerr;
     }
 
     return rv;
 }
 
+// Main execution function
 void core_calib_v3f64_exec(
     const core_calib_v3f64_inputs_t *i,
     core_calib_v3f64_outputs_t *o,
     const core_calib_v3f64_params_t *p,
     core_calib_v3f64_state_t *state
 ) {
-    // 1. Process calibration logic (CLI commands, FSM state transitions, data collection)
-    // The check for state->calibration_permanently_disabled is now inside process_calibration_logic
-    if (!state->calibration_disabled) {
+    // If calibration is permanently disabled for this session, skip all processing logic.
+    // The flag is set by process_calibration_logic, so this check catches it on subsequent calls.
+    if (state->calibration_disabled) {
+        // Coefficients are already at their last known good state (or initial).
+        // No FSM or command processing.
+    } else {
+        // Otherwise, run the main calibration logic.
         process_calibration_logic(i, p, state);
     }
 

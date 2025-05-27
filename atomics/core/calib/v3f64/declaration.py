@@ -121,6 +121,11 @@ Function(
             value_type='core.type.i32',
         ),
         Variable(
+            name='previous_calib_stage',
+            title='Previous Calibration FSM Stage',
+            value_type='core.type.i32',
+        ),
+        Variable(
             name='enable_cmd_fifo_td',
             title='ESWB TD for Enable/Disable Calibration Command FIFO',
             value_type='core.type.td',
