@@ -1,8 +1,10 @@
+#include <ctype.h>
 #include <float.h>  // For DBL_MAX, DBL_EPSILON
 #include <math.h>
 #include <stdarg.h>  // For va_list, va_start, va_end
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "atomics_cli_cmd.h"  // For atomic_cmd_i32_t, atomic_cmd_bool_t
@@ -79,24 +81,66 @@ static void reset_averaged_min_max_data(core_calib_v3f64_state_t *state) {
     state->current_axis_avg_extreme1 = 0.0;
 }
 
-static bool load_calibration_data(const char *cli_base_alias, const char *path, core_calib_v3f64_state_t *state) {
+static bool load_calibration_data(const char *cli_base_alias, const char *path,
+                                  core_calib_v3f64_state_t *state) {
     if (path == NULL || strlen(path) == 0) return false;
-    FILE *f = fopen(path, "r");
-    if (!f) {
-        calib_printf(cli_base_alias, false, "No calibration file '%s'. Using initial/current parameters.", path);
+
+    int fd = open(path, O_RDONLY);
+    if (fd < 0) {
+        calib_printf(
+            cli_base_alias, false,
+            "No calibration file '%s'. Using initial/current parameters.",
+            path);
         return false;
     }
-    if (fscanf(f, "%lf %lf %lf\n%lf %lf %lf",
-               &state->current_b.x, &state->current_b.y, &state->current_b.z,
-               &state->current_k.x, &state->current_k.y, &state->current_k.z) == 6) {
-        calib_printf(cli_base_alias, false, "Loaded K={%.4f,%.4f,%.4f}, B={%.4f,%.4f,%.4f} from '%s'",
-               state->current_k.x, state->current_k.y, state->current_k.z,
-               state->current_b.x, state->current_b.y, state->current_b.z, path);
-        fclose(f);
+
+    char buf[256];
+    ssize_t bytes_read = read(fd, buf, sizeof(buf) - 1);
+    if (bytes_read <= 0) {
+        calib_printf(
+            cli_base_alias, true,
+            "Error reading file '%s'. Using initial/current parameters.", path);
+        close(fd);
+        return false;
+    }
+    buf[bytes_read] = '\0';
+    close(fd);
+
+    char *token = buf;
+    char *ptr;
+    int i = 0;
+    double temp[6] = {0};
+
+    while (token && i < 6) {
+        while (*token && isspace(*token)) token++;
+        if (!*token) break;
+
+        temp[i] = strtod(token, &ptr);
+        if (ptr == token) break;
+
+        i++;
+        token = ptr;
+    }
+
+    state->current_b.x = temp[0];
+    state->current_b.y = temp[1];
+    state->current_b.z = temp[2];
+    state->current_k.x = temp[3];
+    state->current_k.y = temp[4];
+    state->current_k.z = temp[5];
+
+    if (i == 6) {
+        calib_printf(cli_base_alias, false,
+                     "Loaded K={%.4f,%.4f,%.4f}, B={%.4f,%.4f,%.4f} from '%s'",
+                     state->current_k.x, state->current_k.y, state->current_k.z,
+                     state->current_b.x, state->current_b.y, state->current_b.z,
+                     path);
         return true;
     }
-    calib_printf(cli_base_alias, true, "Error reading file '%s'. Using initial/current parameters.", path);
-    fclose(f);
+
+    calib_printf(cli_base_alias, true,
+                 "Error parsing file '%s'. Using initial/current parameters.",
+                 path);
     return false;
 }
 
@@ -125,8 +169,8 @@ static void handle_calibration_fsm(
     // Store current stage to detect change for messages
     // This is now handled by comparing state->calib_stage with state->previous_calib_stage
 
-    bool print_instr = (state->calib_stage != state->previous_calib_stage)
-                        || (user_fsm_cmd != CALIB_CMD_NONE && state->calib_stage == CALIB_STAGE_PROMPT_EXTREME);
+    bool print_instr = (state->calib_stage != state->previous_calib_stage);
+                        // || (user_fsm_cmd != CALIB_CMD_NONE && state->calib_stage == CALIB_STAGE_PROMPT_EXTREME);
 
     // Handle global commands that can interrupt any stage if calibration is active
     if (user_fsm_cmd == CALIB_CMD_CANCEL_CALIBRATION) {
@@ -237,6 +281,8 @@ static void handle_calibration_fsm(
                          state->calib_stage = CALIB_STAGE_ERROR;
                          break;
                     }
+
+                    calib_printf(p->cli_base_alias, false, "Send NEXT_STAGE command to go to next phase: atomics_cli %s_cmd %d", p->cli_base_alias, CALIB_CMD_NEXT_STAGE);
 
                     state->current_sampling_axis_idx++;
                     if (state->current_sampling_axis_idx < 3) {
