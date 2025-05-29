@@ -218,6 +218,13 @@ class Parameter:
         self.default = default
         self.computable = False
 
+        if default is not None:
+            if 'bool' in value_type and not isinstance(default, bool):
+                raise Exception(f'Invalid default type for {value_type}: {default}')
+            if 'int' in value_type and not isinstance(default, int):
+                raise Exception(f'Invalid default type for {value_type}: {default}')
+            if ('float' in value_type or 'double' in value_type) and not isinstance(default, (int, float)):
+                raise Exception(f'Invalid default type for {value_type}: {default}')
 
 class ComputedParameter(Parameter):
     def __init__(self, *,

@@ -985,7 +985,16 @@ class GeneratedFunction:
                 if parameter.mandatory or type(parameter) == fspeclib.ComputedParameter:
                     continue
 
-                dv = parameter.default if not isinstance(parameter.default, str) else f"\"{parameter.default}\""
+                if isinstance(parameter.default, str):
+                    dv = f"\"{parameter.default}\""
+                elif isinstance(parameter.default, bool):
+                    dv = 'TRUE' if parameter.default else 'FALSE'
+                elif isinstance(parameter.default, float):
+                    dv = parameter.default
+                elif isinstance(parameter.default, int):
+                    dv = parameter.default
+                else:
+                    raise Exception(f'Invalid default parameter type {parameter.default.__class__.__name__}')
 
                 fprint(f'        if (!flags.{self.changed_param_bitfield_name(parameter.name)}) {{', )
                 fprint(f'            p.{parameter.name} = {dv};', )
