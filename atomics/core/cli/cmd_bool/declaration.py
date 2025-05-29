@@ -10,14 +10,13 @@ Function(
             title='Command alias for subscribing on',
             value_type='core.type.str',
             tunable=False,
-            default=0,
         ),
         Parameter(
             name='default_output',
             title='Default output',
             value_type='core.type.bool',
             tunable=False,
-            default=0,
+            default=False,
         )
     ],
 
