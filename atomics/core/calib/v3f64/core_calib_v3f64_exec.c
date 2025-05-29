@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
 
 #include "atomics_cli_cmd.h"  // For atomic_cmd_i32_t, atomic_cmd_bool_t
 #include "core_calib_v3f64.h"
